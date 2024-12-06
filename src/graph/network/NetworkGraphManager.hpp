@@ -9,8 +9,7 @@
  * This class provides methods for adding vertices and edges to a network graph.
  * The graph is based on the definitions in `NetworkGraphDefinition.hpp`.
  */
-class NetworkGraphManager
-    : public BoostGraphManager<VertexProperties, EdgeProperties, Graph> {
+class NetworkGraphManager : public BoostGraphManager<Graph> {
 public:
     // Constructor
     NetworkGraphManager() = default;
@@ -19,44 +18,44 @@ public:
     ~NetworkGraphManager() override = default;
 
     /**
-    * @brief Add a vertex with associated properties.
-    *
-    * @param properties Properties of the vertex to add.
-    * @return The added vertex descriptor.
-    */
+     * @brief Add a vertex with associated properties.
+     *
+     * @param properties Properties of the vertex to add.
+     * @return The added vertex descriptor.
+     */
     Vertex add_vertex(const VertexProperties &properties) override;
 
     /**
-    * @brief Add an edge between two vertices with associated properties.
-    *
-    * @param src The source vertex.
-    * @param dst The destination vertex.
-    * @param properties Properties of the edge to add.
-    * @return True if the edge was successfully added, false otherwise.
-    */
+     * @brief Add an edge between two vertices with associated properties.
+     *
+     * @param src The source vertex.
+     * @param dst The destination vertex.
+     * @param properties Properties of the edge to add.
+     * @return True if the edge was successfully added, false otherwise.
+     */
     bool add_edge(const Vertex &src, const Vertex &dst,
                   const EdgeProperties &properties) override;
 
     /**
-    * @brief Add an edge between two vertices with associated properties.
-    *
-    * @param src_ip The source IP address.
-    * @param dst_ip The destination IP address.
-    * @param properties Properties of the edge to add.
-    * @return True if the edge was successfully added, false otherwise.
-    */
+     * @brief Add an edge between two vertices with associated properties.
+     *
+     * @param src_ip The source IP address.
+     * @param dst_ip The destination IP address.
+     * @param properties Properties of the edge to add.
+     * @return True if the edge was successfully added, false otherwise.
+     */
     bool add_edge(const std::string &src_ip, const std::string &dst_ip,
                   const EdgeProperties &properties);
 
     /**
-    * @brief Add an edge between two vertices with associated properties.
-    * If the vertices do not exist, they are added to the graph.
-    *
-    * @param src_properties Properties of the source vertex.
-    * @param dst_properties Properties of the destination vertex.
-    * @param properties Properties of the edge to add.
-    * @return True if the edge was successfully added, false otherwise.
-    */
+     * @brief Add an edge between two vertices with associated properties.
+     * If the vertices do not exist, they are added to the graph.
+     *
+     * @param src_properties Properties of the source vertex.
+     * @param dst_properties Properties of the destination vertex.
+     * @param properties Properties of the edge to add.
+     * @return True if the edge was successfully added, false otherwise.
+     */
     bool add_edge_and_vertex_if_not_exists(const VertexProperties &src_properties,
                                            const VertexProperties &dst_properties,
                                            const EdgeProperties &properties);

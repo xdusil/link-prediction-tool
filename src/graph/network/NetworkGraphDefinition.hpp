@@ -24,10 +24,10 @@ struct EdgeProperties {
     int dst_port;
 
     EdgeProperties(const std::chrono::milliseconds &date_first,
-                   const std::chrono::milliseconds &date_last, int protocol,
-                   int src_port, int dst_port)
-        : start_timestamp(date_first), end_timestamp(date_last),
-        protocol(protocol), src_port(src_port), dst_port(dst_port) {}
+                   const std::chrono::milliseconds &date_last, int protocol, int src_port,
+                   int dst_port)
+        : start_timestamp(date_first), end_timestamp(date_last), protocol(protocol),
+          src_port(src_port), dst_port(dst_port) {}
 };
 
 /**
@@ -37,15 +37,14 @@ struct EdgeProperties {
  * Each vertex has an IP address, and each edge has a start and end timestamp,
  * protocol, and source and destination port numbers.
  */
-using Graph =
-    boost::adjacency_list<boost::multisetS, // Allow multiple edges between the
-                                            // same nodes
-                          boost::vecS,      // Use a vector to store vertices
-                          boost::directedS, // Directed graph
-                          VertexProperties, // Properties for each vertex
-                          EdgeProperties,   // Properties for each edge
-                          boost::allow_parallel_edge_tag // Allow parallel edges
-                          >;
+using Graph = boost::adjacency_list<boost::multisetS, // Allow multiple edges between the
+                                                      // same nodes
+                                    boost::vecS,      // Use a vector to store vertices
+                                    boost::directedS, // Directed graph
+                                    VertexProperties, // Properties for each vertex
+                                    EdgeProperties,   // Properties for each edge
+                                    boost::allow_parallel_edge_tag // Allow parallel edges
+                                    >;
 
 /**
  * @brief Vertex descriptor type for the network graph.
