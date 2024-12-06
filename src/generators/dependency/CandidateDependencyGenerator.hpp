@@ -20,31 +20,33 @@ public:
      * context.
      * @param total_vertices The total number of vertices in the graph.
      * @param to_long A function that converts an element of type T to a long.
+     * @param num_negative_samples The number of negative samples to generate per positive
+     * sample.
      */
     CandidateDependencyGenerator(
         std::function<T(const std::vector<T> &)> initial_selector,
-        std::size_t total_vertices, std::function<long(T)> to_long);
+        std::size_t total_vertices, std::function<long(T)> to_long,
+        int num_negative_samples);
 
     /**
      * @brief Generate dependencies from a list of contexts.
      *
-     * For each context, the "initial" element is selected using the provided initial
-     * selector. For each element in the context that is not the "initial" element, a
-     * candidate dependency is generated with the "initial" element as the target and the
-     * current element as the context.
-     *
-     * @param contexts A vector of contexts, where each context is a vector of elements of
-     * type T.
-     * @return A pair of tensors representing the context and target dependencies.
+     * @param context_list A vector of contexts, where each context is a vector of
+     * elements of type T.
+     * @return A tuple containing the context, positive target, and negative target
+     * tensors.
      */
-    std::pair<torch::Tensor, torch::Tensor>
+    std::tuple<torch::Tensor, torch::Tensor, std::vector<torch::Tensor>>
     generate_dependencies(const std::vector<std::vector<T>> &contexts) override;
 
 private:
     std::function<T(const std::vector<T> &)>
-        initial_selector;           // Function to select the "initial" element
-    std::size_t total_vertices;     // Total number of vertices in the graph
-    std::function<long(T)> to_long; // Function to convert an element of type T to a long
+        initial_selector;           // select the "initial" element
+    std::size_t total_vertices;     // total number of vertices in the graph
+    std::function<long(T)> to_long; // convert an element of type T to a long
+    int num_negative_samples;       // number of negative samples to generate per positive
+                                    // sample
+    std::mt19937 rng;               // random number generator
 };
 
 #include "CandidateDependencyGenerator.tpp"

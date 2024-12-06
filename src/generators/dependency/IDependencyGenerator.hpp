@@ -1,6 +1,6 @@
 #pragma once
 #include <torch/torch.h>
-#include <utility>
+#include <tuple>
 #include <vector>
 
 /**
@@ -12,16 +12,16 @@
  */
 template <typename T>
 class IDependencyGenerator {
-    public:
+public:
     virtual ~IDependencyGenerator() = default;
 
     /**
      * @brief Generate dependencies from a list of contexts.
      *
-     * @param contexts A vector of contexts, where each context is a vector of elements of
-     * type T.
-     * @return A pair of tensors representing the context and target dependencies.
+     * @param context_list A vector of contexts, where each context is a vector of elements
+     * of type T.
+     * @return A tuple containing the context, positive target, and negative target tensors.
      */
-    virtual std::pair<torch::Tensor, torch::Tensor>
+    virtual std::tuple<torch::Tensor, torch::Tensor, std::vector<torch::Tensor>>
     generate_dependencies(const std::vector<std::vector<T>> &contexts) = 0;
 };
