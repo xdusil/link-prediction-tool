@@ -17,7 +17,7 @@ public:
      * @param model The model to optimize.
      * @param learning_rate The learning rate for the optimizer.
      */
-    Optimizer(const torch::nn::Module& model, int learning_rate);
+    Optimizer(torch::nn::Module& model, double learning_rate);
     
     /**
      * @brief Zero the gradients of the optimizer.
