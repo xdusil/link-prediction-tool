@@ -2,17 +2,24 @@
 
 #include "../logic/IRandomWalkLogic.hpp"
 #include "IRandomWalkManager.hpp"
+#include "graph/IGraphManager.hpp"
+#include "mlpack/core/util/param_data.hpp"
 #include <vector>
 
 /**
  * @brief Manager for generating random walks on a graph.
  *
- * @tparam Graph The graph type.
- * @tparam Vertex The vertex type.
+ * This class provides methods for generating random walks on a graph using a given random
+ * walk logic.
+ *
+ * @tparam GraphTraits The graph traits type defining the graph element types.
  */
-template <typename Graph, typename Vertex>
-class RandomWalkManager : public IRandomWalkManager<Vertex> {
-  public:
+template <typename GraphTraits>
+class RandomWalkManager : public IRandomWalkManager<typename GraphTraits::Vertex> {
+public:
+    // Define the graph element types
+    using Vertex = GraphTraits::Vertex;
+
     /**
      * @brief Construct a new Random Walk Manager object.
      *
@@ -21,8 +28,8 @@ class RandomWalkManager : public IRandomWalkManager<Vertex> {
      * @param walk_logic Logic object implementing single random walk generation.
      * @param walk_length The fixed length of each random walk.
      */
-    RandomWalkManager(const Graph &graph, int num_threads,
-                      const IRandomWalkLogic<Graph, Vertex> &walk_logic, int walk_length);
+    RandomWalkManager(const IGraphManager<GraphTraits> &graph, int num_threads,
+                      const IRandomWalkLogic<GraphTraits> &walk_logic, int walk_length);
 
     /**
      * @brief Generate random walks for a set of vertices.
@@ -52,11 +59,11 @@ class RandomWalkManager : public IRandomWalkManager<Vertex> {
     std::vector<std::vector<Vertex>> generate_random_walks(InputIt begin,
                                                            InputIt end) const;
 
-  private:
-    const Graph &m_graph; // The graph to perform random walks on
-    int m_num_threads;    // The number of threads to use for parallel execution
-    int m_walk_length;    // The fixed length of each random walk
-    const IRandomWalkLogic<Graph, Vertex>
+private:
+    const IGraphManager<GraphTraits> &m_graph; // The graph to perform random walks on
+    int m_num_threads; // The number of threads to use for parallel execution
+    int m_walk_length; // The fixed length of each random walk
+    const IRandomWalkLogic<GraphTraits>
         &m_walk_logic; // Logic object for generating random walks
 };
 

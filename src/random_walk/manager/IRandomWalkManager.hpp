@@ -7,8 +7,9 @@
  *
  * @tparam Vertex The vertex type of the graph.
  */
-template <typename Vertex> class IRandomWalkManager {
-  public:
+template <typename Vertex>
+class IRandomWalkManager {
+public:
     virtual ~IRandomWalkManager() = default;
 
     /**
