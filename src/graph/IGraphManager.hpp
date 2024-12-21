@@ -104,7 +104,7 @@ public:
      * @param vertex The vertex to get the properties for.
      * @return The properties of the vertex.
      */
-    virtual VertexProperties &get_vertex_properties(const Vertex &vertex) = 0;
+    virtual const VertexProperties &get_vertex_properties(const Vertex &vertex) const = 0;
 
     /**
      * @brief Get the properties of an edge in the graph.
@@ -112,5 +112,5 @@ public:
      * @param edge The edge to get the properties for.
      * @return The properties of the edge.
      */
-    virtual EdgeProperties &get_edge_properties(const Edge &edge) = 0;
+    virtual const EdgeProperties &get_edge_properties(const Edge &edge) const = 0;
 };

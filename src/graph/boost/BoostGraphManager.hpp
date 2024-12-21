@@ -109,7 +109,7 @@ public:
      * @param vertex The vertex to get the properties for.
      * @return The properties of the vertex.
      */
-    virtual VertexProperties &get_vertex_properties(const Vertex &vertex) override;
+    virtual const VertexProperties &get_vertex_properties(const Vertex &vertex) const override;
 
     /**
      * @brief Get the properties of a edge.
@@ -117,7 +117,7 @@ public:
      * @param edge The edge to get the properties for.
      * @return The properties of the edge.
      */
-    virtual EdgeProperties &get_edge_properties(const Edge &edge) override;
+    virtual const EdgeProperties &get_edge_properties(const Edge &edge) const override;
 
 private:
     Graph m_graph; // The graph managed by this class

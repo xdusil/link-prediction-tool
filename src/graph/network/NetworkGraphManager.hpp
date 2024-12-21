@@ -60,6 +60,15 @@ public:
                                            const VertexProperties &dst_properties,
                                            const EdgeProperties &properties);
 
+    /**
+     * @brief Get map of IP addresses to vertex descriptors.
+     *
+     * @return The map of IP addresses to vertex descriptors.
+     */
+    const std::unordered_map<std::string, Vertex> &get_ip_to_vertex() const {
+        return ip_to_vertex;
+    }
+
 private:
     std::unordered_map<std::string, Vertex>
         ip_to_vertex; // Map IP addresses to vertex descriptors

@@ -68,14 +68,14 @@ BoostGraphManager<Graph>::get_target_vertex(const Edge &edge) const {
 
 // Get the vertex properties
 template <typename Graph>
-typename BoostGraphManager<Graph>::VertexProperties &
-BoostGraphManager<Graph>::get_vertex_properties(const Vertex &vertex) {
+const typename BoostGraphManager<Graph>::VertexProperties &
+BoostGraphManager<Graph>::get_vertex_properties(const Vertex &vertex) const {
     return m_graph[vertex];
 }
 
 // Get the properties of an edge
 template <typename Graph>
-typename BoostGraphManager<Graph>::EdgeProperties &
-BoostGraphManager<Graph>::get_edge_properties(const Edge &edge) {
+const typename BoostGraphManager<Graph>::EdgeProperties &
+BoostGraphManager<Graph>::get_edge_properties(const Edge &edge) const {
     return m_graph[edge];
 }
