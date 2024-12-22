@@ -5,13 +5,19 @@
 namespace utils {
 
 template <typename T>
-std::optional<T> choice_random_item(std::vector<T> &items, auto &rng) {
-    if (items.empty()) {
+std::optional<T> choice_random_item(auto it_begin, auto it_end, auto &rng, std::optional<std::size_t> distance /*= {}*/) {
+    if (it_begin == it_end) {
         return std::nullopt;
     }
-    std::uniform_int_distribution<size_t> dist(0, items.size() - 1);
-    size_t index = dist(rng);
-    return items[index];
+
+    std::uniform_int_distribution<std::size_t> dist(0, distance.value_or(std::distance(it_begin, it_end)) - 1);
+    std::advance(it_begin, dist(rng));
+    return *it_begin;
+}
+
+template <typename T>
+std::optional<T> choice_random_item(std::vector<T> &items, auto &rng) {
+    return choice_random_item(items.begin(), items.end(), rng, items.size());
 }
 
 template <typename T>
@@ -54,5 +60,22 @@ split_train_test(const arma::mat &features, const arma::Row<T> &labels,
     return std::make_tuple(train_features, train_labels, test_features, test_labels);
 }
 
+template <typename Vertex>
+bool is_vertex_pair_in_sequence(const std::vector<Vertex> &sequence, Vertex src,
+                                Vertex dst) {
+    for (int i = 0; i < sequence.size() - 1; ++i) {
+        if (sequence[i] == src && sequence[i + 1] == dst) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+template <typename Vertex>
+bool is_vertex_pair_in_sequence_opposite(const std::vector<Vertex> &sequence, Vertex src,
+                                         Vertex dst) {
+    return is_vertex_pair_in_sequence(sequence, dst, src);
+}
 
 } // namespace utils
