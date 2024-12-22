@@ -4,33 +4,41 @@
 
 namespace utils {
 
-template <typename T>
-std::optional<T> choice_random_item(auto it_begin, auto it_end, auto &rng, std::optional<std::size_t> distance /*= {}*/) {
+template <typename RandomIt, typename RNG>
+std::optional<typename std::iterator_traits<RandomIt>::value_type>
+choice_random_item(RandomIt it_begin, RandomIt it_end, RNG &rng,
+                   std::optional<std::size_t> distance /*= std::nullopt*/) {
     if (it_begin == it_end) {
         return std::nullopt;
     }
 
-    std::uniform_int_distribution<std::size_t> dist(0, distance.value_or(std::distance(it_begin, it_end)) - 1);
+    std::size_t dist_val = distance.value_or(std::distance(it_begin, it_end));
+    if (dist_val == 0) {
+        return std::nullopt;
+    }
+
+    std::uniform_int_distribution<std::size_t> dist(0, dist_val - 1);
     std::advance(it_begin, dist(rng));
     return *it_begin;
 }
 
-template <typename T>
-std::optional<T> choice_random_item(std::vector<T> &items, auto &rng) {
+template <typename T, typename RNG>
+std::optional<T> choice_random_item(std::vector<T> &items, RNG &rng) {
     return choice_random_item(items.begin(), items.end(), rng, items.size());
 }
 
 template <typename T>
 std::tuple<arma::mat, arma::Row<T>, arma::mat, arma::Row<T>>
 split_train_test(const arma::mat &features, const arma::Row<T> &labels,
-                 double train_fraction)  {
+                 double train_fraction) {
     if (train_fraction < 0.0 || train_fraction > 1.0) {
         throw std::invalid_argument("train_fraction must be between 0.0 and 1.0");
     }
 
     arma::uword num_samples = features.n_cols;
     if (num_samples != labels.n_elem) {
-        throw std::invalid_argument("Number of samples in features and labels must be the same");
+        throw std::invalid_argument(
+            "Number of samples in features and labels must be the same");
     }
     arma::Row<arma::uword> indices(num_samples);
 

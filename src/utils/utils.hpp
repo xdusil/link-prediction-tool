@@ -12,28 +12,33 @@
 namespace utils {
 
 /**
- * @brief Choose a random item from a vector.
+ * @brief Choose a random item from a std::vector.
  *
- * @tparam T The type of the items in the vector.
+ * @tparam T   The type of the items in the vector.
+ * @tparam RNG The random number generator type.
  * @param items The vector of items.
- * @param rng The random number generator.
- * @return The chosen item.
+ * @param rng   The random number generator reference.
+ * @return An optional item from the vector, or std::nullopt if empty.
  */
-template <typename T>
-std::optional<T> choice_random_item(std::vector<T> &items, auto &rng);
+template <typename T, typename RNG>
+std::optional<T> choice_random_item(std::vector<T> &items, RNG &rng);
 
-/**
- * @brief Choose a random item from a range.
- *
- * @tparam T The type of the items in the range.
- * @param it_begin The beginning of the range.
- * @param it_end The end of the range.
- * @param rng The random number generator.
- * @param distance The distance between it_begin and it_end.
- * @return The chosen item.
- */
-template <typename T>
-std::optional<T> choice_random_item(auto it_begin, auto it_end, auto &rng, std::optional<std::size_t> distance = {});
+    /**
+     * @brief Choose a random item from an iterator range (random-access only).
+     *
+     * @tparam RandomIt The random-access iterator type.
+     * @tparam RNG      The random number generator type.
+     * @param it_begin  The beginning of the range.
+     * @param it_end    The end of the range.
+     * @param rng       The random number generator reference.
+     * @param distance  Optional: if provided, uses that as the range length;
+     *                  otherwise calculates via std::distance.
+     * @return An optional item from the range, or std::nullopt if empty.
+     */
+    template <typename RandomIt, typename RNG>
+    std::optional<typename std::iterator_traits<RandomIt>::value_type> choice_random_item(
+        RandomIt it_begin, RandomIt it_end, RNG &rng,
+        std::optional<std::size_t> distance = std::nullopt);
 
 /**
  * @brief Splits the dataset into training and testing subsets.
