@@ -44,10 +44,6 @@ public:
                                              int walk_length) const override;
 
 private:
-    int n_appearances; // Minimum appearances threshold
-    int epsilon;       // Time gap threshold
-    int epsilon_rev;   // Reverse flow time gap threshold
-
     /**
      * @brief Determine the possible next vertices in the random walk.
      *
@@ -59,19 +55,33 @@ private:
     void determine_random_walk_possibilities(
         const IGraphManager<GraphTraits> &graph, const Edge &previous_edge,
         const std::vector<Vertex> &walk_sequence,
-        std::vector<std::pair<Vertex, Edge>> &vertices, int n_appearances, int epsilon,
-        int epsilon_rev) const;
+        std::vector<std::pair<Vertex, Edge>> &vertices) const;
 
     /**
      * @brief Choose the second vertex in the random walk.
      *
      * @param graph The graph on which to perform the random walk.
      * @param fst_vertex The first vertex in the random walk.
+     * @param rng The random number generator.
      * @return An optional pair containing the second vertex and the edge connecting the
      * two vertices.
      */
     std::optional<std::pair<Vertex, Edge>>
-    choose_snd_vertex(const IGraphManager<GraphTraits> &graph, Vertex fst_vertex) const;
+    choose_snd_vertex(const IGraphManager<GraphTraits> &graph, Vertex fst_vertex, auto &rng) const;
+
+    /**
+     * @brief Get the count of target vertices in a range of edges.
+     *
+     * @param graph The graph on which to perform the random walk.
+     * @param it_begin The beginning of the range of edges.
+     * @param it_end The end of the range of edges.
+     * @return A map of target vertices to their appearance count.
+     */
+    auto get_target_count(const IGraphManager<GraphTraits> &graph, auto it_begin, auto it_end) const;
+    
+    int n_appearances; // Minimum appearances threshold
+    int epsilon;       // Time gap threshold
+    int epsilon_rev;   // Reverse flow time gap threshold
 };
 
 #include "CustomRandomWalkLogic.tpp"
