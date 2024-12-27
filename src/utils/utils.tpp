@@ -40,15 +40,10 @@ split_train_test(const arma::mat &features, const arma::Row<T> &labels,
         throw std::invalid_argument(
             "Number of samples in features and labels must be the same");
     }
-    arma::Row<arma::uword> indices(num_samples);
-
-    // Initialize indices
-    for (arma::uword i = 0; i < num_samples; ++i) {
-        indices[i] = i;
-    }
 
     // Shuffle the indices
-    arma::Row<arma::uword> shuffled_indices = arma::shuffle(indices);
+    arma::uvec shuffled_indices =
+        arma::shuffle(arma::linspace<arma::uvec>(0, num_samples - 1, num_samples));
 
     // Determine the number of training samples
     arma::uword num_train = static_cast<arma::uword>(train_fraction * num_samples);
@@ -58,12 +53,15 @@ split_train_test(const arma::mat &features, const arma::Row<T> &labels,
     arma::Row<arma::uword> test_indices =
         shuffled_indices.subvec(num_train, num_samples - 1);
 
-    // Extract training and testing features and labels
+    // Extract training and testing features
     arma::mat train_features = features.cols(train_indices);
-    arma::Row<arma::uword> train_labels = labels.cols(train_indices);
-
     arma::mat test_features = features.cols(test_indices);
-    arma::Row<arma::uword> test_labels = labels.cols(test_indices);
+
+    // Convert labels to row vectors
+    arma::Row<T> train_labels =
+        arma::conv_to<arma::Row<T>>::from(labels.cols(train_indices));
+    arma::Row<T> test_labels =
+        arma::conv_to<arma::Row<T>>::from(labels.cols(test_indices));
 
     return std::make_tuple(train_features, train_labels, test_features, test_labels);
 }
