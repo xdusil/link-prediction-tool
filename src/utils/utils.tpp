@@ -49,8 +49,8 @@ split_train_test(const arma::mat &features, const arma::Row<T> &labels,
     arma::uword num_train = static_cast<arma::uword>(train_fraction * num_samples);
 
     // Split the indices
-    arma::Row<arma::uword> train_indices = shuffled_indices.subvec(0, num_train - 1);
-    arma::Row<arma::uword> test_indices =
+    auto train_indices = shuffled_indices.subvec(0, num_train - 1);
+    auto test_indices =
         shuffled_indices.subvec(num_train, num_samples - 1);
 
     // Extract training and testing features
