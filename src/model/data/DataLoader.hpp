@@ -27,10 +27,9 @@ public:
      * @param rw_manager The RandomWalkManager used to generate random walks.
      * @param context_generator The ContextGenerator used to create contexts.
      * @param dependency_generator The DependencyGenerator for generating dependencies.
-     * @param num_of_batches The number of batches to generate.
      */
     DataLoader(IRandomWalkManager<T> &rw_manager, IContextGenerator<T> &context_generator,
-               IDependencyGenerator<T> &dependency_generator, int num_of_batches);
+               IDependencyGenerator<T> &dependency_generator);
 
     /**
      * @brief Get the next batch of data.
@@ -45,8 +44,6 @@ private:
     IContextGenerator<T> &m_context_generator; // ContextGenerator used to create contexts
     IDependencyGenerator<T>
         &m_dependency_generator; // DependencyGenerator for generating dependencies
-
-    int m_num_of_batches; // Number of batches to generate
 };
 
 #include "DataLoader.tpp"
