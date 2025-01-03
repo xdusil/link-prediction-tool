@@ -90,6 +90,7 @@ IPEdge FlowProcessor::parse_flow_from_json(const boost::json::object& data) cons
 void FlowProcessor::add_edge_to_reservoir(const std::string& src_ip, const std::string& dst_ip, IPEdge& edge) {
     m_reservoir.add(src_ip, edge);
     std::swap(edge.src_ip, edge.dst_ip);
+    std::swap(edge.src_port, edge.dst_port);
     m_reservoir.add(dst_ip, edge);
 }
 
