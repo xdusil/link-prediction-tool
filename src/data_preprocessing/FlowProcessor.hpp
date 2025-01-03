@@ -7,6 +7,7 @@
 #include "Types.hpp"
 #include "../constrained_collections/counters/IEvictingCounter.hpp"
 #include "../constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
+#include "ip_utils/IIPHandler.hpp"
 
 /**
  * @brief Class for processing flow data from files.
@@ -25,21 +26,23 @@ public:
      * @param internal_counter An evicting counter for internal IP addresses.
      * @param external_counter An evicting counter for external IP addresses.
      * @param reservoir A capacity-limited reservoir for IP edges.
+     * @param ip_handler An IP handler for checking IP address ranges.
      */
     FlowProcessor(const std::unordered_set<std::string>& internal_addresses,
                 IEvictingCounter<IPAddress>& internal_counter,
                 IEvictingCounter<IPAddress>& external_counter,
-                ICapacityLimitedReservoir<IPAddress, IPEdge>& reservoir);
+                ICapacityLimitedReservoir<IPAddress, IPEdge>& reservoir,
+                IIPHandler& ip_handler);
 
     /**
     * @brief Processes initial flow data from a file.
     *
-    * This method reads flow data from a file, updates internal and external
-    * IP address counters, and adds the IP addresses to the counters.
+    * This method reads flow data from a file and updates the internal and
+    * external IP address counters.
     *
     * @param filename The name of the file to read flow data from.
     */
-    void process_initial_flows(const std::string& filename);
+    void process_flow_file(const std::string& filename);
 
 
     /**
@@ -58,6 +61,7 @@ private:
     IEvictingCounter<IPAddress>& m_internal_counter;              // Evicting counter for internal IP addresses
     IEvictingCounter<IPAddress>& m_external_counter;              // Evicting counter for external IP addresses
     ICapacityLimitedReservoir<IPAddress, IPEdge>& m_reservoir;    // Capacity-limited reservoir for IP edges
+    IIPHandler& m_ip_handler;                                     // IP handler for checking IP addresses
 
     /**
      * @brief Updates the internal or external IP address counters.

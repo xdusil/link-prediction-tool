@@ -1,17 +1,19 @@
 #include "FlowProcessor.hpp"
+#include "ip_utils/IIPHandler.hpp"
 
 // Constructor
 FlowProcessor::FlowProcessor(const std::unordered_set<std::string>& internal_addresses,
                              IEvictingCounter<IPAddress>& internal_counter,
                              IEvictingCounter<IPAddress>& external_counter,
-                             ICapacityLimitedReservoir<IPAddress, IPEdge>& reservoir)
+                             ICapacityLimitedReservoir<IPAddress, IPEdge>& reservoir,
+                             IIPHandler& ip_handler)
         : m_internal_addresses(internal_addresses),
           m_internal_counter(internal_counter),
           m_external_counter(external_counter),
-          m_reservoir(reservoir) {}
+          m_reservoir(reservoir), m_ip_handler(ip_handler) {}
 
 // Process initial flows
-void FlowProcessor::process_initial_flows(const std::string& filename) {
+void FlowProcessor::process_flow_file(const std::string& filename) {
     FileReader reader(filename);
     std::string line;
 
@@ -26,11 +28,16 @@ void FlowProcessor::process_initial_flows(const std::string& filename) {
                 continue;
             }
 
-            update_counters(*src_ip);
-            update_counters(*dst_ip);
+            // Update counters if IP is allowed
+            if (m_ip_handler.is_ip_allowed(*src_ip)) {
+                update_counters(*src_ip);
+            }
+
+            if (m_ip_handler.is_ip_allowed(*dst_ip)) {
+                update_counters(*dst_ip);
+            }
 
         } catch (const std::exception&) {
-            // Exception already logged by FlowReader or JsonHelper
             continue;
         }
     }
@@ -52,6 +59,7 @@ void FlowProcessor::process_filtered_flows(const std::string& filename) {
                 continue;
             }
 
+            // Add edge to reservoir if both IPs are in the counter
             if ((m_internal_counter.contains(*src_ip) || m_external_counter.contains(*src_ip)) &&
                 (m_internal_counter.contains(*dst_ip) || m_external_counter.contains(*dst_ip))) {
                 IPEdge edge = parse_flow_from_json(data);
