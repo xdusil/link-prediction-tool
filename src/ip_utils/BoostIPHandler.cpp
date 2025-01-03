@@ -91,13 +91,14 @@ BoostIPHandler::parse_ip_or_range(const std::string &input) const {
 
 bool BoostIPHandler::is_ip_in_list(const IPAddress &address,
                                    const std::vector<IPNetwork> &list) const {
-    for (const auto &network : list) {
-        if (network.is_host() && network.network() == address) {
-            return true;
-        }
+    unsigned long addr = address.to_ulong();
 
-        if (!network.is_host() &&
-            network.is_subnet_of(IPNetwork(address, network.prefix_length()))) {
+    for (const auto &network : list) {
+        auto network_address = network.network().to_ulong();
+        auto mask = network.netmask().to_ulong();
+
+        // Check if the address is in the network range
+        if ((addr & mask) == (network_address & mask)) {
             return true;
         }
     }
