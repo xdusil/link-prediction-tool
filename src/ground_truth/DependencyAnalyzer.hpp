@@ -1,0 +1,184 @@
+#pragma once
+
+#include "ip_utils/IIPHandler.hpp"
+#include <chrono>
+#include <ostream>
+#include <set>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+/**
+ * @brief Namespace for ground truth dependency analysis.
+ *
+ * This namespace contains classes and functions for analyzing dependencies in network
+ * flows.
+ */
+namespace ground_truth {
+
+// Base types
+using Timestamp = std::chrono::milliseconds;
+using IPAddress = std::string;
+
+// Edge related types
+struct EdgeProperties {
+    Timestamp start_forward;
+    Timestamp end_forward;
+    Timestamp start_reverse;
+    Timestamp end_reverse;
+    int protocol;
+};
+
+// Container types
+using IPDict =
+    std::unordered_map<IPAddress,
+                       std::unordered_map<IPAddress, std::vector<EdgeProperties>>>;
+using DependencyList = std::vector<std::pair<IPAddress, IPAddress>>;
+
+// Structures for extended dependencies
+struct TD2Dependency {
+    IPAddress destination;
+    IPAddress middle;
+};
+
+struct RR2Dependency {
+    IPAddress depends_on;
+    IPAddress originator;
+};
+
+struct TD3Dependency {
+    IPAddress destination;
+    IPAddress middle_fst;
+    IPAddress middle_snd;
+};
+
+struct RR3Dependency {
+    IPAddress depends_on;
+    IPAddress originator;
+    IPAddress middle;
+};
+
+// Alias for complex dependency maps
+using TD2DependencyMap = std::unordered_map<IPAddress, std::vector<TD2Dependency>>;
+using RR2DependencyMap = std::unordered_map<IPAddress, std::vector<RR2Dependency>>;
+using TD3DependencyMap = std::unordered_map<IPAddress, std::vector<TD3Dependency>>;
+using RR3DependencyMap = std::unordered_map<IPAddress, std::vector<RR3Dependency>>;
+
+// Hash function for pairs
+struct pair_hash {
+    template <class T1, class T2>
+    std::size_t operator()(const std::pair<T1, T2> &pair) const {
+        return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+    }
+};
+
+// Main class for analyzing dependencies in network flows
+class DependencyAnalyzer {
+public:
+    /**
+     * Constructor to initialize the dependency analyzer.
+     * @param n_occurrences Minimum number of occurrences required to confirm a
+     * dependency.
+     * @param epsilon Maximum allowable time difference between flows for RR dependencies.
+     * @param ip_handler IP handler to check if an IP is allowed.
+     */
+    DependencyAnalyzer(int n_occurrences, int epsilon, IIPHandler &ip_handler);
+
+    /**
+     * @brief Determine direct dependencies between IP addresses.
+     *
+     * A direct dependency is a dependency between two IP addresses that have a
+     * minimum number of occurrences.
+     * @return A list of direct dependencies.
+     */
+    DependencyList determine_direct_dependencies();
+
+    /**
+     * @brief Determine TD2 dependencies between IP addresses.
+     *
+     * @param direct_dependencies A list of direct dependencies.
+     * @return A map of TD2 dependencies.
+     */
+    TD2DependencyMap
+    determine_TD2_dependencies(const DependencyList &direct_dependencies);
+    
+    /**
+     * @brief Determine RR2 dependencies between IP addresses.
+     *
+     * @param direct_dependencies A list of direct dependencies.
+     * @return A map of RR2 dependencies.
+     */
+    RR2DependencyMap
+    determine_RR2_dependencies(const DependencyList &direct_dependencies);
+    TD3DependencyMap determine_TD3_dependencies(const DependencyList &direct_dependencies,
+                                                const TD2DependencyMap &td2_dependencies);
+    
+    /**
+     * @brief Determine RR3 dependencies between IP addresses.
+     *
+     * @param direct_dependencies A list of direct dependencies.
+     * @param rr2_dependencies A map of RR2 dependencies.
+     * @return A map of RR3 dependencies.
+     */
+    RR3DependencyMap determine_RR3_dependencies(const DependencyList &direct_dependencies,
+                                                const RR2DependencyMap &rr2_dependencies);
+
+    /**
+     * @brief Parse flow data from a file.
+     *
+     * @param filename The name of the file to parse.
+     * @return A dictionary of IP addresses and their corresponding flows.
+     */
+    IPDict parse_flow_data(const std::string &filename) const;
+
+    /**
+     * @brief Calculate all dependencies between IP addresses.
+     *
+     * @param filename The name of the file to parse.
+     *
+     * @return A set of all dependencies.
+     */
+    std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>
+    calculate_all_dependencies(const std::string &filename);
+
+private:
+    int m_n_occurrences;      // Minimum number of occurrences required to confirm a dependency
+    int m_epsilon;            // Maximum allowable time difference between flows for dependencies
+    IIPHandler &m_ip_handler; // IP handler to check if an IP is allowed
+    std::ostringstream oss;   // Output stream for logging
+    std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash> all_dependencies; // Set of all dependencies
+    IPDict m_ip_dict;         // Dictionary of IP addresses and their corresponding flows
+
+    /**
+     * @brief Count the number of appearances of a LR dependency.
+     *
+     * Let A, B, C be IP addresses. 
+     * @param start_forward Start timestamp of the forward flow from A to B.
+     * @param end_forward End timestamp of the forward flow from A to B.
+     * @param start_reverse Start timestamp of the reverse flow from B to A.
+     * @param end_reverse End timestamp of the reverse flow from B to A.
+     * @param edge_properties Properties of all possible bidirectional edges from B to C.
+     * @return The number of appearances of the LR dependency.
+     */
+    int count_appearances_of_LR_dependency(
+        Timestamp start_forward, Timestamp end_forward, Timestamp start_reverse,
+        Timestamp end_reverse, const std::vector<EdgeProperties> &edge_properties) const;
+    
+    /**
+     * @brief Count the number of appearances of a RR dependency.
+     *
+     * Let A, B, C be IP addresses. There are 2 flows from A to B and A to C.
+     * @param start_forward Start timestamp of the forward flow from A to B.
+     * @param start_reverse Start timestamp of the reverse flow from B to A.
+     * @param end_reverse End timestamp of the reverse flow from B to A.
+     * @param edge_properties Properties of all possible bidirectional edges from A to C.
+     * @return The number of appearances of the RR dependency.
+     */
+    int count_appearances_of_RR_dependency(
+        Timestamp start_forward, Timestamp start_reverse, Timestamp end_reverse,
+        const std::vector<EdgeProperties> &edge_properties) const;
+};
+
+} // namespace GroundTruth
