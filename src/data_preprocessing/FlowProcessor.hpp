@@ -7,7 +7,7 @@
 #include "Types.hpp"
 #include "../constrained_collections/counters/IEvictingCounter.hpp"
 #include "../constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
-#include "ip_utils/IIPHandler.hpp"
+#include "utils/ip/IIPHandler.hpp"
 
 /**
  * @brief Class for processing flow data from files.
