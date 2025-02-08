@@ -3,7 +3,7 @@
 #include "../logic/IRandomWalkLogic.hpp"
 #include "IRandomWalkManager.hpp"
 #include "graph/IGraphManager.hpp"
-#include "mlpack/core/util/param_data.hpp"
+#include <random>
 #include <vector>
 
 /**
@@ -13,8 +13,9 @@
  * walk logic.
  *
  * @tparam GraphTraits The graph traits type defining the graph element types.
+ * @tparam RNG The random number generator type.
  */
-template <typename GraphTraits>
+template <typename GraphTraits, typename RNG = std::mt19937>
 class RandomWalkManager : public IRandomWalkManager<typename GraphTraits::Vertex> {
 public:
     // Define the graph element types
@@ -27,9 +28,11 @@ public:
      * @param num_threads The number of threads to use for parallel execution.
      * @param walk_logic Logic object implementing single random walk generation.
      * @param walk_length The fixed length of each random walk.
+     * @param seed The seed for the random number generator.
      */
     RandomWalkManager(const IGraphManager<GraphTraits> &graph, int num_threads,
-                      const IRandomWalkLogic<GraphTraits> &walk_logic, int walk_length);
+                      const IRandomWalkLogic<GraphTraits, RNG> &walk_logic,
+                      int walk_length, int seed = 0);
 
     /**
      * @brief Generate random walks for a set of vertices.
@@ -60,10 +63,18 @@ public:
                                                            InputIt end) const;
 
 private:
+    /**
+     * @brief Initialize the random number generators.
+     *
+     * @param seed The seed for the random number generator.
+     */
+    void initialize_rngs(int seed) const;
+
     const IGraphManager<GraphTraits> &m_graph; // The graph to perform random walks on
     int m_num_threads; // The number of threads to use for parallel execution
     int m_walk_length; // The fixed length of each random walk
-    const IRandomWalkLogic<GraphTraits>
+    mutable std::vector<RNG> m_rngs; // Random number generators for worker threads
+    const IRandomWalkLogic<GraphTraits, RNG>
         &m_walk_logic; // Logic object for generating random walks
 };
 

@@ -16,9 +16,9 @@
 using namespace custom_conditions;
 
 // Get the count of appearances of each target vertex
-template <typename GraphTraits>
-auto CustomRandomWalkLogic<GraphTraits>::get_target_count(const IGraphManager<GraphTraits> &graph, auto it_begin,
-                      auto it_end) const {
+template <typename GraphTraits, typename RNG>
+auto CustomRandomWalkLogic<GraphTraits, RNG>::get_target_count(
+    const IGraphManager<GraphTraits> &graph, auto it_begin, auto it_end) const {
     std::unordered_map<Vertex, std::size_t> target_count;
     for (auto it = it_begin; it != it_end; ++it) {
         Vertex target = graph.get_target_vertex(*it);
@@ -28,9 +28,9 @@ auto CustomRandomWalkLogic<GraphTraits>::get_target_count(const IGraphManager<Gr
 }
 
 // Choose a second vertex in the random walk
-template <typename GraphTraits>
+template <typename GraphTraits, typename RNG>
 std::optional<std::pair<typename GraphTraits::Vertex, typename GraphTraits::Edge>>
-CustomRandomWalkLogic<GraphTraits>::choose_snd_vertex(
+CustomRandomWalkLogic<GraphTraits, RNG>::choose_snd_vertex(
     const IGraphManager<GraphTraits> &graph, Vertex fst_vertex, auto &rng) const {
     auto edges = graph.get_out_edges(fst_vertex);
     if (edges.first == edges.second) {
@@ -55,7 +55,8 @@ CustomRandomWalkLogic<GraphTraits>::choose_snd_vertex(
 
     // If no vertices meet the appearance threshold, choose a random edge
     if (vertices.empty()) {
-        auto maybe_edge = utils::choice_random_item(edges.first, edges.second, rng, distance);
+        auto maybe_edge =
+            utils::choice_random_item(edges.first, edges.second, rng, distance);
         if (!maybe_edge.has_value()) {
             return std::nullopt;
         }
@@ -67,17 +68,15 @@ CustomRandomWalkLogic<GraphTraits>::choose_snd_vertex(
 }
 
 // Generate a single random walk starting from a given vertex
-template <typename GraphTraits>
+template <typename GraphTraits, typename RNG>
 std::vector<typename GraphTraits::Vertex>
-CustomRandomWalkLogic<GraphTraits>::generate_single_walk(
-    const IGraphManager<GraphTraits> &graph, Vertex start_vertex, int walk_length) const {
+CustomRandomWalkLogic<GraphTraits, RNG>::generate_single_walk(
+    const IGraphManager<GraphTraits> &graph, Vertex start_vertex, int walk_length,
+    RNG &rng) const {
     std::vector<Vertex> walk;
     walk.reserve(walk_length);
     walk.push_back(start_vertex);
 
-    boost::random::mt19937 rng(
-    static_cast<unsigned int>(std::time(0))); // Initialize random number generator
-    
     // Choose the second vertex in the random walk
     std::optional<std::pair<Vertex, Edge>> next_pair =
         choose_snd_vertex(graph, start_vertex, rng);
@@ -107,8 +106,8 @@ CustomRandomWalkLogic<GraphTraits>::generate_single_walk(
 }
 
 // Determine the possible next vertices in the random walk
-template <typename GraphTraits>
-void CustomRandomWalkLogic<GraphTraits>::determine_random_walk_possibilities(
+template <typename GraphTraits, typename RNG>
+void CustomRandomWalkLogic<GraphTraits, RNG>::determine_random_walk_possibilities(
     const IGraphManager<GraphTraits> &graph, const Edge &previous_edge,
     const std::vector<Vertex> &walk_sequence,
     std::vector<std::pair<Vertex, Edge>> &vertices) const {
@@ -164,8 +163,8 @@ void CustomRandomWalkLogic<GraphTraits>::determine_random_walk_possibilities(
 
     auto prev_prev_vertex = walk_sequence[walk_sequence.size() - 2];
     auto prev_prev_edges = graph.get_out_edges(prev_prev_vertex);
-    auto prev_prev_target_count = get_target_count(graph, prev_prev_edges.first, prev_prev_edges.second);
-
+    auto prev_prev_target_count =
+        get_target_count(graph, prev_prev_edges.first, prev_prev_edges.second);
 
     for (auto it = prev_prev_edges.first; it != prev_prev_edges.second; ++it) {
         Vertex target = graph.get_target_vertex(*it);

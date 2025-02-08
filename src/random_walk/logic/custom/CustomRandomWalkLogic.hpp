@@ -14,9 +14,10 @@
  * This class provides a custom implementation of the random walk logic.
  *
  * @tparam GraphTraits The graph traits type defining the graph element types.
+ * @tparam RNG The random number generator type.
  **/
-template <typename GraphTraits>
-class CustomRandomWalkLogic : public IRandomWalkLogic<GraphTraits> {
+template <typename GraphTraits, typename RNG>
+class CustomRandomWalkLogic : public IRandomWalkLogic<GraphTraits, RNG> {
 public:
     using Vertex = GraphTraits::Vertex;
     using Edge = GraphTraits::Edge;
@@ -37,11 +38,12 @@ public:
      * @param graph The graph on which to perform the random walk.
      * @param start_vertex The starting vertex of the random walk.
      * @param walk_length The length of the random walk.
+     * @param rng The random number generator.
      * @return A vector representing the vertices in the random walk.
      */
     std::vector<Vertex> generate_single_walk(const IGraphManager<GraphTraits> &graph,
                                              Vertex start_vertex,
-                                             int walk_length) const override;
+                                             int walk_length, RNG &rng) const override;
 
 private:
     /**
