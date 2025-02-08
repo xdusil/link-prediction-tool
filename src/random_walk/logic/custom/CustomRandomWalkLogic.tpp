@@ -47,7 +47,7 @@ CustomRandomWalkLogic<GraphTraits>::choose_snd_vertex(
     // Filter edges that meet the appearance threshold imposed on the target vertex
     for (auto it = edges.first; it != edges.second; ++it) {
         Vertex target = graph.get_target_vertex(*it);
-        if (target_count[target] < n_appearances) {
+        if (target_count[target] < m_n_appearances) {
             continue;
         }
         vertices.push_back({target, *it});
@@ -140,7 +140,7 @@ void CustomRandomWalkLogic<GraphTraits>::determine_random_walk_possibilities(
         Vertex target = graph.get_target_vertex(*it);
 
         // Check if the target meets the appearance threshold
-        if (target_count[target] < n_appearances) {
+        if (target_count[target] < m_n_appearances) {
             continue;
         }
 
@@ -157,7 +157,7 @@ void CustomRandomWalkLogic<GraphTraits>::determine_random_walk_possibilities(
                                                 was_two_steps_ago) ||
             satisfies_return_over_reverse_edge_conditions(
                 current_props, previous_props, walk_sequence, target, was_two_steps_ago,
-                epsilon_rev)) {
+                m_epsilon_rev)) {
             vertices.push_back({target, *it});
         }
     }
@@ -170,14 +170,14 @@ void CustomRandomWalkLogic<GraphTraits>::determine_random_walk_possibilities(
     for (auto it = prev_prev_edges.first; it != prev_prev_edges.second; ++it) {
         Vertex target = graph.get_target_vertex(*it);
 
-        if (prev_prev_target_count[target] < n_appearances) {
+        if (prev_prev_target_count[target] < m_n_appearances) {
             continue;
         }
 
         const EdgeProperties &current_props = graph.get_edge_properties(*it);
         const EdgeProperties &previous_props = graph.get_edge_properties(previous_edge);
 
-        if (satisfies_RR_opening_conditions(current_props, previous_props, epsilon,
+        if (satisfies_RR_opening_conditions(current_props, previous_props, m_epsilon,
                                             previous_vertex == target)) {
             vertices.push_back({target, *it});
         }

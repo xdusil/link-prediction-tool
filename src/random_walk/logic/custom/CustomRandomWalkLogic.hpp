@@ -29,7 +29,7 @@ public:
      * @param epsilon_rev Reverse flow time gap threshold.
      */
     CustomRandomWalkLogic(int n_appearances, int epsilon, int epsilon_rev)
-        : n_appearances(n_appearances), epsilon(epsilon), epsilon_rev(epsilon_rev) {}
+        : m_n_appearances(n_appearances), m_epsilon(epsilon), m_epsilon_rev(epsilon_rev) {}
 
     /**
      * @brief Generate a single random walk starting from a given vertex.
@@ -79,9 +79,9 @@ private:
      */
     auto get_target_count(const IGraphManager<GraphTraits> &graph, auto it_begin, auto it_end) const;
     
-    int n_appearances; // Minimum appearances threshold
-    int epsilon;       // Time gap threshold
-    int epsilon_rev;   // Reverse flow time gap threshold
+    int m_n_appearances; // Minimum appearances threshold
+    int m_epsilon;       // Time gap threshold
+    int m_epsilon_rev;   // Reverse flow time gap threshold
 };
 
 #include "CustomRandomWalkLogic.tpp"
