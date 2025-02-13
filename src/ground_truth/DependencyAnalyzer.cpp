@@ -77,8 +77,6 @@ DependencyAnalyzer::calculate_all_dependencies(const std::string &filename) {
     // Parse flow data
     m_ip_dict = parse_flow_data(filename);
 
-    std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash> all_dependencies;
-
     auto direct_dependencies = determine_direct_dependencies();
     auto td2_dependencies = determine_TD2_dependencies(direct_dependencies);
     auto rr2_dependencies = determine_RR2_dependencies(direct_dependencies);
@@ -95,6 +93,7 @@ DependencyAnalyzer::calculate_all_dependencies(const std::string &filename) {
     std::cout << "RR2: " << rr2_dependencies.size() << std::endl;
     std::cout << "TD3: " << td3_dependencies.size() << std::endl;
     std::cout << "RR3: " << rr3_dependencies.size() << std::endl;
+    std::cout << "Total: " << all_dependencies.size() << std::endl;
 
     return all_dependencies;
 }
