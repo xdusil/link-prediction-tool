@@ -4,6 +4,7 @@
 #include <string>
 #include <stdexcept>
 #include <iostream>
+#include <sstream>
 
 /**
  * @brief Class for reading from a file
@@ -26,6 +27,32 @@ public:
      */
     inline bool get_next_line(std::string& line) {
         return static_cast<bool>(std::getline(m_file, line));
+    }
+
+    /**
+     * @brief Close the file
+     */
+    inline void close() {
+        m_file.close();
+    }
+
+    /**
+     * @brief Read the entire file
+     *
+     * @param content The content of the file
+     * @return True if the file was read successfully, false otherwise
+     */
+    inline bool read_all(std::string& content) {
+        // Get file size
+        m_file.seekg(0, std::ios::end);
+        std::streamsize size = m_file.tellg();
+        m_file.seekg(0, std::ios::beg);
+
+        // Reserve space
+        content.resize(static_cast<size_t>(size));
+
+        // Read directly into string's buffer
+        return m_file.read(&content[0], size) ? true : false;
     }
 
 private:
