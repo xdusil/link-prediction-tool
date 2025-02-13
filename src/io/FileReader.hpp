@@ -55,6 +55,29 @@ public:
         return m_file.read(&content[0], size) ? true : false;
     }
 
+    /**
+     * @brief Check if there was any error in the file stream.
+     *
+     * @return True if an error is present, false otherwise.
+     */
+    inline bool has_error() const {
+        return m_file.fail() || m_file.bad();
+    }
+
+        /**
+     * @brief Get a brief description of the current error state.
+     *
+     * @return A string message describing the error.
+     */
+    inline std::string get_error_message() const {
+        if (m_file.bad()) {
+            return "Critical I/O error in stream.";
+        } else if (m_file.fail()) {
+            return "Non-critical failure in stream.";
+        }
+        return "No error.";
+    }
+
 private:
     std::ifstream m_file; // The file stream
 };
