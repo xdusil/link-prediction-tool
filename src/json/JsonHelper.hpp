@@ -1,5 +1,6 @@
 #pragma once
 
+#include "boost/json/object.hpp"
 #include <boost/json.hpp>
 #include <string>
 #include <optional>
@@ -25,13 +26,13 @@ public:
     }
 
     /**
-     * @brief Parse a JSON line into a JSON object.
+     * @brief Parse a JSON string into a JSON object.
      *
-     * @param line The JSON line to parse.
+     * @param json The JSON string to parse.
      * @return The parsed JSON object.
      */
-    inline static json::object parse_json_line(const std::string& line) {
-        json::value jv = json::parse(line);
+    inline static json::object parse_json(const std::string& json) {
+        json::value jv = json::parse(json);
         return jv.as_object();
     }
 

@@ -18,7 +18,7 @@ void FlowProcessor::process_flow_file(const std::string& filename) {
 
     while (reader.get_next_line(line)) {
         try {
-            auto data = JsonHelper::parse_json_line(line);
+            auto data = JsonHelper::parse_json(line);
             auto src_ip = JsonHelper::extract_value<std::string>(data, "sourceIPv4Address");
             auto dst_ip = JsonHelper::extract_value<std::string>(data, "destinationIPv4Address");
 
@@ -49,7 +49,7 @@ void FlowProcessor::process_filtered_flows(const std::string& filename) {
 
     while (reader.get_next_line(line)) {
         try {
-            auto data = JsonHelper::parse_json_line(line);
+            auto data = JsonHelper::parse_json(line);
             auto src_ip = JsonHelper::extract_value<std::string>(data, "sourceIPv4Address");
             auto dst_ip = JsonHelper::extract_value<std::string>(data, "destinationIPv4Address");
 

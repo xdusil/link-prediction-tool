@@ -27,7 +27,7 @@ IPDict DependencyAnalyzer::parse_flow_data(const std::string &filename) const {
 
     std::string line;
     while (reader.get_next_line(line)) {
-        auto data = JsonHelper::parse_json_line(line);
+        auto data = JsonHelper::parse_json(line);
 
         auto src_ip = JsonHelper::extract_value<std::string>(data, "sourceIPv4Address");
         auto dst_ip =
