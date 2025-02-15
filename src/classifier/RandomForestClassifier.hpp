@@ -1,5 +1,7 @@
 #pragma once
 #include "IRandomForestClassifier.hpp"
+#include "mlpack/core/cv/metrics/average_strategy.hpp"
+#include "statistics/metrics.hpp"
 #include <mlpack/core.hpp>
 #include <mlpack/core/data/scaler_methods/min_max_scaler.hpp>
 #include <mlpack/methods/random_forest/random_forest.hpp>
@@ -10,8 +12,10 @@
  * @tparam Features The type of the features.
  * @tparam Labels The type of the labels.
  */
-template <typename Features, typename Labels>
-class RandomForestClassifier : public IRandomForestClassifier<Features, Labels> {
+template <typename Features, typename Labels,
+          mlpack::AverageStrategy AvgerageStrategy = mlpack::AverageStrategy::Binary>
+class RandomForestClassifier
+    : public IRandomForestClassifier<Features, Labels, statistics::Metrics> {
 public:
     /**
      * @brief Construct a new Random Forest Classifier object.
@@ -19,8 +23,7 @@ public:
      * @param num_classes The number of classes.
      * @param num_trees The number of trees in the forest.
      */
-    RandomForestClassifier(std::size_t num_classes = 2, std::size_t num_trees = 10)
-        : m_num_classes(num_classes), m_num_trees(num_trees) {}
+    RandomForestClassifier(std::size_t num_classes = 2, std::size_t num_trees = 10);
 
     /**
      * @brief Train the classifier with the given features and labels.
@@ -36,16 +39,16 @@ public:
      * @param features The features.
      * @return The predicted labels.
      */
-    Labels predict(const Features &features) override;
+    Labels predict(const Features &features) const override;
 
     /**
      * @brief Evaluate the classifier using the given features and labels.
      *
      * @param features The features.
      * @param labels The labels.
-     * @return The accuracy of the classifier.
+     * @return The metrics of the classifier.
      */
-    double evaluate(const Features &features, const Labels &labels) override;
+    statistics::Metrics evaluate(const Features &features, const Labels &labels) override;
 
     /**
      * @brief Save the classifier to a file.

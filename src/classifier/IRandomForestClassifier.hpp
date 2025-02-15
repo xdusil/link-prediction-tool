@@ -9,7 +9,7 @@
  * @tparam Features The type of the features.
  * @tparam Labels The type of the labels.
  */
-template <typename Features, typename Labels>
+template <typename Features, typename Labels, typename Metrics>
 class IRandomForestClassifier {
 public:
     virtual ~IRandomForestClassifier() = default;
@@ -29,16 +29,16 @@ public:
      * @param features The features.
      * @return The predicted labels.
      */
-    virtual Labels predict(const Features& features) = 0;
+    virtual Labels predict(const Features& features) const = 0;
 
     /**
      * @brief Evaluate the classifier using the given features and labels.
      *
      * @param features The features.
      * @param labels The labels.
-     * @return The accuracy of the classifier.
+     * @return The metrics of the classifier.
      */
-    virtual double evaluate(const Features& features, const Labels& labels) = 0;
+    virtual Metrics evaluate(const Features& features, const Labels& labels) = 0;
 
     /**
      * @brief Save the classifier to a file.
