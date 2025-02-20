@@ -27,10 +27,11 @@ std::optional<T> choice_random_item(std::vector<T> &items, RNG &rng) {
     return choice_random_item(items.begin(), items.end(), rng, items.size());
 }
 
-template <typename T>
-std::tuple<arma::mat, arma::Row<T>, arma::mat, arma::Row<T>>
-split_train_test(const arma::mat &features, const arma::Row<T> &labels,
-                 double train_fraction) {
+template <typename FeatureType, typename LabelType>
+std::tuple<arma::Mat<LabelType>, arma::Row<FeatureType>, arma::Mat<LabelType>,
+           arma::Row<FeatureType>>
+split_train_test(const arma::Mat<LabelType> &features,
+                 const arma::Row<FeatureType> &labels, double train_fraction) {
     if (train_fraction < 0.0 || train_fraction > 1.0) {
         throw std::invalid_argument("train_fraction must be between 0.0 and 1.0");
     }
@@ -50,18 +51,17 @@ split_train_test(const arma::mat &features, const arma::Row<T> &labels,
 
     // Split the indices
     auto train_indices = shuffled_indices.subvec(0, num_train - 1);
-    auto test_indices =
-        shuffled_indices.subvec(num_train, num_samples - 1);
+    auto test_indices = shuffled_indices.subvec(num_train, num_samples - 1);
 
     // Extract training and testing features
-    arma::mat train_features = features.cols(train_indices);
-    arma::mat test_features = features.cols(test_indices);
+    arma::Mat<LabelType> train_features = features.cols(train_indices);
+    arma::Mat<LabelType> test_features = features.cols(test_indices);
 
     // Convert labels to row vectors
-    arma::Row<T> train_labels =
-        arma::conv_to<arma::Row<T>>::from(labels.cols(train_indices));
-    arma::Row<T> test_labels =
-        arma::conv_to<arma::Row<T>>::from(labels.cols(test_indices));
+    arma::Row<FeatureType> train_labels =
+        arma::conv_to<arma::Row<FeatureType>>::from(labels.cols(train_indices));
+    arma::Row<FeatureType> test_labels =
+        arma::conv_to<arma::Row<FeatureType>>::from(labels.cols(test_indices));
 
     return std::make_tuple(train_features, train_labels, test_features, test_labels);
 }
