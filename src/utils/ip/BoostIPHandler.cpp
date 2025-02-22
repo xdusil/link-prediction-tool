@@ -3,18 +3,10 @@
 #include <iostream>
 
 BoostIPHandler::BoostIPHandler(
-    const std::optional<std::vector<std::string>> &allowed_ips_and_ranges,
-    const std::optional<std::vector<std::string>> &blocked_ips_and_ranges) {
-    // Parse allowed IPs and ranges
-    if (allowed_ips_and_ranges) {
-        m_allowed_ips_and_ranges = IPContainer();
-        parse_ip_or_range_vec(*allowed_ips_and_ranges, *m_allowed_ips_and_ranges);
-    }
-
-    // Parse blocked IPs and ranges
-    if (blocked_ips_and_ranges) {
-        m_blocked_ips_and_ranges = IPContainer();
-        parse_ip_or_range_vec(*blocked_ips_and_ranges, *m_blocked_ips_and_ranges);
+    const std::optional<std::vector<std::string>> &ips_and_ranges) {
+    // Parse IPs and ranges
+    if (ips_and_ranges) {
+        parse_ip_or_range_vec(*ips_and_ranges, m_ips_and_ranges);
     }
 }
 
@@ -34,7 +26,7 @@ void BoostIPHandler::parse_ip_or_range_vec(
     }
 }
 
-bool BoostIPHandler::is_ip_allowed(const std::string &ip) const {
+bool BoostIPHandler::check_ip(const std::string &ip) const {
     boost::system::error_code ec;
     auto address = boost::asio::ip::make_address_v4(ip, ec);
 
@@ -43,34 +35,12 @@ bool BoostIPHandler::is_ip_allowed(const std::string &ip) const {
         return false;
     }
 
-    // Check if IP is in allowed list
-    if (m_allowed_ips_and_ranges) {
-        if (m_allowed_ips_and_ranges->ips.contains(address)) {
-            return true;
-        }
-
-        if (is_ip_in_list(address, m_allowed_ips_and_ranges->networks)) {
-            return true;
-        }
-    }
-
-    // Check if IP is in blocked list
-    if (m_blocked_ips_and_ranges) {
-        if (m_blocked_ips_and_ranges->ips.contains(address)) {
-            return false;
-        }
-
-        if (is_ip_in_list(address, m_blocked_ips_and_ranges->networks)) {
-            return false;
-        }
-    }
-
-    // If IP is not in either list, allow it
-    return true;
+    return m_ips_and_ranges.ips.contains(address) ||
+           is_ip_in_list(address, m_ips_and_ranges.networks);
 }
 
 std::optional<BoostIPHandler::IPVariant>
-BoostIPHandler::parse_ip_or_range(const std::string &input) const {
+BoostIPHandler::parse_ip_or_range(const std::string &input) {
     boost::system::error_code ec;
 
     // Try parsing as a network (CIDR range)

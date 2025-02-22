@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IIPHandler.hpp"
+#include "utils/ip/IIPChecker.hpp"
 #include <boost/asio.hpp>
 #include <optional>
 #include <string>
@@ -12,8 +12,11 @@
  * @brief Class for handling IP and range operations using Boost.Asio.
  *
  * This class supports mixed inputs of individual IPs and ranges.
+ * This class provides methods for checking if an IP is matched in a list of IPs and
+ * ranges. It also provides methods for parsing and checking IP addresses and ranges.
+ * It stores a list of IP addresses and ranges.
  */
-class BoostIPHandler : public IIPHandler {
+class BoostIPHandler : IIPChecker {
 public:
     using IPNetwork = boost::asio::ip::network_v4;
     using IPAddress = boost::asio::ip::address_v4;
@@ -27,23 +30,17 @@ public:
     /**
      * @brief Constructor for BoostIPHandler.
      *
-     * @param allowed_ips_and_ranges A vector of allowed IP addresses and ranges.
-     * @param blocked_ips_and_ranges A vector of blocked IP addresses and ranges.
+     * @param ips_and_ranges The optional vector of IPs and ranges.
      */
-    BoostIPHandler(const std::optional<std::vector<std::string>> &allowed_ips_and_ranges,
-                   const std::optional<std::vector<std::string>> &blocked_ips_and_ranges);
+    BoostIPHandler(const std::optional<std::vector<std::string>> &ips_and_ranges);
 
     /**
-     * @brief Check if an IP is allowed.
+     * @brief Check if an IP matches stored IPs and ranges.
      *
-     * @param ip The IP to check.
-     * @return True if the IP is allowed, false otherwise.
+     * @param ip The IP address to check.
+     * @return True if the IP matches, false otherwise.
      */
-    bool is_ip_allowed(const std::string &ip) const override;
-
-private:
-    std::optional<IPContainer> m_allowed_ips_and_ranges; // Allowed IPs and ranges
-    std::optional<IPContainer> m_blocked_ips_and_ranges; // Blocked IPs and ranges
+    virtual bool check_ip(const std::string &ip) const override;
 
     /**
      * @brief Parse an IP or CIDR range from a string.
@@ -51,14 +48,14 @@ private:
      * @param input The string representation of an IP or CIDR range.
      * @return A parsed IPVariant or std::nullopt if invalid.
      */
-    std::optional<IPVariant> parse_ip_or_range(const std::string &input) const;
+    static std::optional<IPVariant> parse_ip_or_range(const std::string &input);
 
     /**
-     * @brief Check if an IP is in a list of IPs or ranges.
+     * @brief Check if an IP is in a list of networks.
      *
      * @param address The IP address to check.
-     * @param list The list of IPs or ranges.
-     * @return True if the IP is in the list, false otherwise.
+     * @param networks The list of IP networks.
+     * @return True if the IP is in the range of any network, false otherwise.
      */
     bool is_ip_in_list(const IPAddress &address,
                        const std::vector<IPNetwork> &networks) const;
@@ -69,6 +66,9 @@ private:
      * @param ip_or_range_vec The vector of IP addresses and ranges.
      * @param container The IPContainer to store the parsed IPs and ranges.
      */
-    void parse_ip_or_range_vec(const std::vector<std::string> &ip_or_range_vec,
-                               IPContainer &container);
+    static void parse_ip_or_range_vec(const std::vector<std::string> &ip_or_range_vec,
+                                      IPContainer &container);
+
+private:
+    IPContainer m_ips_and_ranges;  // IP addresses and ranges
 };
