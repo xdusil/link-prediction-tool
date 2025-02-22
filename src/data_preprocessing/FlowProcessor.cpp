@@ -1,15 +1,16 @@
 #include "FlowProcessor.hpp"
+#include "utils/ip/IIPChecker.hpp"
 
 // Constructor
 FlowProcessor::FlowProcessor(const std::unordered_set<std::string>& internal_addresses,
                              IEvictingCounter<IPAddress>& internal_counter,
                              IEvictingCounter<IPAddress>& external_counter,
                              ICapacityLimitedReservoir<IPAddress, IPEdge>& reservoir,
-                             IIPHandler& ip_handler)
+                             IIPChecker& allowed_ips_checker)
         : m_internal_addresses(internal_addresses),
           m_internal_counter(internal_counter),
           m_external_counter(external_counter),
-          m_reservoir(reservoir), m_ip_handler(ip_handler) {}
+          m_reservoir(reservoir), m_allowed_ips_checker(allowed_ips_checker) {}
 
 // Process initial flows
 void FlowProcessor::process_flow_file(const std::string& filename) {
@@ -28,11 +29,11 @@ void FlowProcessor::process_flow_file(const std::string& filename) {
             }
 
             // Update counters if IP is allowed
-            if (m_ip_handler.is_ip_allowed(*src_ip)) {
+            if (m_allowed_ips_checker.check_ip(*src_ip)) {
                 update_counters(*src_ip);
             }
 
-            if (m_ip_handler.is_ip_allowed(*dst_ip)) {
+            if (m_allowed_ips_checker.check_ip(*dst_ip)) {
                 update_counters(*dst_ip);
             }
 

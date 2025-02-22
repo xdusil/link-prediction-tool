@@ -7,7 +7,7 @@
 #include "Types.hpp"
 #include "../constrained_collections/counters/IEvictingCounter.hpp"
 #include "../constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
-#include "utils/ip/IIPHandler.hpp"
+#include "utils/ip/IIPChecker.hpp"
 
 /**
  * @brief Class for processing flow data from files.
@@ -26,13 +26,13 @@ public:
      * @param internal_counter An evicting counter for internal IP addresses.
      * @param external_counter An evicting counter for external IP addresses.
      * @param reservoir A capacity-limited reservoir for IP edges.
-     * @param ip_handler An IP handler for checking IP address ranges.
+     * @param allowed_ips_checker An IP address checker.
      */
     FlowProcessor(const std::unordered_set<std::string>& internal_addresses,
                 IEvictingCounter<IPAddress>& internal_counter,
                 IEvictingCounter<IPAddress>& external_counter,
                 ICapacityLimitedReservoir<IPAddress, IPEdge>& reservoir,
-                IIPHandler& ip_handler);
+                IIPChecker& allowed_ips_checker);
 
     /**
     * @brief Processes initial flow data from a file.
@@ -61,7 +61,7 @@ private:
     IEvictingCounter<IPAddress>& m_internal_counter;              // Evicting counter for internal IP addresses
     IEvictingCounter<IPAddress>& m_external_counter;              // Evicting counter for external IP addresses
     ICapacityLimitedReservoir<IPAddress, IPEdge>& m_reservoir;    // Capacity-limited reservoir for IP edges
-    IIPHandler& m_ip_handler;                                     // IP handler for checking IP addresses
+    IIPChecker& m_allowed_ips_checker;                            // Allowed IP checker
 
     /**
      * @brief Updates the internal or external IP address counters.
