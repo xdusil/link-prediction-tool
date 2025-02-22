@@ -68,6 +68,28 @@ public:
      */
     static void parse_ip_or_range_vec(const std::vector<std::string> &ip_or_range_vec,
                                       IPContainer &container);
+    
+    /**
+     * @brief Parse a file containing IP addresses and ranges.
+     *
+     * @param filename The name of the file to parse.
+     */
+    void parse_file(const std::string &filename);
+
+    /**
+     * @brief Insert an IP address or range into the container.
+     *
+     * @param ip_or_range The IP address or range to insert.
+     */
+    void insert(const IPVariant &ip_or_range);
+
+    /**
+     * @brief Insert an IP address or range into the container.
+     *
+     * @param ip_or_range The IP address or range to insert.
+     * @param container The IPContainer to insert into.
+     */
+    static void insert(const IPVariant &ip_or_range, IPContainer &container);
 
 private:
     IPContainer m_ips_and_ranges;  // IP addresses and ranges

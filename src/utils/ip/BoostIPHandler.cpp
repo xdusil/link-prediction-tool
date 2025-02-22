@@ -1,4 +1,5 @@
 #include "BoostIPHandler.hpp"
+#include "io/FileReader.hpp"
 #include <boost/system/error_code.hpp>
 #include <iostream>
 
@@ -74,4 +75,31 @@ bool BoostIPHandler::is_ip_in_list(const IPAddress &address,
     }
 
     return false;
+}
+
+void BoostIPHandler::insert(const IPVariant &ip_or_range, IPContainer &container) {
+    if (std::holds_alternative<IPAddress>(ip_or_range)) {
+        container.ips.insert(std::get<IPAddress>(ip_or_range));
+    } else if (std::holds_alternative<IPNetwork>(ip_or_range)) {
+        container.networks.push_back(std::get<IPNetwork>(ip_or_range));
+    }
+}
+
+void BoostIPHandler::insert(const IPVariant &ip_or_range) {
+    insert(ip_or_range, m_ips_and_ranges);
+}
+
+void BoostIPHandler::parse_file(const std::string &filename) {
+    FileReader reader(filename);
+    std::string line;
+
+    while (reader.get_next_line(line)) {
+        auto parsed = parse_ip_or_range(line);
+        if (!parsed) {
+            std::cerr << "Invalid IP or range: " << line << std::endl;
+            continue;
+        }
+
+        insert(*parsed);
+    }
 }
