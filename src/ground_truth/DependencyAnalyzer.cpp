@@ -1,8 +1,8 @@
 
 #include "DependencyAnalyzer.hpp"
 #include "../json/JsonHelper.hpp"
-#include "boost/asio/ip/address.hpp"
 #include "io/FileReader.hpp"
+#include "utils/ip/IIPChecker.hpp"
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -18,8 +18,8 @@
 namespace ground_truth {
 
 DependencyAnalyzer::DependencyAnalyzer(int n_occurrences, int epsilon,
-                                       IIPHandler &ip_handler)
-    : m_n_occurrences(n_occurrences), m_epsilon(epsilon), m_ip_handler(ip_handler) {}
+                                       IIPChecker &allowed_ips_checker)
+    : m_n_occurrences(n_occurrences), m_epsilon(epsilon), m_allowed_ips_checker(allowed_ips_checker) {}
 
 IPDict DependencyAnalyzer::parse_flow_data(const std::string &filename) const {
     FileReader reader(filename);
@@ -35,8 +35,8 @@ IPDict DependencyAnalyzer::parse_flow_data(const std::string &filename) const {
         auto protocol = JsonHelper::extract_value<int64_t>(data, "protocolIdentifier");
         if (!protocol || !src_ip || !dst_ip ||
             (*protocol != UDP_PROTOCOL && *protocol != TCP_PROTOCOL) ||
-            !m_ip_handler.is_ip_allowed(*src_ip) ||
-            !m_ip_handler.is_ip_allowed(*dst_ip)) {
+            !m_allowed_ips_checker.check_ip(*src_ip) ||
+            !m_allowed_ips_checker.check_ip(*dst_ip)) {
             continue;
         }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utils/ip/IIPHandler.hpp"
+#include "utils/ip/IIPChecker.hpp"
 #include <chrono>
 #include <ostream>
 #include <set>
@@ -82,9 +82,9 @@ public:
      * @param n_occurrences Minimum number of occurrences required to confirm a
      * dependency.
      * @param epsilon Maximum allowable time difference between flows for RR dependencies.
-     * @param ip_handler IP handler to check if an IP is allowed.
+     * @param allowed_ips_checker The IP checker to check if an IP is allowed.
      */
-    DependencyAnalyzer(int n_occurrences, int epsilon, IIPHandler &ip_handler);
+    DependencyAnalyzer(int n_occurrences, int epsilon, IIPChecker &allowed_ips_checker);
 
     /**
      * @brief Determine direct dependencies between IP addresses.
@@ -146,7 +146,7 @@ public:
 private:
     int m_n_occurrences;      // Minimum number of occurrences required to confirm a dependency
     int m_epsilon;            // Maximum allowable time difference between flows for dependencies
-    IIPHandler &m_ip_handler; // IP handler to check if an IP is allowed
+    IIPChecker &m_allowed_ips_checker; // IP checker to check if an IP is allowed
     std::ostringstream oss;   // Output stream for logging
     std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash> all_dependencies; // Set of all dependencies
     IPDict m_ip_dict;         // Dictionary of IP addresses and their corresponding flows
