@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IEvictingCounter.hpp"
+#include <cstddef>
 #include <unordered_map>
 
 /**
@@ -53,6 +54,20 @@ public:
     */
     std::unordered_map<Key, int> get_items_and_clear() override;
 
+    /**
+     * @brief Get the limit of the counter.
+     *
+     * @return The maximum size of the counter.
+     */
+    std::size_t get_limit() const override;
+
+    /**
+     * @brief Get the size of the counter.
+     *
+     * @return The number of items in the counter.
+     */
+    std::size_t get_size() const override;
+    
     /**
     * @brief Clear the counter.
     */
