@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -56,7 +57,29 @@ public:
     * @param key The key to count items for.
     * @return The number of items stored for the key.
     */
-    virtual std::size_t size(const Key &key) const = 0;
+    virtual std::size_t get_size(const Key &key) const = 0;
+
+    /**
+    * @brief Get total number of keys in the reservoir.
+    *
+    * @return The total number of keys in the reservoir.
+    */
+    virtual std::size_t get_key_count() const = 0;
+
+    /**
+     * @brief Get the total number of items in the reservoir.
+     *
+     * This is the sum of the number of items stored for each key.
+     * @return The total number of items in the reservoir.
+     */
+    virtual std::size_t get_total_size() const = 0;
+
+    /**
+    * @brief Get the maximum capacity for the reservoir.
+    *
+    * @return The maximum number of values allowed per key.
+    */
+    virtual std::size_t get_capacity() const = 0;
 
     /**
     * @brief Sets the seed for the reservoir's random number generator.

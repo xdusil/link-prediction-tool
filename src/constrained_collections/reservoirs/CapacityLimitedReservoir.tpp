@@ -53,7 +53,7 @@ bool CapacityLimitedReservoir<Key, Value>::contains(const Key& key) const {
 
 // Get the size for a specific key
 template <typename Key, typename Value>
-std::size_t CapacityLimitedReservoir<Key, Value>::size(const Key& key) const {
+std::size_t CapacityLimitedReservoir<Key, Value>::get_size(const Key& key) const {
     auto it = m_data.find(key);
     return it != m_data.end() ? it->second.first.size() : 0;
 }
@@ -67,6 +67,28 @@ std::vector<Key> CapacityLimitedReservoir<Key, Value>::get_keys() const {
         keys.push_back(key);
     }
     return keys;
+}
+
+// Get the total number of keys
+template <typename Key, typename Value>
+std::size_t CapacityLimitedReservoir<Key, Value>::get_key_count() const {
+    return m_data.size();
+}
+
+// Get the total number of values
+template <typename Key, typename Value>
+std::size_t CapacityLimitedReservoir<Key, Value>::get_total_size() const {
+    std::size_t total = 0;
+    for (const auto& [_, data] : m_data) {
+        total += data.first.size();
+    }
+    return total;
+}
+
+// Get the capacity of the reservoir
+template <typename Key, typename Value>
+std::size_t CapacityLimitedReservoir<Key, Value>::get_capacity() const {
+    return m_capacity;
 }
 
 // Set the seed for the random number generator

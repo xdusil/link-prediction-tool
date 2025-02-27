@@ -77,7 +77,28 @@ public:
      * @param key The key to count values for.
      * @return The number of values stored for the key.
      */
-    std::size_t size(const Key& key) const override;
+    std::size_t get_size(const Key& key) const override;
+
+    /**
+     * @brief Gets the total number of keys in the reservoir.
+     *
+     * @return The total number of keys in the reservoir.
+     */
+    std::size_t get_key_count() const override;
+
+    /**
+     * @brief Gets the total number of values stored in the reservoir.
+     *
+     * @return The total number of values stored in the reservoir.
+     */
+    std::size_t get_total_size() const override;
+
+    /**
+     * @brief Gets the maximum capacity for the reservoir.
+     *
+     * @return The maximum number of values allowed per key.
+     */
+    std::size_t get_capacity() const override;
 
     /**
      * @brief Sets the seed for the random number generator.
