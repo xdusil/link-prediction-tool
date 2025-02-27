@@ -2,10 +2,12 @@
 #include "DependencyAnalyzer.hpp"
 #include "../json/JsonHelper.hpp"
 #include "io/FileReader.hpp"
+#include "io/FileWriter.hpp"
 #include "utils/ip/IIPChecker.hpp"
 #include <chrono>
 #include <fstream>
 #include <functional>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <unordered_map>
@@ -19,11 +21,11 @@ namespace ground_truth {
 
 DependencyAnalyzer::DependencyAnalyzer(int n_occurrences, int epsilon,
                                        IIPChecker &allowed_ips_checker)
-    : m_n_occurrences(n_occurrences), m_epsilon(epsilon), m_allowed_ips_checker(allowed_ips_checker) {}
+    : m_n_occurrences(n_occurrences), m_epsilon(epsilon),
+      m_allowed_ips_checker(allowed_ips_checker) {}
 
-IPDict DependencyAnalyzer::parse_flow_data(const std::string &filename) const {
+void DependencyAnalyzer::parse_flow_data(const std::string &filename) {
     FileReader reader(filename);
-    IPDict m_ip_dict;
 
     std::string line;
     while (reader.get_next_line(line)) {
@@ -63,19 +65,20 @@ IPDict DependencyAnalyzer::parse_flow_data(const std::string &filename) const {
         }
 
         m_ip_dict[*src_ip][*dst_ip].push_back({std::chrono::milliseconds(*start_forward),
-                                             std::chrono::milliseconds(*end_forward),
-                                             std::chrono::milliseconds(*start_reverse),
-                                             std::chrono::milliseconds(*end_reverse),
-                                             static_cast<int>(*protocol)});
+                                               std::chrono::milliseconds(*end_forward),
+                                               std::chrono::milliseconds(*start_reverse),
+                                               std::chrono::milliseconds(*end_reverse),
+                                               static_cast<int>(*protocol)});
     }
-
-    return m_ip_dict;
 }
 
-std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>
-DependencyAnalyzer::calculate_all_dependencies(const std::string &filename) {
-    // Parse flow data
-    m_ip_dict = parse_flow_data(filename);
+const DependencySet &DependencyAnalyzer::calculate_all_dependencies(
+    const std::string &filename,
+    const std::optional<std::string> output_filename /*= std::nullopt*/) {
+    reset();
+
+    // Parse flow data - build IP dictionary
+    parse_flow_data(filename);
 
     auto direct_dependencies = determine_direct_dependencies();
     auto td2_dependencies = determine_TD2_dependencies(direct_dependencies);
@@ -85,19 +88,69 @@ DependencyAnalyzer::calculate_all_dependencies(const std::string &filename) {
     auto rr3_dependencies =
         determine_RR3_dependencies(direct_dependencies, rr2_dependencies);
 
-    std::fstream file("dependencies.txt", std::ios::out);
-    file << oss.str();
+    if (output_filename.has_value()) {
+        FileWriter writer(output_filename.value());
+        writer.write(m_oss.str());
+    }
 
-    std::cout << "DD: " << direct_dependencies.size() << std::endl;
-    std::cout << "TD2: " << td2_dependencies.size() << std::endl;
-    std::cout << "RR2: " << rr2_dependencies.size() << std::endl;
-    std::cout << "TD3: " << td3_dependencies.size() << std::endl;
-    std::cout << "RR3: " << rr3_dependencies.size() << std::endl;
-    std::cout << "Total: " << all_dependencies.size() << std::endl;
+    std::cout << "DD: " << direct_dependencies.size() << "\n";
+    std::cout << "TD2: " << td2_dependencies.size() << "\n";
+    std::cout << "RR2: " << rr2_dependencies.size() << "\n";
+    std::cout << "TD3: " << td3_dependencies.size() << "\n";
+    std::cout << "RR3: " << rr3_dependencies.size() << "\n";
+    std::cout << "Total: " << m_all_dependencies.size() << std::endl;
 
-    return all_dependencies;
+    return m_all_dependencies;
 }
 
+const DependencySet &DependencyAnalyzer::load_dependencies(const std::string &filename) {
+    reset();
+    FileReader reader(filename);
+
+    std::string line;
+    while (reader.get_next_line(line)) {
+        // Skip empty lines
+        if (line.empty())
+            continue;
+
+        // Find the opening and closing parentheses
+        size_t open_paren = line.find('(');
+        size_t close_paren = line.find(')');
+
+        if (open_paren == std::string::npos || close_paren == std::string::npos) {
+            continue; // Skip malformed lines
+        }
+
+        // Extract the content between parentheses
+        std::string content = line.substr(open_paren + 1, close_paren - open_paren - 1);
+
+        // Find the comma separating IPs
+        size_t comma_pos = content.find(',');
+        if (comma_pos == std::string::npos) {
+            continue; // Skip malformed lines
+        }
+
+        // Extract source and destination IPs
+        std::string src_ip = content.substr(0, comma_pos);
+        std::string dst_ip = content.substr(comma_pos + 1);
+
+        // Trim whitespace
+        src_ip.erase(0, src_ip.find_first_not_of(" \t"));
+        src_ip.erase(src_ip.find_last_not_of(" \t") + 1);
+        dst_ip.erase(0, dst_ip.find_first_not_of(" \t"));
+        dst_ip.erase(dst_ip.find_last_not_of(" \t") + 1);
+
+        m_all_dependencies.insert({src_ip, dst_ip});
+    }
+
+    return m_all_dependencies;
+}
+
+void DependencyAnalyzer::reset() {
+    m_ip_dict.clear();
+    m_oss.str("");
+    m_all_dependencies.clear();
+}
 int DependencyAnalyzer::count_appearances_of_LR_dependency(
     Timestamp start_forward, Timestamp end_forward, Timestamp start_reverse,
     Timestamp end_reverse, const std::vector<EdgeProperties> &edge_properties) const {
@@ -132,8 +185,9 @@ DependencyList DependencyAnalyzer::determine_direct_dependencies() {
         for (const auto &[target_ip, edge_properties] : target_map) {
             if (edge_properties.size() > m_n_occurrences) {
                 dependencies.emplace_back(src_ip, target_ip);
-                all_dependencies.insert({src_ip, target_ip});
-                oss << "DD: (" << src_ip << ", " << target_ip << ")" << std::endl;
+                m_all_dependencies.insert({src_ip, target_ip});
+                m_oss << "DD: (" << src_ip << ", " << target_ip << ")"
+                      << "\n";
             }
         }
     }
@@ -171,8 +225,9 @@ TD2DependencyMap DependencyAnalyzer::determine_TD2_dependencies(
 
                 if (count_appereances > m_n_occurrences) {
                     dependencies[src_ip].push_back({dst_ip, mid_ip});
-                    all_dependencies.insert({src_ip, dst_ip});
-                    oss << "TD2: (" << src_ip << ", " << dst_ip << ")" << std::endl;
+                    m_all_dependencies.insert({src_ip, dst_ip});
+                    m_oss << "TD2: (" << src_ip << ", " << dst_ip << ")"
+                          << "\n";
                     break;
                 }
             }
@@ -215,8 +270,9 @@ RR2DependencyMap DependencyAnalyzer::determine_RR2_dependencies(
 
                 if (count_appearances > m_n_occurrences) {
                     dependencies[dst_ip].push_back({mid_ip, src_ip});
-                    all_dependencies.insert({dst_ip, mid_ip});
-                    oss << "RR2: (" << dst_ip << mid_ip << ")" << std::endl;
+                    m_all_dependencies.insert({dst_ip, mid_ip});
+                    m_oss << "RR2: (" << dst_ip << mid_ip << ")"
+                          << "\n";
                     break;
                 }
             }
@@ -272,8 +328,9 @@ DependencyAnalyzer::determine_TD3_dependencies(const DependencyList &direct_depe
 
                     if (count_appearances_inner > m_n_occurrences) {
                         dependencies[src_ip].push_back({dst_ip, mid_ip, mid_ip2});
-                        all_dependencies.insert({src_ip, dst_ip});
-                        oss << "TD3: (" << src_ip << ", " << dst_ip << ")" << std::endl;
+                        m_all_dependencies.insert({src_ip, dst_ip});
+                        m_oss << "TD3: (" << src_ip << ", " << dst_ip << ")"
+                              << "\n";
                         break;
                     }
                 }
@@ -323,8 +380,9 @@ DependencyAnalyzer::determine_RR3_dependencies(const DependencyList &direct_depe
 
                     if (count_appearances > m_n_occurrences) {
                         dependencies[dst_ip].push_back({mid_ip, src_ip, mid_ip2});
-                        all_dependencies.insert({dst_ip, mid_ip});
-                        oss << "RR3: (" << dst_ip << ", " << mid_ip << ")" << std::endl;
+                        m_all_dependencies.insert({dst_ip, mid_ip});
+                        m_oss << "RR3: (" << dst_ip << ", " << mid_ip << ")"
+                              << "\n";
                         break;
                     }
                 }

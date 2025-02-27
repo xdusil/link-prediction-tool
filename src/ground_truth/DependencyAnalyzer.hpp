@@ -60,12 +60,6 @@ struct RR3Dependency {
     IPAddress middle;
 };
 
-// Alias for complex dependency maps
-using TD2DependencyMap = std::unordered_map<IPAddress, std::vector<TD2Dependency>>;
-using RR2DependencyMap = std::unordered_map<IPAddress, std::vector<RR2Dependency>>;
-using TD3DependencyMap = std::unordered_map<IPAddress, std::vector<TD3Dependency>>;
-using RR3DependencyMap = std::unordered_map<IPAddress, std::vector<RR3Dependency>>;
-
 // Hash function for pairs
 struct pair_hash {
     template <class T1, class T2>
@@ -74,11 +68,19 @@ struct pair_hash {
     }
 };
 
+// Alias for complex dependency maps
+using TD2DependencyMap = std::unordered_map<IPAddress, std::vector<TD2Dependency>>;
+using RR2DependencyMap = std::unordered_map<IPAddress, std::vector<RR2Dependency>>;
+using TD3DependencyMap = std::unordered_map<IPAddress, std::vector<TD3Dependency>>;
+using RR3DependencyMap = std::unordered_map<IPAddress, std::vector<RR3Dependency>>;
+using DependencySet = std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>;
+
 // Main class for analyzing dependencies in network flows
 class DependencyAnalyzer {
 public:
     /**
-     * Constructor to initialize the dependency analyzer.
+     * @brief Constructor to initialize the dependency analyzer.
+     *
      * @param n_occurrences Minimum number of occurrences required to confirm a
      * dependency.
      * @param epsilon Maximum allowable time difference between flows for RR dependencies.
@@ -86,6 +88,26 @@ public:
      */
     DependencyAnalyzer(int n_occurrences, int epsilon, IIPChecker &allowed_ips_checker);
 
+    /**
+     * @brief Calculate all dependencies between IP addresses.
+     *
+     * @param filename The name of the file to parse.
+     * @param output_filename The name of the file to write the dependencies to.
+     * @return A set of all dependencies.
+     */
+    const DependencySet &
+    calculate_all_dependencies(const std::string &filename,
+                               std::optional<std::string> output_filename = std::nullopt);
+
+    /**
+     * @brief Load dependencies from a file.
+     *
+     * @param filename The name of the file to load dependencies from.
+     * @return A set of all dependencies.
+     */
+    const DependencySet &load_dependencies(const std::string &filename);
+
+private:
     /**
      * @brief Determine direct dependencies between IP addresses.
      *
@@ -103,7 +125,7 @@ public:
      */
     TD2DependencyMap
     determine_TD2_dependencies(const DependencyList &direct_dependencies);
-    
+
     /**
      * @brief Determine RR2 dependencies between IP addresses.
      *
@@ -114,7 +136,7 @@ public:
     determine_RR2_dependencies(const DependencyList &direct_dependencies);
     TD3DependencyMap determine_TD3_dependencies(const DependencyList &direct_dependencies,
                                                 const TD2DependencyMap &td2_dependencies);
-    
+
     /**
      * @brief Determine RR3 dependencies between IP addresses.
      *
@@ -129,32 +151,13 @@ public:
      * @brief Parse flow data from a file.
      *
      * @param filename The name of the file to parse.
-     * @return A dictionary of IP addresses and their corresponding flows.
      */
-    IPDict parse_flow_data(const std::string &filename) const;
-
-    /**
-     * @brief Calculate all dependencies between IP addresses.
-     *
-     * @param filename The name of the file to parse.
-     *
-     * @return A set of all dependencies.
-     */
-    std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>
-    calculate_all_dependencies(const std::string &filename);
-
-private:
-    int m_n_occurrences;      // Minimum number of occurrences required to confirm a dependency
-    int m_epsilon;            // Maximum allowable time difference between flows for dependencies
-    IIPChecker &m_allowed_ips_checker; // IP checker to check if an IP is allowed
-    std::ostringstream oss;   // Output stream for logging
-    std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash> all_dependencies; // Set of all dependencies
-    IPDict m_ip_dict;         // Dictionary of IP addresses and their corresponding flows
+    void parse_flow_data(const std::string &filename);
 
     /**
      * @brief Count the number of appearances of a LR dependency.
      *
-     * Let A, B, C be IP addresses. 
+     * Let A, B, C be IP addresses.
      * @param start_forward Start timestamp of the forward flow from A to B.
      * @param end_forward End timestamp of the forward flow from A to B.
      * @param start_reverse Start timestamp of the reverse flow from B to A.
@@ -165,7 +168,7 @@ private:
     int count_appearances_of_LR_dependency(
         Timestamp start_forward, Timestamp end_forward, Timestamp start_reverse,
         Timestamp end_reverse, const std::vector<EdgeProperties> &edge_properties) const;
-    
+
     /**
      * @brief Count the number of appearances of a RR dependency.
      *
@@ -179,6 +182,21 @@ private:
     int count_appearances_of_RR_dependency(
         Timestamp start_forward, Timestamp start_reverse, Timestamp end_reverse,
         const std::vector<EdgeProperties> &edge_properties) const;
+
+    /**
+     * @brief Reset the dependency analyzer.
+     */
+    void reset();
+
+    const int
+        m_n_occurrences; // Minimum number of occurrences required to confirm a dependency
+    const int
+        m_epsilon; // Maximum allowable time difference between flows for dependencies
+    const IIPChecker &m_allowed_ips_checker; // IP checker to check if an IP is allowed
+    std::ostringstream m_oss;                // Output stream for logging
+    std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>
+        m_all_dependencies; // Set of all dependencies
+    IPDict m_ip_dict;       // Dictionary of IP addresses and their corresponding flows
 };
 
 } // namespace GroundTruth
