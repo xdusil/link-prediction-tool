@@ -30,7 +30,7 @@ public:
      * @brief Read the entire file
      *
      * @param content The content of the file
-     * @return True if the file was read successfully, false otherwise
+     * @throws FileReaderException if an error occurs
      */
-    bool read_all(std::string& content);
+    void read_all(std::string& content);
 };

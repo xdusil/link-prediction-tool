@@ -56,6 +56,7 @@ protected:
      *
      * @param filename The name of the file to work with
      * @param mode The file open mode
+     * @throws FileException if the file could not be opened
      */
     FileIO(const std::string& filename, std::ios_base::openmode mode);
 

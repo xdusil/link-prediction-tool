@@ -5,12 +5,16 @@ FileWriter::FileWriter(const std::string& filename, bool append)
     : FileIO(filename, std::ios::out | (append ? std::ios::app : std::ios::trunc)) {
 }
 
-bool FileWriter::write(const std::string& content) {
+void FileWriter::write(const std::string& content) {
     m_file << content;
-    return !has_error();
+    if (has_error()) {
+        throw FileWriterException("Error writing to file: " + get_error_message());
+    }
 }
 
-bool FileWriter::write_line(const std::string& line) {
+void FileWriter::write_line(const std::string& line) {
     m_file << line << std::endl;
-    return !has_error();
+    if (has_error()) {
+        throw FileWriterException("Error writing to file: " + get_error_message());
+    }
 }

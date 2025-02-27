@@ -20,15 +20,15 @@ public:
      * @brief Write a string to the file
      * 
      * @param content The string to write
-     * @return True if successful, false otherwise
+     * @throws FileWriterException if an error occurs
      */
-    bool write(const std::string& content);
+    void write(const std::string& content);
     
     /**
      * @brief Write a line to the file (adds newline)
      * 
      * @param line The line to write
-     * @return True if successful, false otherwise
+     * @throws FileWriterException if an error occurs
      */
-    bool write_line(const std::string& line);
+    void write_line(const std::string& line);
 };

@@ -5,14 +5,14 @@ FileReader::FileReader(const std::string& filename)
     : FileIO(filename, std::ios::in) {
 }
 
-bool FileReader::read_all(std::string& content) {
+void FileReader::read_all(std::string& content) {
     // Get file size
     m_file.seekg(0, std::ios::end);
     std::streamsize size = m_file.tellg();
     m_file.seekg(0, std::ios::beg);
 
     if (size <= 0) {
-        return false;
+        return;
     }
 
     // Reserve space
@@ -20,5 +20,8 @@ bool FileReader::read_all(std::string& content) {
 
     // Read directly into string's buffer
     m_file.read(&content[0], size);
-    return !has_error();
+    
+    if (has_error()) {
+        throw FileReaderException("Error reading file: " + get_error_message());
+    }
 }
