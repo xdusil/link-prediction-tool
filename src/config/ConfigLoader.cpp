@@ -13,8 +13,11 @@ Config ConfigLoader::load(const std::string& filename) {
     std::string json_content;
 
     // Read the entire file
-    if (!reader.read_all(json_content))
-        throw ConfigurationException("Could not read config file");
+    try {
+        reader.read_all(json_content);
+    } catch (const std::exception& e) {
+        std::throw_with_nested(ConfigurationException("Could not read config file"));
+    }
     
     // Parse JSON
     Config config = parse_json(json_content);
