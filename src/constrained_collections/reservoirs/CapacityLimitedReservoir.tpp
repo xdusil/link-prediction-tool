@@ -10,16 +10,16 @@
 template <typename Key, typename Value>
 CapacityLimitedReservoir<Key, Value>::CapacityLimitedReservoir(std::size_t capacity)
     : m_capacity(capacity), m_rng(std::random_device{}()) {
-        if (m_capacity == 0) {
-            throw std::invalid_argument("Capacity must be greater than 0");
-        }
+    if (m_capacity == 0) {
+        throw std::invalid_argument("Capacity must be greater than 0");
     }
+}
 
 // Add a value for a key
 template <typename Key, typename Value>
-void CapacityLimitedReservoir<Key, Value>::add(const Key& key, const Value& value) {
-    auto& [values, total_seen] = m_data[key];
-    
+void CapacityLimitedReservoir<Key, Value>::add(const Key &key, const Value &value) {
+    auto &[values, total_seen] = m_data[key];
+
     if (total_seen == 0) {
         values.reserve(m_capacity);
     }
@@ -39,21 +39,23 @@ void CapacityLimitedReservoir<Key, Value>::add(const Key& key, const Value& valu
 
 // Get values associated with a key
 template <typename Key, typename Value>
-const std::vector<Value>& CapacityLimitedReservoir<Key, Value>::get(const Key& key) const {
+const std::vector<Value> &
+CapacityLimitedReservoir<Key, Value>::get(const Key &key) const {
     auto it = m_data.find(key);
-    if (it == m_data.end()) throw std::out_of_range("Key not found");
+    if (it == m_data.end())
+        throw std::out_of_range("Key not found");
     return it->second.first;
 }
 
 // Check if a key exists
 template <typename Key, typename Value>
-bool CapacityLimitedReservoir<Key, Value>::contains(const Key& key) const {
+bool CapacityLimitedReservoir<Key, Value>::contains(const Key &key) const {
     return m_data.contains(key);
 }
 
 // Get the size for a specific key
 template <typename Key, typename Value>
-std::size_t CapacityLimitedReservoir<Key, Value>::get_size(const Key& key) const {
+std::size_t CapacityLimitedReservoir<Key, Value>::get_size(const Key &key) const {
     auto it = m_data.find(key);
     return it != m_data.end() ? it->second.first.size() : 0;
 }
@@ -63,7 +65,7 @@ template <typename Key, typename Value>
 std::vector<Key> CapacityLimitedReservoir<Key, Value>::get_keys() const {
     std::vector<Key> keys;
     keys.reserve(m_data.size());
-    for (const auto& [key, _] : m_data) {
+    for (const auto &[key, _] : m_data) {
         keys.push_back(key);
     }
     return keys;
@@ -79,7 +81,7 @@ std::size_t CapacityLimitedReservoir<Key, Value>::get_key_count() const {
 template <typename Key, typename Value>
 std::size_t CapacityLimitedReservoir<Key, Value>::get_total_size() const {
     std::size_t total = 0;
-    for (const auto& [_, data] : m_data) {
+    for (const auto &[_, data] : m_data) {
         total += data.first.size();
     }
     return total;

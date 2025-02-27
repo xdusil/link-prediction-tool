@@ -1,15 +1,15 @@
 #pragma once
 #include "ICapacityLimitedReservoir.hpp"
+#include <random>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <random>
 
 /**
  * @brief A capacity-limited reservoir implementation with standard STL iterators.
  *
- * This class manages a reservoir for storing a fixed number of values per key. 
- * If the number of values exceeds the specified capacity for a key, new values 
+ * This class manages a reservoir for storing a fixed number of values per key.
+ * If the number of values exceeds the specified capacity for a key, new values
  * probabilistically replace existing ones, maintaining a uniform sampling.
  *
  * @tparam Key   The type used as the key in the reservoir.
@@ -17,10 +17,10 @@
  */
 template <typename Key, typename Value>
 class CapacityLimitedReservoir : public ICapacityLimitedReservoir<Key, Value> {
-    
+
     /**
      * @brief The internal data structure for storing reservoir values.
-     * 
+     *
      * The first element of the pair is a vector of values, and the second element
      * is the total number of values seen for the key - used for probabilistic
      * replacement.
@@ -44,7 +44,7 @@ public:
      * @param key   The key to associate the value with.
      * @param value The value to add to the reservoir.
      */
-    void add(const Key& key, const Value& value) override;
+    void add(const Key &key, const Value &value) override;
 
     /**
      * @brief Retrieves all values associated with a specific key.
@@ -54,7 +54,7 @@ public:
      * @param key The key to retrieve values for.
      * @return A vector of values associated with the key.
      */
-    const std::vector<Value>& get(const Key& key) const override;
+    const std::vector<Value> &get(const Key &key) const override;
 
     /**
      * @brief Retrieves all keys currently in the reservoir.
@@ -69,7 +69,7 @@ public:
      * @param key The key to check.
      * @return True if the key exists, false otherwise.
      */
-    bool contains(const Key& key) const override;
+    bool contains(const Key &key) const override;
 
     /**
      * @brief Gets the number of values currently stored for a specific key.
@@ -77,7 +77,7 @@ public:
      * @param key The key to count values for.
      * @return The number of values stored for the key.
      */
-    std::size_t get_size(const Key& key) const override;
+    std::size_t get_size(const Key &key) const override;
 
     /**
      * @brief Gets the total number of keys in the reservoir.
@@ -112,7 +112,7 @@ public:
      *
      * @return An iterator to the beginning of the reservoir's data.
      */
-    auto begin() const -> 
+    auto begin() const ->
         typename std::unordered_map<Key, ReservoirData>::const_iterator override;
 
     /**
