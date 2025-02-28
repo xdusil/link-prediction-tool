@@ -56,14 +56,14 @@ public:
      *
      * @return The maximum size of the counter.
      */
-    virtual std::size_t get_limit() const;
+    virtual std::size_t get_limit() const = 0;
 
     /**
      * @brief Get the size of the counter.
      *
      * @return The number of items in the counter.
      */
-    virtual std::size_t get_size() const;
+    virtual std::size_t get_size() const = 0;
 
     /**
      * @brief Clear the counter.

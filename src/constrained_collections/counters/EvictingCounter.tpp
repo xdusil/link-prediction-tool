@@ -53,6 +53,18 @@ std::unordered_map<Key, int> EvictingCounter<Key>::get_items_and_clear() {
     return items;
 }
 
+// Get the limit of the counter
+template <typename Key>
+std::size_t EvictingCounter<Key>::get_limit() const {
+    return m_limit;
+}
+
+// Get the size of the counter
+template <typename Key>
+std::size_t EvictingCounter<Key>::get_size() const {
+    return m_counter.size();
+}
+
 // Clear the counter
 template <typename Key>
 void EvictingCounter<Key>::clear() {
