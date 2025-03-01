@@ -11,14 +11,22 @@
 
 template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy>
 RandomForestClassifier<Features, Labels, AverageStrategy>::RandomForestClassifier(
-    std::size_t num_classes /*= 2*/, std::size_t num_trees /*= 10*/)
-    : m_num_classes(num_classes), m_num_trees(num_trees) {
-
+    std::size_t num_classes /*= 2*/, std::size_t num_trees /*= 10*/, std::size_t min_leaf_size /*= 1*/,
+    double min_gain_split /*= 0.0*/, std::size_t max_depth /*= 0*/)
+    : m_num_classes(num_classes), m_num_trees(num_trees), m_min_leaf_size(min_leaf_size),
+      m_min_gain_split(min_gain_split), m_max_depth(max_depth) {
     if (AverageStrategy == mlpack::AverageStrategy::Binary && num_classes != 2) {
         throw RandomForestException(
             "Binary average strategy can only be used with 2 classes.");
     }
 }
+
+template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy>
+RandomForestClassifier<Features, Labels, AverageStrategy>::RandomForestClassifier(
+    const RandomForestParams &params)
+    : RandomForestClassifier(params.num_classes, params.num_trees, params.min_leaf_size,
+                             params.min_gain_split, params.max_depth) {}
+
 
 template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy>
 void RandomForestClassifier<Features, Labels, AverageStrategy>::train(
@@ -29,7 +37,8 @@ void RandomForestClassifier<Features, Labels, AverageStrategy>::train(
     std::cout << "Features: " << features.n_rows << " x " << features.n_cols << std::endl;
 
     // Train the Random Forest
-    m_rf.Train(features, labels, m_num_classes, m_num_trees);
+    m_rf.Train(features, labels, m_num_classes, m_num_trees, m_min_leaf_size, m_min_gain_split,
+               m_max_depth);
 }
 
 template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy>

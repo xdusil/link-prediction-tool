@@ -3,8 +3,18 @@
 #include "mlpack/core/cv/metrics/average_strategy.hpp"
 #include "statistics/metrics.hpp"
 #include <mlpack/core.hpp>
-#include <mlpack/core/data/scaler_methods/min_max_scaler.hpp>
 #include <mlpack/methods/random_forest/random_forest.hpp>
+
+/**
+ * @brief The parameters for the Random Forest classifier.
+*/
+struct RandomForestParams {
+    std::size_t num_classes;
+    std::size_t num_trees;
+    std::size_t min_leaf_size;
+    double min_gain_split;
+    std::size_t max_depth;
+};
 
 /**
  * @brief A Random Forest classifier implementation using mlpack.
@@ -22,8 +32,20 @@ public:
      *
      * @param num_classes The number of classes.
      * @param num_trees The number of trees in the forest.
+     * @param min_leaf_size The minimum number of points in each tree's leaf nodes.
+     * @param min_gain_split The minimum gain for splitting a decision tree node.
+     * @param max_depth The maximum depth for the tree.
      */
-    RandomForestClassifier(std::size_t num_classes = 2, std::size_t num_trees = 10);
+    RandomForestClassifier(std::size_t num_classes = 2, std::size_t num_trees = 10,
+                           std::size_t min_leaf_size = 1, double min_gain_split = 0.0,
+                           std::size_t max_depth = 0);
+    
+    /**
+     * @brief Construct a new Random Forest Classifier object.
+     *
+     * @param params The Random Forest parameters.
+     */
+    RandomForestClassifier(const RandomForestParams &params);
 
     /**
      * @brief Train the classifier with the given features and labels.
@@ -66,9 +88,11 @@ public:
 
 private:
     mlpack::RandomForest<> m_rf;         // The Random Forest model
-    mlpack::data::MinMaxScaler m_scaler; // The MinMaxScaler for scaling the features
     std::size_t m_num_classes;           // The number of classes
     std::size_t m_num_trees;             // The number of trees in the forest
+    std::size_t m_min_leaf_size;         // The minimum number of points in each tree's leaf nodes
+    double m_min_gain_split;             // The minimum gain for splitting a decision tree node
+    std::size_t m_max_depth;             // The maximum depth for the tree
 };
 
 #include "RandomForestClassifier.tpp"
