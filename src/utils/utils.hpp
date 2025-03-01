@@ -1,6 +1,7 @@
 #pragma once
 
 #include <armadillo>
+#include <torch/torch.h>
 #include <optional>
 #include <random>
 #include <tuple>
@@ -23,22 +24,22 @@ namespace utils {
 template <typename T, typename RNG>
 std::optional<T> choice_random_item(std::vector<T> &items, RNG &rng);
 
-    /**
-     * @brief Choose a random item from an iterator range (random-access only).
-     *
-     * @tparam RandomIt The random-access iterator type.
-     * @tparam RNG      The random number generator type.
-     * @param it_begin  The beginning of the range.
-     * @param it_end    The end of the range.
-     * @param rng       The random number generator reference.
-     * @param distance  Optional: if provided, uses that as the range length;
-     *                  otherwise calculates via std::distance.
-     * @return An optional item from the range, or std::nullopt if empty.
-     */
-    template <typename RandomIt, typename RNG>
-    std::optional<typename std::iterator_traits<RandomIt>::value_type> choice_random_item(
-        RandomIt it_begin, RandomIt it_end, RNG &rng,
-        std::optional<std::size_t> distance = std::nullopt);
+/**
+ * @brief Choose a random item from an iterator range (random-access only).
+ *
+ * @tparam RandomIt The random-access iterator type.
+ * @tparam RNG      The random number generator type.
+ * @param it_begin  The beginning of the range.
+ * @param it_end    The end of the range.
+ * @param rng       The random number generator reference.
+ * @param distance  Optional: if provided, uses that as the range length;
+ *                  otherwise calculates via std::distance.
+ * @return An optional item from the range, or std::nullopt if empty.
+ */
+template <typename RandomIt, typename RNG>
+std::optional<typename std::iterator_traits<RandomIt>::value_type>
+choice_random_item(RandomIt it_begin, RandomIt it_end, RNG &rng,
+                   std::optional<std::size_t> distance = std::nullopt);
 
 /**
  * @brief Splits the dataset into training and testing subsets.
@@ -84,6 +85,33 @@ bool is_vertex_pair_in_sequence(const std::vector<Vertex> &sequence, Vertex src,
 template <typename Vertex>
 bool is_vertex_pair_in_sequence_opposite(const std::vector<Vertex> &sequence, Vertex src,
                                          Vertex dst);
+
+// Structure to hold both the Armadillo matrix and the tensor that owns the data
+template <typename T>
+struct TensorMatrixView {
+    arma::Mat<T> matrix;
+    torch::Tensor tensor_owner; // Only populated when copy_mem is false
+    
+    // Allow easy conversion to just the matrix
+    operator arma::Mat<T>&() { return matrix; }
+    operator const arma::Mat<T>&() const { return matrix; }
+};
+
+/**
+ * @brief Convert a 2D tensor to an Armadillo matrix.
+ *
+ * This function will detach the tensor (cpu, contiguous) and then convert it to an
+ * Armadillo matrix.
+ * @tparam T The type of the data.
+ * @param tensor The tensor to convert.
+ * @param copy_mem Whether to copy the memory.
+ * @param transpose Whether to transpose the matrix.
+ * @return The Armadillo matrix.
+ */
+template <typename T>
+TensorMatrixView<T> conv_2d_tensor_to_arma(const torch::Tensor &tensor, bool copy_mem,
+                                    bool transpose);
+
 } // namespace utils
 
 #include "utils.tpp"

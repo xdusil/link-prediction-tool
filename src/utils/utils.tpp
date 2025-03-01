@@ -84,4 +84,39 @@ bool is_vertex_pair_in_sequence_opposite(const std::vector<Vertex> &sequence, Ve
     return is_vertex_pair_in_sequence(sequence, dst, src);
 }
 
+template <typename T>
+TensorMatrixView<T> conv_2d_tensor_to_arma(const torch::Tensor &tensor, bool copy_mem, bool transpose) {
+    // First ensure tensor is detached, on CPU, and contiguous
+    auto safe_tensor = tensor.detach().cpu().contiguous();
+
+    // Type checking
+    if constexpr (std::is_same_v<T, float>) {
+        if (safe_tensor.scalar_type() != at::ScalarType::Float) {
+            throw std::invalid_argument("Tensor must contain float data");
+        }
+    } else if constexpr (std::is_same_v<T, double>) {
+        if (safe_tensor.scalar_type() != at::ScalarType::Double) {
+            throw std::invalid_argument("Tensor must contain double data");
+        }
+    } else {
+        throw std::invalid_argument("Invalid type");
+    }
+
+    T *data_ptr = safe_tensor.template data_ptr<T>();
+
+    // Create Armadillo matrix
+    long dim_0 = static_cast<long>(safe_tensor.size(0));
+    long dim_1 = static_cast<long>(safe_tensor.size(1));
+    if (transpose) {
+        std::swap(dim_0, dim_1);
+    }
+
+    arma::Mat<T> result_matrix(data_ptr, dim_0, dim_1, copy_mem);
+    
+    // Return both the matrix and the tensor (if not copying)
+    return {
+        result_matrix,
+        copy_mem ? torch::Tensor() : safe_tensor // Only keep tensor alive if not copying
+    };
+}
 } // namespace utils
