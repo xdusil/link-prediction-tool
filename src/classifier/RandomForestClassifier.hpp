@@ -9,7 +9,6 @@
  * @brief The parameters for the Random Forest classifier.
 */
 struct RandomForestParams {
-    std::size_t num_classes;
     std::size_t num_trees;
     std::size_t min_leaf_size;
     double min_gain_split;
@@ -43,9 +42,10 @@ public:
     /**
      * @brief Construct a new Random Forest Classifier object.
      *
+     * @param num_classes The number of classes.
      * @param params The Random Forest parameters.
      */
-    RandomForestClassifier(const RandomForestParams &params);
+    RandomForestClassifier(std::size_t num_classes, const RandomForestParams &params);
 
     /**
      * @brief Train the classifier with the given features and labels.
@@ -85,6 +85,15 @@ public:
      * @param path The file path to load the classifier from.
      */
     void load(const std::string &path) override;
+
+    template <typename Metric>
+    static std::tuple<RandomForestParams, double> grid_search(const Features &features, const Labels &labels,
+                                          const std::size_t num_classes,
+                                          const std::vector<std::size_t> &num_trees,
+                                          const std::vector<std::size_t> &min_leaf_size,
+                                          const std::vector<double> &min_gain_split,
+                                          const std::vector<std::size_t> &max_depth,
+                                          const double validation_size = 0.3);
 
 private:
     mlpack::RandomForest<> m_rf;         // The Random Forest model
