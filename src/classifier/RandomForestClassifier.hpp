@@ -86,6 +86,19 @@ public:
      */
     void load(const std::string &path) override;
 
+    /**
+     * @brief Perform a grid search to find the best Random Forest parameters.
+     *
+     * @param features The features.
+     * @param labels The labels.
+     * @param num_classes The number of classes.
+     * @param num_trees The vector of the number of trees to search.
+     * @param min_leaf_size The vector of the minimum leaf size to search.
+     * @param min_gain_split The vector of the minimum gain split to search.
+     * @param max_depth The vector of the maximum depth to search.
+     * @param validation_size The size of the validation set.
+     * @return The best Random Forest parameters and the best metric score.
+     */
     template <typename Metric>
     static std::tuple<RandomForestParams, double> grid_search(const Features &features, const Labels &labels,
                                           const std::size_t num_classes,

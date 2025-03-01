@@ -119,11 +119,9 @@ std::tuple<RandomForestParams, double> RandomForestClassifier<Features, Labels, 
     const auto& features_to_use = std::is_same_v<Features, arma::fmat> ? 
         static_cast<const arma::mat&>(double_features) : features;
 
-    const size_t k_folds = 5;
-
     mlpack::HyperParameterTuner<mlpack::RandomForest<>, Metric,
-                            mlpack::KFoldCV, ens::GridSearch>
-    tuner(k_folds, features_to_use, labels, static_cast<size_t>(num_classes));
+                            mlpack::SimpleCV, ens::GridSearch>
+    tuner(features_to_use, labels, static_cast<size_t>(num_classes));
 
     std::tie(best_params.num_trees, best_params.min_leaf_size, best_params.min_gain_split,
              best_params.max_depth) = tuner.Optimize(num_trees, min_leaf_size, min_gain_split,
