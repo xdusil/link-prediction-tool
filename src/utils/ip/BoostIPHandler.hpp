@@ -2,6 +2,7 @@
 
 #include "utils/ip/IIPChecker.hpp"
 #include <boost/asio.hpp>
+#include <memory>
 #include <optional>
 #include <string>
 #include <unordered_set>
@@ -14,9 +15,9 @@
  * This class supports mixed inputs of individual IPs and ranges.
  * This class provides methods for checking if an IP is matched in a list of IPs and
  * ranges. It also provides methods for parsing and checking IP addresses and ranges.
- * It stores a list of IP addresses and ranges.
+ * It stores a shared pointer to an IPContainer that contains the IP addresses and ranges.
  */
-class BoostIPHandler : IIPChecker {
+class BoostIPHandler : public IIPChecker {
 public:
     using IPNetwork = boost::asio::ip::network_v4;
     using IPAddress = boost::asio::ip::address_v4;
@@ -28,11 +29,23 @@ public:
     };
 
     /**
+     * @brief Construct a new BoostIPHandler.
+     */
+    BoostIPHandler() = default;
+
+    /**
      * @brief Constructor for BoostIPHandler.
      *
      * @param ips_and_ranges The optional vector of IPs and ranges.
      */
     BoostIPHandler(const std::optional<std::vector<std::string>> &ips_and_ranges);
+
+    /**
+     * @brief Constructor for BoostIPHandler.
+     *
+     * @param filename The name of the file to parse.
+     */
+    BoostIPHandler(const std::optional<std::string> &filename);
 
     /**
      * @brief Check if an IP matches stored IPs and ranges.
@@ -68,7 +81,7 @@ public:
      */
     static void parse_ip_or_range_vec(const std::vector<std::string> &ip_or_range_vec,
                                       IPContainer &container);
-    
+
     /**
      * @brief Parse a file containing IP addresses and ranges.
      *
@@ -92,5 +105,6 @@ public:
     static void insert(const IPVariant &ip_or_range, IPContainer &container);
 
 private:
-    IPContainer m_ips_and_ranges;  // IP addresses and ranges
+    std::unique_ptr<IPContainer> m_ips_and_ranges =
+        std::make_unique<IPContainer>(); // IP addresses and ranges
 };

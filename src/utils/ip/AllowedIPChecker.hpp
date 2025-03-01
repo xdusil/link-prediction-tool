@@ -30,6 +30,15 @@ public:
         const std::optional<std::vector<std::string>> &blocked_ips_and_ranges);
 
     /**
+     * @brief Constructor for AllowedIPChecker.
+     *
+     * @param allowed_ips_and_ranges_path The path to the file containing allowed IPs and ranges.
+     * @param blocked_ips_and_ranges_path The path to the file containing blocked IPs and ranges.
+     */
+    AllowedIPChecker(std::optional<std::string> allowed_ips_and_ranges_path,
+                     std::optional<std::string> blocked_ips_and_ranges_path);
+
+    /**
      * @brief Check if the given IP address is allowed.
      *
      * @param ip The IP address to check.

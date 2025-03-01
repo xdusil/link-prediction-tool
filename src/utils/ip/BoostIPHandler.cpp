@@ -7,7 +7,13 @@ BoostIPHandler::BoostIPHandler(
     const std::optional<std::vector<std::string>> &ips_and_ranges) {
     // Parse IPs and ranges
     if (ips_and_ranges) {
-        parse_ip_or_range_vec(*ips_and_ranges, m_ips_and_ranges);
+        parse_ip_or_range_vec(*ips_and_ranges, *m_ips_and_ranges);
+    }
+}
+
+BoostIPHandler::BoostIPHandler(const std::optional<std::string> &filename) {
+    if (filename) {
+        parse_file(*filename);
     }
 }
 
@@ -36,8 +42,8 @@ bool BoostIPHandler::check_ip(const std::string &ip) const {
         return false;
     }
 
-    return m_ips_and_ranges.ips.contains(address) ||
-           is_ip_in_list(address, m_ips_and_ranges.networks);
+    return m_ips_and_ranges->ips.contains(address) ||
+           is_ip_in_list(address, m_ips_and_ranges->networks);
 }
 
 std::optional<BoostIPHandler::IPVariant>
@@ -86,7 +92,7 @@ void BoostIPHandler::insert(const IPVariant &ip_or_range, IPContainer &container
 }
 
 void BoostIPHandler::insert(const IPVariant &ip_or_range) {
-    insert(ip_or_range, m_ips_and_ranges);
+    insert(ip_or_range, *m_ips_and_ranges);
 }
 
 void BoostIPHandler::parse_file(const std::string &filename) {

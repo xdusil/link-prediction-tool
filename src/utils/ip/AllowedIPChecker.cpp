@@ -12,7 +12,18 @@ AllowedIPChecker::AllowedIPChecker(
         if (blocked_ips_and_ranges) {
             m_blocked_ips_and_ranges = BoostIPHandler(*blocked_ips_and_ranges);
         }
+}
+
+AllowedIPChecker::AllowedIPChecker(std::optional<std::string> allowed_ips_and_ranges_path,
+                                   std::optional<std::string> blocked_ips_and_ranges_path) {
+    if (allowed_ips_and_ranges_path) {
+        m_allowed_ips_and_ranges = BoostIPHandler(allowed_ips_and_ranges_path);
     }
+
+    if (blocked_ips_and_ranges_path) {
+        m_blocked_ips_and_ranges = BoostIPHandler(blocked_ips_and_ranges_path);
+    }
+}
 
 bool AllowedIPChecker::check_ip(const std::string &ip) const {
     boost::system::error_code ec;
