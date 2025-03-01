@@ -187,6 +187,21 @@ private:
      * @brief Reset the dependency analyzer.
      */
     void reset();
+    
+    /**
+     * @brief Print dependency statistics.
+     *
+     * @param direct_dependencies A list of direct dependencies.
+     * @param td2_dependencies A map of TD2 dependencies.
+     * @param rr2_dependencies A map of RR2 dependencies.
+     * @param td3_dependencies A map of TD3 dependencies.
+     * @param rr3_dependencies A map of RR3 dependencies.
+     */
+    void print_dependency_stats(const DependencyList &direct_dependencies,
+                                const TD2DependencyMap &td2_dependencies,
+                                const RR2DependencyMap &rr2_dependencies,
+                                const TD3DependencyMap &td3_dependencies,
+                                const RR3DependencyMap &rr3_dependencies) const;
 
     const int
         m_n_occurrences; // Minimum number of occurrences required to confirm a dependency

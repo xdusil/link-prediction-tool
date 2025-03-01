@@ -93,12 +93,8 @@ const DependencySet &DependencyAnalyzer::calculate_all_dependencies(
         writer.write(m_oss.str());
     }
 
-    std::cout << "DD: " << direct_dependencies.size() << "\n";
-    std::cout << "TD2: " << td2_dependencies.size() << "\n";
-    std::cout << "RR2: " << rr2_dependencies.size() << "\n";
-    std::cout << "TD3: " << td3_dependencies.size() << "\n";
-    std::cout << "RR3: " << rr3_dependencies.size() << "\n";
-    std::cout << "Total: " << m_all_dependencies.size() << std::endl;
+    print_dependency_stats(direct_dependencies, td2_dependencies, rr2_dependencies,
+                           td3_dependencies, rr3_dependencies);
 
     return m_all_dependencies;
 }
@@ -391,5 +387,47 @@ DependencyAnalyzer::determine_RR3_dependencies(const DependencyList &direct_depe
     }
 
     return dependencies;
+}
+
+void DependencyAnalyzer::print_dependency_stats(
+    const DependencyList& direct_dependencies,
+    const TD2DependencyMap& td2_dependencies,
+    const RR2DependencyMap& rr2_dependencies,
+    const TD3DependencyMap& td3_dependencies,
+    const RR3DependencyMap& rr3_dependencies) const {
+    
+    size_t dd_count = direct_dependencies.size();
+    
+    size_t td2_count = 0;
+    size_t rr2_count = 0;
+    size_t td3_count = 0;
+    size_t rr3_count = 0;
+    
+    for (const auto& [_, dsts] : td2_dependencies) {
+        td2_count += dsts.size();
+    }
+    
+    for (const auto& [_, dsts] : rr2_dependencies) {
+        rr2_count += dsts.size();
+    }
+    
+    for (const auto& [_, dsts] : td3_dependencies) {
+        td3_count += dsts.size();
+    }
+    
+    for (const auto& [_, dsts] : rr3_dependencies) {
+        rr3_count += dsts.size();
+    }
+    
+    std::cout << "Dependency statistics:\n"
+              << "---------------------------\n"
+              << "Direct dependencies (DD): " << dd_count << "\n"
+              << "TD2 dependencies: " << td2_count << "\n"
+              << "RR2 dependencies: " << rr2_count << "\n"
+              << "TD3 dependencies: " << td3_count << "\n"
+              << "RR3 dependencies: " << rr3_count << "\n"
+              << "---------------------------\n"
+              << "Total dependencies: " << (dd_count + td2_count + rr2_count + td3_count + rr3_count) << "\n"
+              << "Unique dependencies: " << m_all_dependencies.size() << std::endl;
 }
 } // namespace GroundTruth
