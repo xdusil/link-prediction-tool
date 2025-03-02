@@ -127,7 +127,7 @@ RandomForestClassifier<Features, Labels, AverageStrategy>::grid_search(
     const arma::mat *features_ptr;
     arma::mat converted_features;
 
-    if constexpr (std::is_same_v<Features, arma::fmat>) {
+    if constexpr (std::is_same_v<std::decay_t<Features>, arma::fmat>) {
         std::cout
             << "Converting features from float to double precision for grid search..."
             << std::endl;
@@ -139,7 +139,7 @@ RandomForestClassifier<Features, Labels, AverageStrategy>::grid_search(
 
     mlpack::HyperParameterTuner<mlpack::RandomForest<>, Metric, mlpack::SimpleCV,
                                 ens::GridSearch>
-        tuner(*features_ptr, labels, static_cast<size_t>(num_classes));
+        tuner(validation_size, *features_ptr, labels, static_cast<size_t>(num_classes));
 
     std::tie(best_params.num_trees, best_params.min_leaf_size, best_params.min_gain_split,
              best_params.max_depth) =
