@@ -7,12 +7,12 @@
  * @brief Class for generating embeddings.
  *
  * @tparam Vertex The type of the vertex.
- * @tparam Dependencies The type of the dependencies.
  * @tparam EmbeddingModule The type of the embedding module.
+ * @tparam GroundTruthDependencies The type of the ground truth dependencies.
  */
-template <typename Vertex, typename Dependencies, typename EmbeddingModule>
+template <typename Vertex, typename EmbeddingModule, typename GroundTruthDependencies>
 class EmbeddingGenerator
-    : public IEmbeddingGenerator<Vertex, Dependencies, EmbeddingModule> {
+    : public IEmbeddingGenerator<Vertex, EmbeddingModule, GroundTruthDependencies> {
 public:
     /**
      * @brief Generate dependency embeddings.
@@ -37,7 +37,7 @@ public:
     std::tuple<torch::Tensor, arma::Row<size_t>>
     generate_dependency_embeddings_and_labels(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &ground_truth_dependencies,
+        const GroundTruthDependencies &ground_truth_dependencies,
         EmbeddingModule &embedding_module) override;
 
     /**
@@ -75,7 +75,8 @@ private:
                std::vector<std::pair<IPAddress, IPAddress>>>
     generate_dependency_embeddings_and_labels_impl(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &ground_truth_dependencies, EmbeddingModule &embedding_module);
+        const GroundTruthDependencies &ground_truth_dependencies,
+        EmbeddingModule &embedding_module);
 
     /**
      * @brief Create vertex pairs and labels.
@@ -101,7 +102,7 @@ private:
                std::vector<std::pair<IPAddress, IPAddress>>>
     create_vertex_pairs_and_labels(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &ground_truth_dependencies = {});
+        const GroundTruthDependencies &ground_truth_dependencies = {});
 };
 
 #include "EmbeddingGenerator.tpp"

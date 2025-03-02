@@ -2,23 +2,23 @@
 
 #include "EmbeddingGenerator.hpp"
 
-template <typename Vertex, typename Dependencies, typename EmbeddingModule>
-torch::Tensor
-EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::generate_dependency_embeddings(
-    const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-    EmbeddingModule &embedding_module) {
+template <typename Vertex, typename EmbeddingModule, typename GroundTruthDependencies>
+torch::Tensor EmbeddingGenerator<Vertex, EmbeddingModule, GroundTruthDependencies>::
+    generate_dependency_embeddings(
+        const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
+        EmbeddingModule &embedding_module) {
     auto [combined, ignore1, ignore2] =
         generate_dependency_embeddings_and_labels_impl<false, false>(vertex_to_index, {},
                                                                      embedding_module);
     return combined;
 }
 
-template <typename Vertex, typename Dependencies, typename EmbeddingModule>
+template <typename Vertex, typename EmbeddingModule, typename GroundTruthDependencies>
 std::tuple<torch::Tensor, arma::Row<size_t>>
-EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
+EmbeddingGenerator<Vertex, EmbeddingModule, GroundTruthDependencies>::
     generate_dependency_embeddings_and_labels(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &ground_truth_dependencies,
+        const GroundTruthDependencies &ground_truth_dependencies,
         EmbeddingModule &embedding_module) {
     auto [combined, arma_labels, _] =
         generate_dependency_embeddings_and_labels_impl<true, false>(
@@ -26,9 +26,9 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     return {combined, arma_labels};
 }
 
-template <typename Vertex, typename Dependencies, typename EmbeddingModule>
+template <typename Vertex, typename EmbeddingModule, typename GroundTruthDependencies>
 std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
-EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
+EmbeddingGenerator<Vertex, EmbeddingModule, GroundTruthDependencies>::
     generate_dependency_embeddings_and_vertex_pairs(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
         EmbeddingModule &embedding_module) {
@@ -38,13 +38,13 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     return {combined, vertex_pairs};
 }
 
-template <typename Vertex, typename Dependencies, typename EmbeddingModule>
+template <typename Vertex, typename EmbeddingModule, typename GroundTruthDependencies>
 template <bool WithLabels, bool WithVertexPairs>
 std::tuple<torch::Tensor, arma::Row<size_t>, std::vector<std::pair<IPAddress, IPAddress>>>
-EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
+EmbeddingGenerator<Vertex, EmbeddingModule, GroundTruthDependencies>::
     generate_dependency_embeddings_and_labels_impl(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &ground_truth_dependencies,
+        const GroundTruthDependencies &ground_truth_dependencies,
         EmbeddingModule &embedding_module) {
 
     //  1) Gather all (v1, v2) in Tensors for a single batch forward
@@ -72,13 +72,14 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     return {combined, arma_labels, vertex_pairs};
 }
 
-template <typename Vertex, typename Dependencies, typename EmbeddingModule>
+template <typename Vertex, typename EmbeddingModule, typename GroundTruthDependencies>
 template <bool WithLabels /*= true */, bool WithVertexPairs /*= false */>
 std::tuple<torch::Tensor, torch::Tensor, arma::Row<size_t>,
            std::vector<std::pair<IPAddress, IPAddress>>>
-EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::create_vertex_pairs_and_labels(
-    const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-    const Dependencies &ground_truth_dependencies /*= {} */) {
+EmbeddingGenerator<Vertex, EmbeddingModule, GroundTruthDependencies>::
+    create_vertex_pairs_and_labels(
+        const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
+        const GroundTruthDependencies &ground_truth_dependencies /*= {} */) {
     const std::size_t num_vertices = vertex_to_index.size();
     const std::size_t num_pairs = num_vertices * num_vertices;
 
