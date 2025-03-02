@@ -1,13 +1,13 @@
 #pragma once
 
-#include "io/FileReader.hpp"
-#include "json/JsonHelper.hpp"
-#include <unordered_set>
-#include <string>
-#include "Types.hpp"
 #include "../constrained_collections/counters/IEvictingCounter.hpp"
 #include "../constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
+#include "Types.hpp"
+#include "io/FileReader.hpp"
 #include "utils/ip/IIPChecker.hpp"
+#include "json/JsonHelper.hpp"
+#include <string>
+#include <unordered_set>
 
 /**
  * @brief Class for processing flow data from files.
@@ -18,32 +18,30 @@
  */
 class FlowProcessor {
 public:
-
     /**
      * @brief Constructor for FlowProcessor.
      *
-     * @param internal_addresses A set of internal IP addresses.
      * @param internal_counter An evicting counter for internal IP addresses.
      * @param external_counter An evicting counter for external IP addresses.
      * @param reservoir A capacity-limited reservoir for IP edges.
-     * @param allowed_ips_checker An IP address checker.
+     * @param allowed_ips_checker An IP checker for allowed IP addresses.
+     * @param internal_ips_checker An IP checker for internal IP addresses.
      */
-    FlowProcessor(const std::unordered_set<std::string>& internal_addresses,
-                IEvictingCounter<IPAddress>& internal_counter,
-                IEvictingCounter<IPAddress>& external_counter,
-                ICapacityLimitedReservoir<IPAddress, IPEdge>& reservoir,
-                IIPChecker& allowed_ips_checker);
+    FlowProcessor(IEvictingCounter<IPAddress> &internal_counter,
+                  IEvictingCounter<IPAddress> &external_counter,
+                  ICapacityLimitedReservoir<IPAddress, IPEdge> &reservoir,
+                  const IIPChecker &allowed_ips_checker,
+                  const IIPChecker &internal_ips_checker);
 
     /**
-    * @brief Processes initial flow data from a file.
-    *
-    * This method reads flow data from a file and updates the internal and
-    * external IP address counters.
-    *
-    * @param filename The name of the file to read flow data from.
-    */
-    void process_flow_file(const std::string& filename);
-
+     * @brief Processes initial flow data from a file.
+     *
+     * This method reads flow data from a file and updates the internal and
+     * external IP address counters.
+     *
+     * @param filename The name of the file to read flow data from.
+     */
+    void process_flow_file(const std::string &filename);
 
     /**
      * @brief Processes filtered flow data from a file.
@@ -54,14 +52,17 @@ public:
      *
      * @param filename The name of the file to read flow data from.
      */
-    void process_filtered_flows(const std::string& filename);
+    void process_filtered_flows(const std::string &filename);
 
 private:
-    const std::unordered_set<std::string>& m_internal_addresses;  // Internal IP addresses
-    IEvictingCounter<IPAddress>& m_internal_counter;              // Evicting counter for internal IP addresses
-    IEvictingCounter<IPAddress>& m_external_counter;              // Evicting counter for external IP addresses
-    ICapacityLimitedReservoir<IPAddress, IPEdge>& m_reservoir;    // Capacity-limited reservoir for IP edges
-    IIPChecker& m_allowed_ips_checker;                            // Allowed IP checker
+    IEvictingCounter<IPAddress>
+        &m_internal_counter; // Evicting counter for internal IP addresses
+    IEvictingCounter<IPAddress>
+        &m_external_counter; // Evicting counter for external IP addresses
+    ICapacityLimitedReservoir<IPAddress, IPEdge>
+        &m_reservoir;                         // Capacity-limited reservoir for IP edges
+    const IIPChecker &m_allowed_ips_checker;  // Allowed IP checker
+    const IIPChecker &m_internal_ips_checker; // Internal IP checker
 
     /**
      * @brief Updates the internal or external IP address counters.
@@ -71,7 +72,7 @@ private:
      *
      * @param ip The IP address to update the counter for.
      */
-    void update_counters(const std::string& ip);
+    void update_counters(const std::string &ip);
 
     /**
      * @brief Parses flow data from a JSON object.
@@ -79,7 +80,7 @@ private:
      * @param data The JSON object containing flow data.
      * @return The parsed flow data as an IPEdge object.
      */
-    IPEdge parse_flow_from_json(const boost::json::object& data) const;
+    IPEdge parse_flow_from_json(const boost::json::object &data) const;
 
     /**
      * @brief Adds an edge to the reservoir.
@@ -91,12 +92,13 @@ private:
      * @param dst_ip The destination IP address.
      * @param edge The edge to add to the reservoir.
      */
-    void add_edge_to_reservoir(const std::string& src_ip, const std::string& dst_ip, IPEdge& edge);
+    void add_edge_to_reservoir(const std::string &src_ip, const std::string &dst_ip,
+                               IPEdge &edge);
 
     /**
      * @brief Logs a message for missing keys in a JSON object.
      *
      * @param line The JSON object as a string.
      */
-    void log_missing_keys(const std::string& line) const;
+    void log_missing_keys(const std::string &line) const;
 };
