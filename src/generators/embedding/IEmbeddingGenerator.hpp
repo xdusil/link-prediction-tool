@@ -47,19 +47,18 @@ public:
     generate_dependency_embeddings_and_labels(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
         const Dependencies &dependencies, EmbeddingModule &embedding_module) = 0;
-    
+
     /**
-    * @brief Generate dependency embeddings and vertex pairs.
-    *
-    * @param vertex_to_index The map of vertex to index.
-    * @param dependencies The dependencies.
-    * @return The tuple of the dependency embeddings and vertex pairs.
-    *        - combined: tensor of shape [num_pairs, embedding_dim]
-    *        - arma_vertex_pairs: row vector of IP address pairs
-    */
+     * @brief Generate dependency embeddings and vertex pairs.
+     *
+     * @param vertex_to_index The map of vertex to index.
+     * @param dependencies The dependencies.
+     * @return The tuple of the dependency embeddings and vertex pairs.
+     *        - combined: tensor of shape [num_pairs, embedding_dim]
+     *        - arma_vertex_pairs: row vector of IP address pairs
+     */
     virtual std::tuple<torch::Tensor, arma::Row<std::pair<IPAddress, IPAddress>>>
     generate_dependency_embeddings_and_vertex_pairs(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies,
-        EmbeddingModule &embedding_module) = 0;
+        const Dependencies &dependencies, EmbeddingModule &embedding_module) = 0;
 };
