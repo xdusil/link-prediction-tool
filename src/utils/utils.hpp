@@ -93,8 +93,8 @@ struct TensorMatrixView {
     torch::Tensor tensor_owner; // Only populated when copy_mem is false
     
     // Allow easy conversion to just the matrix
-    operator arma::Mat<T>&() { return matrix; }
-    operator const arma::Mat<T>&() const { return matrix; }
+    explicit operator arma::Mat<T>&() { return matrix; }
+    explicit operator const arma::Mat<T>&() const { return matrix; }
 };
 
 /**
