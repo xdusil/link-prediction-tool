@@ -36,7 +36,7 @@ public:
      *
      * @return The model's embeddings.
      */
-    virtual const TEmbedding &get_embeddings() const = 0;
+    virtual TEmbedding &get_embeddings() = 0;
 
     /**
      * @brief Saves the model to a file.

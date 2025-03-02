@@ -63,7 +63,7 @@ torch::Tensor SkipGramModel::loss(const torch::Tensor &predictions,
 }
 
 // Returns the model's embeddings
-const torch::nn::Embedding &SkipGramModel::get_embeddings() const { return m_embeddings; }
+torch::nn::Embedding &SkipGramModel::get_embeddings() { return m_embeddings; }
 
 // Saves the model to a file
 void SkipGramModel::save(const std::string &path) const {

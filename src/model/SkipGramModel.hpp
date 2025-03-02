@@ -52,7 +52,7 @@ public:
      *
      * @return The model's embeddings.
      */
-    const torch::nn::Embedding &get_embeddings() const override;
+    torch::nn::Embedding &get_embeddings() override;
 
     /**
      * @brief Saves the model to a file.
