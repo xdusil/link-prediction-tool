@@ -7,7 +7,7 @@
 
 /**
  * @brief The parameters for the Random Forest classifier.
-*/
+ */
 struct RandomForestParams {
     std::size_t num_trees;
     std::size_t min_leaf_size;
@@ -38,7 +38,7 @@ public:
     RandomForestClassifier(std::size_t num_classes = 2, std::size_t num_trees = 10,
                            std::size_t min_leaf_size = 1, double min_gain_split = 0.0,
                            std::size_t max_depth = 0);
-    
+
     /**
      * @brief Construct a new Random Forest Classifier object.
      *
@@ -54,7 +54,8 @@ public:
      * @param num_classes The number of classes.
      * @param params The Random Forest parameters that were used to train the model.
      */
-    RandomForestClassifier(mlpack::RandomForest<> &&rf, std::size_t num_classes, const RandomForestParams &params);
+    RandomForestClassifier(mlpack::RandomForest<> &&rf, std::size_t num_classes,
+                           const RandomForestParams &params);
 
     /**
      * @brief Train the classifier with the given features and labels.
@@ -109,21 +110,21 @@ public:
      * @return The best Random Forest parameters and the best metric score.
      */
     template <typename Metric>
-    static std::tuple<RandomForestParams, double> grid_search(const Features &features, const Labels &labels,
-                                          const std::size_t num_classes,
-                                          const std::vector<std::size_t> &num_trees,
-                                          const std::vector<std::size_t> &min_leaf_size,
-                                          const std::vector<double> &min_gain_split,
-                                          const std::vector<std::size_t> &max_depth,
-                                          const double validation_size = 0.3);
+    static std::tuple<RandomForestParams, double>
+    grid_search(const Features &features, const Labels &labels,
+                const std::size_t num_classes, const std::vector<std::size_t> &num_trees,
+                const std::vector<std::size_t> &min_leaf_size,
+                const std::vector<double> &min_gain_split,
+                const std::vector<std::size_t> &max_depth,
+                const double validation_size = 0.3);
 
 private:
-    mlpack::RandomForest<> m_rf;         // The Random Forest model
-    std::size_t m_num_classes;           // The number of classes
-    std::size_t m_num_trees;             // The number of trees in the forest
-    std::size_t m_min_leaf_size;         // The minimum number of points in each tree's leaf nodes
-    double m_min_gain_split;             // The minimum gain for splitting a decision tree node
-    std::size_t m_max_depth;             // The maximum depth for the tree
+    mlpack::RandomForest<> m_rf; // The Random Forest model
+    std::size_t m_num_classes;   // The number of classes
+    std::size_t m_num_trees;     // The number of trees in the forest
+    std::size_t m_min_leaf_size; // The minimum number of points in each tree's leaf nodes
+    double m_min_gain_split;     // The minimum gain for splitting a decision tree node
+    std::size_t m_max_depth;     // The maximum depth for the tree
 };
 
 #include "RandomForestClassifier.tpp"
