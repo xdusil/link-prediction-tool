@@ -39,7 +39,9 @@ template <typename Features, typename Labels, mlpack::AverageStrategy AverageStr
 RandomForestClassifier<Features, Labels, AverageStrategy>::RandomForestClassifier(
     mlpack::RandomForest<> &&rf, std::size_t num_classes,
     const RandomForestParams &params)
-    : RandomForestClassifier(num_classes, params), m_rf(std::move(rf)) {}
+    : RandomForestClassifier(num_classes, params) {
+    m_rf = std::move(rf);
+}
 
 template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy>
 void RandomForestClassifier<Features, Labels, AverageStrategy>::train(
