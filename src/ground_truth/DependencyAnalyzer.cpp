@@ -72,7 +72,11 @@ void DependencyAnalyzer::parse_flow_data(const std::string &filename) {
     }
 }
 
-const DependencySet &DependencyAnalyzer::calculate_all_dependencies(
+const DependencySet &DependencyAnalyzer::get_dependencies() const {
+    return m_all_dependencies;
+}
+
+const DependencySet &DependencyAnalyzer::calculate_dependencies(
     const std::string &filename,
     const std::optional<std::string> output_filename /*= std::nullopt*/) {
     reset();

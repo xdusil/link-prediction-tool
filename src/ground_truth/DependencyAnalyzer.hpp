@@ -96,7 +96,7 @@ public:
      * @return A set of all dependencies.
      */
     const DependencySet &
-    calculate_all_dependencies(const std::string &filename,
+    calculate_dependencies(const std::string &filename,
                                std::optional<std::string> output_filename = std::nullopt);
 
     /**
@@ -106,6 +106,13 @@ public:
      * @return A set of all dependencies.
      */
     const DependencySet &load_dependencies(const std::string &filename);
+
+    /**
+     * @brief Get all dependencies.
+     *
+     * @return A set of all dependencies.
+     */
+    const DependencySet& get_dependencies() const;
 
 private:
     /**
