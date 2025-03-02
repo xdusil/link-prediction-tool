@@ -6,9 +6,10 @@ template <typename Vertex, typename Dependencies, typename EmbeddingModule>
 torch::Tensor
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::generate_dependency_embeddings(
     const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-    const Dependencies &dependencies, EmbeddingModule &embedding_module) {
-    auto [combined, ignore1, ignore2] = generate_dependency_embeddings_and_labels_impl<false, false>(
-        vertex_to_index, dependencies, embedding_module);
+    EmbeddingModule &embedding_module) {
+    auto [combined, ignore1, ignore2] =
+        generate_dependency_embeddings_and_labels_impl<false, false>(vertex_to_index, {},
+                                                                     embedding_module);
     return combined;
 }
 
@@ -17,10 +18,11 @@ std::tuple<torch::Tensor, arma::Row<size_t>>
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     generate_dependency_embeddings_and_labels(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies, EmbeddingModule &embedding_module) {
+        const Dependencies &ground_truth_dependencies,
+        EmbeddingModule &embedding_module) {
     auto [combined, arma_labels, _] =
         generate_dependency_embeddings_and_labels_impl<true, false>(
-            vertex_to_index, dependencies, embedding_module);
+            vertex_to_index, ground_truth_dependencies, embedding_module);
     return {combined, arma_labels};
 }
 
@@ -29,10 +31,10 @@ std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     generate_dependency_embeddings_and_vertex_pairs(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies, EmbeddingModule &embedding_module) {
+        EmbeddingModule &embedding_module) {
     auto [combined, _, vertex_pairs] =
-        generate_dependency_embeddings_and_labels_impl<false, true>(
-            vertex_to_index, dependencies, embedding_module);
+        generate_dependency_embeddings_and_labels_impl<false, true>(vertex_to_index, {},
+                                                                    embedding_module);
     return {combined, vertex_pairs};
 }
 
@@ -42,7 +44,8 @@ std::tuple<torch::Tensor, arma::Row<size_t>, std::vector<std::pair<IPAddress, IP
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     generate_dependency_embeddings_and_labels_impl(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies, EmbeddingModule &embedding_module) {
+        const Dependencies &ground_truth_dependencies,
+        EmbeddingModule &embedding_module) {
 
     //  1) Gather all (v1, v2) in Tensors for a single batch forward
     //   - v1 and v2 are the Vertices from the vertex_to_index map
@@ -53,8 +56,8 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     //   all_v2        => [num_pairs] of int64
     //   arma_labels   => [num_pairs] if CreateLabels is true, else [1]
     auto [all_v1, all_v2, arma_labels, vertex_pairs] =
-        create_vertex_pairs_and_labels<WithLabels, WithVertexPairs>(vertex_to_index,
-                                                                    dependencies);
+        create_vertex_pairs_and_labels<WithLabels, WithVertexPairs>(
+            vertex_to_index, ground_truth_dependencies);
 
     //  2) Single pass forward for all pairs: emb1, emb2 => combined
     // -----------------------------
@@ -72,7 +75,7 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
 template <typename Vertex, typename Dependencies, typename EmbeddingModule>
 template <bool WithLabels /*= true */, bool WithVertexPairs /*= false */>
 std::tuple<torch::Tensor, torch::Tensor, arma::Row<size_t>,
-              std::vector<std::pair<IPAddress, IPAddress>>>
+           std::vector<std::pair<IPAddress, IPAddress>>>
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::create_vertex_pairs_and_labels(
     const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
     const Dependencies &ground_truth_dependencies /*= {} */) {

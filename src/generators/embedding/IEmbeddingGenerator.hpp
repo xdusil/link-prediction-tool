@@ -10,7 +10,7 @@
  * @brief Interface for generating embeddings.
  *
  * @tparam Vertex The type of the vertex.
- * @tparam Dependencies The type of the dependencies.
+ * @tparam Dependencies The type of the ground truth dependencies.
  * @tparam EmbeddingModule The type of the embedding module.
  */
 template <typename Vertex, typename Dependencies, typename EmbeddingModule>
@@ -21,24 +21,19 @@ public:
     /**
      * @brief Generate dependency embeddings.
      *
-     * @tparam Vertex The type of the vertex.
-     * @tparam Dependencies The type of the dependencies.
      * @param vertex_to_index The map of vertex to index.
-     * @param dependencies The dependencies.
      * @return The tensor of dependency embeddings.
      *        - combined: tensor of shape [num_pairs, embedding_dim]
      */
     virtual torch::Tensor generate_dependency_embeddings(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies, EmbeddingModule &embedding_module) = 0;
+        EmbeddingModule &embedding_module) = 0;
 
     /**
      * @brief Generate dependency embeddings and labels.
      *
-     * @tparam Vertex The type of the vertex.
-     * @tparam Dependencies The type of the dependencies.
      * @param vertex_to_index The map of vertex to index.
-     * @param dependencies The dependencies.
+     * @param ground_truth The ground truth dependencies.
      * @return The tuple of the dependency embeddings and labels.
      *        - combined: tensor of shape [num_pairs, embedding_dim]
      *        - arma_labels: row vector of size num_pairs
@@ -46,7 +41,8 @@ public:
     virtual std::tuple<torch::Tensor, arma::Row<size_t>>
     generate_dependency_embeddings_and_labels(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies, EmbeddingModule &embedding_module) = 0;
+        const Dependencies &ground_truth_dependencies,
+        EmbeddingModule &embedding_module) = 0;
 
     /**
      * @brief Generate dependency embeddings and vertex pairs.
@@ -54,7 +50,6 @@ public:
      * The pairs in the vertex_pairs correspond to the rows in the combined tensor.
      *
      * @param vertex_to_index The map of vertex to index.
-     * @param dependencies The dependencies.
      * @return The tuple of the dependency embeddings and vertex pairs.
      *        - combined: tensor of shape [num_pairs, embedding_dim]
      *        - vertex_pairs: vector of IP address pairs
@@ -62,5 +57,5 @@ public:
     virtual std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
     generate_dependency_embeddings_and_vertex_pairs(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies, EmbeddingModule &embedding_module) = 0;
+        EmbeddingModule &embedding_module) = 0;
 };

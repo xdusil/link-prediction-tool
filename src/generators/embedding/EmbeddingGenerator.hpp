@@ -18,19 +18,18 @@ public:
      * @brief Generate dependency embeddings.
      *
      * @param vertex_to_index The map of vertex to index.
-     * @param dependencies The dependencies.
      * @return The tensor of dependency embeddings.
      *        - combined: tensor of shape [num_pairs, embedding_dim]
      */
     torch::Tensor generate_dependency_embeddings(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies, EmbeddingModule &embedding_module) override;
+        EmbeddingModule &embedding_module) override;
 
     /**
      * @brief Generate dependency embeddings and labels.
      *
      * @param vertex_to_index The map of vertex to index.
-     * @param dependencies The dependencies.
+     * @param ground_truth_dependencies The ground truth dependencies.
      * @return The tuple of the dependency embeddings and labels.
      *        - combined: tensor of shape [num_pairs, embedding_dim]
      *        - arma_labels: row vector of size num_pairs
@@ -38,7 +37,8 @@ public:
     std::tuple<torch::Tensor, arma::Row<size_t>>
     generate_dependency_embeddings_and_labels(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies, EmbeddingModule &embedding_module) override;
+        const Dependencies &ground_truth_dependencies,
+        EmbeddingModule &embedding_module) override;
 
     /**
      * @brief Generate dependency embeddings and vertex pairs.
@@ -46,7 +46,6 @@ public:
      * The pairs in the vertex_pairs correspond to the rows in the combined tensor.
      *
      * @param vertex_to_index The map of vertex to index.
-     * @param dependencies The dependencies.
      * @return The tuple of the dependency embeddings and vertex pairs.
      *        - combined: tensor of shape [num_pairs, embedding_dim]
      *        - vertex_pairs: vector of IP address pairs
@@ -54,7 +53,7 @@ public:
     std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
     generate_dependency_embeddings_and_vertex_pairs(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies, EmbeddingModule &embedding_module) override;
+        EmbeddingModule &embedding_module) override;
 
 private:
     /**
@@ -63,7 +62,7 @@ private:
      * @tparam WithLabels Whether to include labels in the result.
      * @tparam WithVertexPairs Whether to include vertex pairs in the result.
      * @param vertex_to_index The map of vertex to index.
-     * @param dependencies The dependencies.
+     * @param ground_truth_dependencies The dependencies.
      * @return The tuple of the dependency embeddings and labels.
      *        - combined: tensor of shape [num_pairs, embedding_dim]
      *        - arma_labels: row vector of size num_pairs if WithLabels is true, else a
@@ -76,7 +75,7 @@ private:
                std::vector<std::pair<IPAddress, IPAddress>>>
     generate_dependency_embeddings_and_labels_impl(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const Dependencies &dependencies, EmbeddingModule &embedding_module);
+        const Dependencies &ground_truth_dependencies, EmbeddingModule &embedding_module);
 
     /**
      * @brief Create vertex pairs and labels.
