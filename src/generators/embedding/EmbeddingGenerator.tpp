@@ -7,7 +7,7 @@ torch::Tensor EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::generat
     const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
     const Dependencies &dependencies, EmbeddingModule &embedding_module) {
     auto [combined, _] =
-        generate_dependency_embeddings_and_labels<false>(
+        generate_dependency_embeddings_and_labels_impl<false, false>(
             vertex_to_index, dependencies, embedding_module);
     return combined;
 }
@@ -17,14 +17,27 @@ std::tuple<torch::Tensor, arma::Row<size_t>>
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::generate_dependency_embeddings_and_labels(
     const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
     const Dependencies &dependencies, EmbeddingModule &embedding_module) {
-    return generate_dependency_embeddings_and_labels<true>(
-        vertex_to_index, dependencies, embedding_module);
+    auto [combined, arma_labels, _] =
+        generate_dependency_embeddings_and_labels_impl<true, false>(
+            vertex_to_index, dependencies, embedding_module);
+    return {combined, arma_labels};
 }
 
 template <typename Vertex, typename Dependencies, typename EmbeddingModule>
-template <bool CreateLabels>
-std::tuple<torch::Tensor, arma::Row<size_t>>
-EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::generate_dependency_embeddings_and_labels(
+std::tuple<torch::Tensor, arma::Row<std::pair<IPAddress, IPAddress>>>
+EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::generate_dependency_embeddings_and_vertex_pairs(
+    const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
+    const Dependencies &dependencies, EmbeddingModule &embedding_module) {
+    auto [combined, _, arma_vertex_pairs] =
+        generate_dependency_embeddings_and_labels_impl<false, true>(
+            vertex_to_index, dependencies, embedding_module);
+    return {combined, arma_vertex_pairs};
+}
+
+template <typename Vertex, typename Dependencies, typename EmbeddingModule>
+template <bool WithLabels, bool WithVertexPairs>
+std::tuple<torch::Tensor, arma::Row<size_t>, arma::Row<std::pair<IPAddress, IPAddress>>>
+EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::generate_dependency_embeddings_and_labels_impl(
     const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
     const Dependencies &dependencies, EmbeddingModule &embedding_module) {
 
@@ -36,8 +49,8 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::generate_dependency_e
     //   all_v1        => [num_pairs] of int64
     //   all_v2        => [num_pairs] of int64
     //   arma_labels   => [num_pairs] if CreateLabels is true, else [1]
-    auto [all_v1, all_v2, arma_labels] =
-        create_vertex_pairs_and_labels<CreateLabels>(
+    auto [all_v1, all_v2, arma_labels, arma_vertex_pairs] =
+        create_vertex_pairs_and_labels<WithLabels, WithVertexPairs>(
             vertex_to_index, dependencies);
 
     //  2) Single pass forward for all pairs: emb1, emb2 => combined
@@ -50,12 +63,12 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::generate_dependency_e
     auto emb2 = embedding_module->forward(all_v2);
     auto combined = emb1 * emb2; // elementwise product
 
-    return {combined, arma_labels};
+    return {combined, arma_labels, arma_vertex_pairs};
 }
 
 template <typename Vertex, typename Dependencies, typename EmbeddingModule>
-template <bool CreateLabels>
-std::tuple<torch::Tensor, torch::Tensor, arma::Row<size_t>>
+template <bool WithLabels /*= true */, bool WithVertexPairs /*= false */>
+std::tuple<torch::Tensor, torch::Tensor, arma::Row<size_t>, arma::Row<std::pair<IPAddress, IPAddress>>>
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::create_vertex_pairs_and_labels(
     const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
     const Dependencies &ground_truth_dependencies /*= {} */) {
@@ -67,25 +80,30 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::create_vertex_pairs_a
     torch::Tensor all_v1 = torch::empty({static_cast<long>(num_pairs)}, opts);
     torch::Tensor all_v2 = torch::empty({static_cast<long>(num_pairs)}, opts);
 
-    // 2) Fill the Tensors and labels
-    arma::Row<size_t> arma_labels((CreateLabels) ? num_pairs : 1, arma::fill::none);
+    // 2) Fill the Tensors, and optionally the labels and vertex pairs
+    arma::Row<size_t> arma_labels((WithLabels) ? num_pairs : 1, arma::fill::none);
+    arma::Row<std::pair<IPAddress, IPAddress>> arma_vertex_pairs((WithVertexPairs) ? num_pairs : 1, arma::fill::none);
     std::size_t i = 0;
     for (const auto &[ip1, v1] : vertex_to_index) {
         for (const auto &[ip2, v2] : vertex_to_index) {
             all_v1[i] = static_cast<int64_t>(v1);
             all_v2[i] = static_cast<int64_t>(v2);
 
-            if constexpr (CreateLabels) {
+            if constexpr (WithLabels) {
                 if (ground_truth_dependencies.contains({ip1, ip2})) {
                     arma_labels[i] = 1;
                 } else {
                     arma_labels[i] = 0;
                 }
             }
+            
+            if constexpr (WithVertexPairs) {
+                arma_vertex_pairs[i] = {ip1, ip2};
+            }
 
             ++i;
         }
     }
 
-    return {all_v1, all_v2, arma_labels};
+    return {all_v1, all_v2, arma_labels, arma_vertex_pairs};
 }
