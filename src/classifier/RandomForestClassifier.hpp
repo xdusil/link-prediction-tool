@@ -48,6 +48,15 @@ public:
     RandomForestClassifier(std::size_t num_classes, const RandomForestParams &params);
 
     /**
+     * @brief Construct a new Random Forest Classifier object.
+     *
+     * @param rf The Random Forest model.
+     * @param num_classes The number of classes.
+     * @param params The Random Forest parameters that were used to train the model.
+     */
+    RandomForestClassifier(mlpack::RandomForest<> &&rf, std::size_t num_classes, const RandomForestParams &params);
+
+    /**
      * @brief Train the classifier with the given features and labels.
      *
      * @param features The features.

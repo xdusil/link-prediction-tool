@@ -6,6 +6,7 @@
 #include "mlpack/core/cv/metrics/accuracy.hpp"
 #include "mlpack/core/cv/metrics/average_strategy.hpp"
 #include "mlpack/core/cv/metrics/metrics.hpp"
+#include "mlpack/methods/random_forest/random_forest.hpp"
 #include "utils/utils.hpp"
 #include <cstddef>
 #include <ostream>
@@ -34,6 +35,10 @@ RandomForestClassifier<Features, Labels, AverageStrategy>::RandomForestClassifie
     : RandomForestClassifier(num_classes, params.num_trees, params.min_leaf_size,
                              params.min_gain_split, params.max_depth) {}
 
+template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy>
+RandomForestClassifier<Features, Labels, AverageStrategy>::RandomForestClassifier(
+    mlpack::RandomForest<> &&rf, std::size_t num_classes, const RandomForestParams &params)
+    : RandomForestClassifier(num_classes, params), m_rf(std::move(rf)) {}
 
 template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy>
 void RandomForestClassifier<Features, Labels, AverageStrategy>::train(
