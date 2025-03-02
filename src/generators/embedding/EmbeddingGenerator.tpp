@@ -7,7 +7,7 @@ torch::Tensor
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::generate_dependency_embeddings(
     const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
     const Dependencies &dependencies, EmbeddingModule &embedding_module) {
-    auto [combined, _] = generate_dependency_embeddings_and_labels_impl<false, false>(
+    auto [combined, ignore1, ignore2] = generate_dependency_embeddings_and_labels_impl<false, false>(
         vertex_to_index, dependencies, embedding_module);
     return combined;
 }
@@ -25,20 +25,20 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
 }
 
 template <typename Vertex, typename Dependencies, typename EmbeddingModule>
-std::tuple<torch::Tensor, arma::Row<std::pair<IPAddress, IPAddress>>>
+std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     generate_dependency_embeddings_and_vertex_pairs(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
         const Dependencies &dependencies, EmbeddingModule &embedding_module) {
-    auto [combined, _, arma_vertex_pairs] =
+    auto [combined, _, vertex_pairs] =
         generate_dependency_embeddings_and_labels_impl<false, true>(
             vertex_to_index, dependencies, embedding_module);
-    return {combined, arma_vertex_pairs};
+    return {combined, vertex_pairs};
 }
 
 template <typename Vertex, typename Dependencies, typename EmbeddingModule>
 template <bool WithLabels, bool WithVertexPairs>
-std::tuple<torch::Tensor, arma::Row<size_t>, arma::Row<std::pair<IPAddress, IPAddress>>>
+std::tuple<torch::Tensor, arma::Row<size_t>, std::vector<std::pair<IPAddress, IPAddress>>>
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     generate_dependency_embeddings_and_labels_impl(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
@@ -52,7 +52,7 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     //   all_v1        => [num_pairs] of int64
     //   all_v2        => [num_pairs] of int64
     //   arma_labels   => [num_pairs] if CreateLabels is true, else [1]
-    auto [all_v1, all_v2, arma_labels, arma_vertex_pairs] =
+    auto [all_v1, all_v2, arma_labels, vertex_pairs] =
         create_vertex_pairs_and_labels<WithLabels, WithVertexPairs>(vertex_to_index,
                                                                     dependencies);
 
@@ -66,13 +66,13 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::
     auto emb2 = embedding_module->forward(all_v2);
     auto combined = emb1 * emb2; // elementwise product
 
-    return {combined, arma_labels, arma_vertex_pairs};
+    return {combined, arma_labels, vertex_pairs};
 }
 
 template <typename Vertex, typename Dependencies, typename EmbeddingModule>
 template <bool WithLabels /*= true */, bool WithVertexPairs /*= false */>
 std::tuple<torch::Tensor, torch::Tensor, arma::Row<size_t>,
-           arma::Row<std::pair<IPAddress, IPAddress>>>
+              std::vector<std::pair<IPAddress, IPAddress>>>
 EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::create_vertex_pairs_and_labels(
     const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
     const Dependencies &ground_truth_dependencies /*= {} */) {
@@ -86,8 +86,8 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::create_vertex_pairs_a
 
     // 2) Fill the Tensors, and optionally the labels and vertex pairs
     arma::Row<size_t> arma_labels((WithLabels) ? num_pairs : 1, arma::fill::none);
-    arma::Row<std::pair<IPAddress, IPAddress>> arma_vertex_pairs(
-        (WithVertexPairs) ? num_pairs : 1, arma::fill::none);
+    std::vector<std::pair<IPAddress, IPAddress>> vertex_pairs(
+        (WithVertexPairs) ? num_pairs : 1);
     std::size_t i = 0;
     for (const auto &[ip1, v1] : vertex_to_index) {
         for (const auto &[ip2, v2] : vertex_to_index) {
@@ -103,12 +103,12 @@ EmbeddingGenerator<Vertex, Dependencies, EmbeddingModule>::create_vertex_pairs_a
             }
 
             if constexpr (WithVertexPairs) {
-                arma_vertex_pairs[i] = {ip1, ip2};
+                vertex_pairs[i] = {ip1, ip2};
             }
 
             ++i;
         }
     }
 
-    return {all_v1, all_v2, arma_labels, arma_vertex_pairs};
+    return {all_v1, all_v2, arma_labels, vertex_pairs};
 }

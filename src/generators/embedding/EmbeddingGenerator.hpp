@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IEmbeddingGenerator.hpp"
+#include <vector>
 
 /**
  * @brief Class for generating embeddings.
@@ -42,13 +43,15 @@ public:
     /**
      * @brief Generate dependency embeddings and vertex pairs.
      *
+     * The pairs in the vertex_pairs correspond to the rows in the combined tensor.
+     *
      * @param vertex_to_index The map of vertex to index.
      * @param dependencies The dependencies.
      * @return The tuple of the dependency embeddings and vertex pairs.
      *        - combined: tensor of shape [num_pairs, embedding_dim]
-     *        - arma_vertex_pairs: row vector of IP address pairs
+     *        - vertex_pairs: vector of IP address pairs
      */
-    std::tuple<torch::Tensor, arma::Row<std::pair<IPAddress, IPAddress>>>
+    std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
     generate_dependency_embeddings_and_vertex_pairs(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
         const Dependencies &dependencies, EmbeddingModule &embedding_module) override;
@@ -65,12 +68,12 @@ private:
      *        - combined: tensor of shape [num_pairs, embedding_dim]
      *        - arma_labels: row vector of size num_pairs if WithLabels is true, else a
      *                       single value
-     *        - arma_vertex_pairs: row vector of IP address pairs if WithVertexPairs is
-     * true, else a single value
+     *        - vertex_pairs: vector of IP address pairs if WithVertexPairs is true, else
+     *                        a single value
      */
     template <bool WithLabels, bool WithVertexPairs>
     std::tuple<torch::Tensor, arma::Row<size_t>,
-               arma::Row<std::pair<IPAddress, IPAddress>>>
+               std::vector<std::pair<IPAddress, IPAddress>>>
     generate_dependency_embeddings_and_labels_impl(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
         const Dependencies &dependencies, EmbeddingModule &embedding_module);
@@ -91,12 +94,12 @@ private:
      *         - all_v2: tensor of shape [num_pairs] of int64
      *         - arma_labels: row vector of size num_pairs if WithLabels is true, else a
      *                        single value
-     *         - arma_vertex_pairs: row vector of IP address pairs if WithVertexPairs is
-     * true, else a single value
+     *         - vertex_pairs: vector of IP address pairs if WithVertexPairs is true, else
+     *                         a single value
      */
     template <bool WithLabels = true, bool WithVertexPairs = false>
     std::tuple<torch::Tensor, torch::Tensor, arma::Row<size_t>,
-               arma::Row<std::pair<IPAddress, IPAddress>>>
+               std::vector<std::pair<IPAddress, IPAddress>>>
     create_vertex_pairs_and_labels(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
         const Dependencies &ground_truth_dependencies = {});

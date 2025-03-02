@@ -51,13 +51,15 @@ public:
     /**
      * @brief Generate dependency embeddings and vertex pairs.
      *
+     * The pairs in the vertex_pairs correspond to the rows in the combined tensor.
+     *
      * @param vertex_to_index The map of vertex to index.
      * @param dependencies The dependencies.
      * @return The tuple of the dependency embeddings and vertex pairs.
      *        - combined: tensor of shape [num_pairs, embedding_dim]
-     *        - arma_vertex_pairs: row vector of IP address pairs
+     *        - vertex_pairs: vector of IP address pairs
      */
-    virtual std::tuple<torch::Tensor, arma::Row<std::pair<IPAddress, IPAddress>>>
+    virtual std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
     generate_dependency_embeddings_and_vertex_pairs(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
         const Dependencies &dependencies, EmbeddingModule &embedding_module) = 0;
