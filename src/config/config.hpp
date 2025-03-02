@@ -19,4 +19,10 @@ struct Config {
     int EPOCHS = 15;
     int NUM_THREADS = 4;
     double LEARNING_RATE = 0.01;
+
+    // Random Forest parameters
+    int NUM_TREES = 50;
+    int MIN_LEAF_SIZE = 1;
+    double MIN_GAIN_SPLIT = 0.0;
+    int MAX_DEPTH = 30;
 };
