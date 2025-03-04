@@ -4,42 +4,70 @@
 #include <stdexcept>
 
 /**
- * @brief Configuration exception class
+ * @brief Base exception class for the application
  */
-class ConfigurationException : public std::runtime_error {
+class ApplicationException : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
+/**
+ * @brief Configuration exception class
+ */
+class ConfigurationException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};
 
 /**
  * @brief File reader exception class
  */
-class FileReaderException : public std::runtime_error {
-    using std::runtime_error::runtime_error;
+class FileReaderException : public ApplicationException {
+    using ApplicationException::ApplicationException;
 };
 
 /**
  * @brief File writer exception class
  */
-class FileWriterException : public std::runtime_error {
-    using std::runtime_error::runtime_error;
+class FileWriterException : public ApplicationException {
+    using ApplicationException::ApplicationException;
 };
 
 /**
  * @brief File exception class
  */
-class FileException : public std::runtime_error {
-    using std::runtime_error::runtime_error;
+class FileException : public ApplicationException {
+    using ApplicationException::ApplicationException;
 };
 
 /**
  * @brief Random forest exception class
  */
-class RandomForestException : public std::runtime_error {
-    using std::runtime_error::runtime_error;
+class RandomForestException : public ApplicationException {
+    using ApplicationException::ApplicationException;
 };
 
-// Exception will be thrown when parsing cmd arguments go to default branch
-class UnknownOptionException : public std::runtime_error {
-    using std::runtime_error::runtime_error;
+/**
+ * @brief Unknown option exception class
+ *
+ * Exception will be thrown when parsing cmd arguments and unknown option is found
+*/
+class UnknownOptionException : ApplicationException {
+    using ApplicationException::ApplicationException;
+};
+
+/**
+ * @brief Missing argument exception class
+ *
+ * Exception will be thrown when parsing cmd arguments and missing argument is found
+*/
+class MissingArgumentException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};
+
+/**
+ * @brief CLI validation exception class
+ *
+ * Exception will be thrown when error occurs during CLI validation
+*/
+class CliValidationException : public ApplicationException {
+    using ApplicationException::ApplicationException;
 };
