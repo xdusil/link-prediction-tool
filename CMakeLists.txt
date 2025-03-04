@@ -20,6 +20,17 @@ find_package(Boost 1.86 REQUIRED)
 find_package(Torch 2.5 REQUIRED)
 find_package(Armadillo 14.2 REQUIRED)
 
+# Find OpenMP
+find_package(OpenMP REQUIRED)
+if(OpenMP_FOUND)
+    # Add OpenMP flags to compiler options
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+    
+    # Add a definition to tell the code to use OpenMP
+    add_definitions(-DMLPACK_USE_OPENMP)
+endif()
+
 # Find paths to include directories
 find_path(MLPACK_INCLUDE_DIR_FOUND
     NAMES mlpack/core.hpp
