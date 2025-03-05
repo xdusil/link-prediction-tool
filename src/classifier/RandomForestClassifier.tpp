@@ -9,6 +9,7 @@
 #include "mlpack/methods/random_forest/random_forest.hpp"
 #include "utils/utils.hpp"
 #include <cstddef>
+#include <exception>
 #include <ostream>
 #include <tuple>
 
@@ -86,20 +87,69 @@ statistics::Metrics RandomForestClassifier<Features, Labels, AverageStrategy>::e
 template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy>
 void RandomForestClassifier<Features, Labels, AverageStrategy>::save(
     const std::string &path) const {
-    bool res = mlpack::data::Save(path, "rf_model", m_rf);
-    if (!res) {
-        throw RandomForestException("Failed to save the Random Forest model to " + path);
+    try {
+        // Open a single output archive
+        std::ofstream ofs(path, std::ios::binary);
+        if (!ofs.is_open()) {
+            throw RandomForestException("Could not open file " + path + " for writing");
+        }
+        
+        cereal::BinaryOutputArchive archive(ofs);
+        
+        // Save all data to the same archive
+        archive(
+            CEREAL_NVP(m_rf),
+            CEREAL_NVP(m_scaler),
+            CEREAL_NVP(m_num_classes),
+            CEREAL_NVP(m_num_trees),
+            CEREAL_NVP(m_min_leaf_size),
+            CEREAL_NVP(m_min_gain_split),
+            CEREAL_NVP(m_max_depth)
+        );
+    } catch (const std::exception &e) {
+        std::throw_with_nested(
+            RandomForestException("Failed to save the Random Forest model to " + path));
     }
+
+    std::cout << "Classifier saved to " << path << std::endl;
 }
 
 template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy>
 void RandomForestClassifier<Features, Labels, AverageStrategy>::load(
     const std::string &path) {
-    bool res = mlpack::data::Load(path, "rf_model", m_rf);
-    if (!res) {
-        throw RandomForestException("Failed to load the Random Forest model from " +
-                                    path);
+    try {
+        // Open a single input archive
+        std::ifstream ifs(path, std::ios::binary);
+        if (!ifs.is_open()) {
+            throw RandomForestException("Could not open file " + path + " for reading");
+        }
+        
+        cereal::BinaryInputArchive archive(ifs);
+        
+        // Load all data from the same archive
+        archive(
+            CEREAL_NVP(m_rf),
+            CEREAL_NVP(m_scaler),
+            CEREAL_NVP(m_num_classes),
+            CEREAL_NVP(m_num_trees),
+            CEREAL_NVP(m_min_leaf_size),
+            CEREAL_NVP(m_min_gain_split),
+            CEREAL_NVP(m_max_depth)
+        );
+    } catch (const std::exception &e) {
+        std::throw_with_nested(
+            RandomForestException("Failed to load the Random Forest model from " + path));
     }
+
+    if (AverageStrategy == mlpack::AverageStrategy::Binary && m_num_classes != 2) {
+        throw RandomForestException(
+            "Binary average strategy can only be used with 2 classes.");
+    }
+
+    std::cout << "Classifier loaded from " << path << "\n"
+              << "with " << m_num_trees << " trees, min leaf size " << m_min_leaf_size
+              << ", min gain split " << m_min_gain_split << ", and max depth " << m_max_depth
+              << std::endl;
 }
 
 template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy>
