@@ -1,5 +1,7 @@
 #pragma once
 
+namespace config {
+
 /**
  * @brief Configuration parameters
  */
@@ -26,3 +28,4 @@ struct Config {
     double MIN_GAIN_SPLIT = 0.0;
     int MAX_DEPTH = 30;
 };
+} // namespace config

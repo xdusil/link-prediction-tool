@@ -1,39 +1,22 @@
-#include "ConfigLoader.hpp"
+#include "config_loader.hpp"
 #include "../exceptions/exceptions.hpp"
-#include "../json/JsonHelper.hpp"
 #include "../io/FileReader.hpp"
+#include "../json/JsonHelper.hpp"
 #include "boost/json/error.hpp"
 #include <exception>
 #include <fstream>
 #include <sstream>
 
-Config ConfigLoader::load(const std::string& filename) {
-    FileReader reader(filename);
+namespace config {
 
-    std::string json_content;
+namespace {
 
-    // Read the entire file
-    try {
-        reader.read_all(json_content);
-    } catch (const std::exception& e) {
-        std::throw_with_nested(ConfigurationException("Could not read config file"));
-    }
-    
-    // Parse JSON
-    Config config = parse_json(json_content);
-    
-    // Validate
-    validate(config);
-    
-    return config;
-}
-
-Config ConfigLoader::parse_json(const std::string& json_content) {
+Config parse_json(const std::string &json_content) {
     Config config;
-    
+
     try {
         json::object json_obj = JsonHelper::parse_json(json_content);
-        
+
         if (auto val = JsonHelper::extract_value<int64_t>(json_obj, "COUNT_EXTERNAL"))
             config.COUNT_EXTERNAL = static_cast<int>(*val);
         if (auto val = JsonHelper::extract_value<int64_t>(json_obj, "COUNT_INTERNAL"))
@@ -56,7 +39,8 @@ Config ConfigLoader::parse_json(const std::string& json_content) {
             config.CONTEXT_SIZE = static_cast<int>(*val);
         if (auto val = JsonHelper::extract_value<int64_t>(json_obj, "WALKS_PER_NODE"))
             config.WALKS_PER_NODE = static_cast<int>(*val);
-        if (auto val = JsonHelper::extract_value<int64_t>(json_obj, "NUM_NEGATIVE_SAMPLES"))
+        if (auto val =
+                JsonHelper::extract_value<int64_t>(json_obj, "NUM_NEGATIVE_SAMPLES"))
             config.NUM_NEGATIVE_SAMPLES = static_cast<int>(*val);
         if (auto val = JsonHelper::extract_value<int64_t>(json_obj, "EPOCHS"))
             config.EPOCHS = static_cast<int>(*val);
@@ -64,15 +48,24 @@ Config ConfigLoader::parse_json(const std::string& json_content) {
             config.NUM_THREADS = static_cast<int>(*val);
         if (auto val = JsonHelper::extract_value<double>(json_obj, "LEARNING_RATE"))
             config.LEARNING_RATE = *val;
-            
-    } catch (const std::exception& e) {
-        throw ConfigurationException("Error parsing config file: " + std::string(e.what()));
+        if (auto val = JsonHelper::extract_value<int64_t>(json_obj, "NUM_TREES"))
+            config.NUM_TREES = static_cast<int>(*val);
+        if (auto val = JsonHelper::extract_value<int64_t>(json_obj, "MIN_LEAF_SIZE"))
+            config.MIN_LEAF_SIZE = static_cast<int>(*val);
+        if (auto val = JsonHelper::extract_value<double>(json_obj, "MIN_GAIN_SPLIT"))
+            config.MIN_GAIN_SPLIT = *val;
+        if (auto val = JsonHelper::extract_value<int64_t>(json_obj, "MAX_DEPTH"))
+            config.MAX_DEPTH = static_cast<int>(*val);
+
+    } catch (const std::exception &e) {
+        throw ConfigurationException("Error parsing config file: " +
+                                     std::string(e.what()));
     }
-    
+
     return config;
 }
 
-void ConfigLoader::validate(const Config& config) {
+void validate(const Config &config) {
     if (config.COUNT_EXTERNAL <= 0)
         throw ConfigurationException("COUNT_EXTERNAL must be positive");
     if (config.COUNT_INTERNAL <= 0)
@@ -103,4 +96,35 @@ void ConfigLoader::validate(const Config& config) {
         throw ConfigurationException("NUM_THREADS must be positive");
     if (config.LEARNING_RATE <= 0 || config.LEARNING_RATE > 1)
         throw ConfigurationException("LEARNING_RATE must be between 0 and 1");
+    if (config.NUM_TREES <= 0)
+        throw ConfigurationException("NUM_TREES must be positive");
+    if (config.MIN_LEAF_SIZE <= 0)
+        throw ConfigurationException("MIN_LEAF_SIZE must be positive");
+    if (config.MIN_GAIN_SPLIT < 0)
+        throw ConfigurationException("MIN_GAIN_SPLIT must be non-negative");
+    if (config.MAX_DEPTH < 0)
+        throw ConfigurationException("MAX_DEPTH must be non-negative");
 }
+} // anonymous namespace
+
+Config load(const std::string &filename) {
+    FileReader reader(filename);
+
+    std::string json_content;
+
+    // Read the entire file
+    try {
+        reader.read_all(json_content);
+    } catch (const std::exception &e) {
+        std::throw_with_nested(ConfigurationException("Could not read config file"));
+    }
+
+    // Parse JSON
+    Config config = parse_json(json_content);
+
+    // Validate
+    validate(config);
+
+    return config;
+}
+} // namespace config
