@@ -3,6 +3,7 @@
 #include "mlpack/core/cv/metrics/average_strategy.hpp"
 #include "statistics/metrics.hpp"
 #include <mlpack/core.hpp>
+#include <mlpack/core/data/scaler_methods/min_max_scaler.hpp>
 #include <mlpack/methods/random_forest/random_forest.hpp>
 
 /**
@@ -20,9 +21,12 @@ struct RandomForestParams {
  *
  * @tparam Features The type of the features.
  * @tparam Labels The type of the labels.
+ * @tparam AvgerageStrategy The average strategy for the metrics.
+ * @tparam Scaler The type of the scaler.
  */
 template <typename Features, typename Labels,
-          mlpack::AverageStrategy AvgerageStrategy = mlpack::AverageStrategy::Binary>
+          mlpack::AverageStrategy AvgerageStrategy = mlpack::AverageStrategy::Binary,
+          typename Scaler = mlpack::data::MinMaxScaler>
 class RandomForestClassifier
     : public IRandomForestClassifier<Features, Labels, statistics::Metrics> {
 public:
@@ -34,18 +38,21 @@ public:
      * @param min_leaf_size The minimum number of points in each tree's leaf nodes.
      * @param min_gain_split The minimum gain for splitting a decision tree node.
      * @param max_depth The maximum depth for the tree.
+     * @param use_scaling Whether to use scaling for the features.
      */
     RandomForestClassifier(std::size_t num_classes = 2, std::size_t num_trees = 10,
                            std::size_t min_leaf_size = 1, double min_gain_split = 0.0,
-                           std::size_t max_depth = 0);
+                           std::size_t max_depth = 0, bool use_scaling = true);
 
     /**
      * @brief Construct a new Random Forest Classifier object.
      *
      * @param num_classes The number of classes.
      * @param params The Random Forest parameters.
+     * @param use_scaling Whether to use scaling for the features.
      */
-    RandomForestClassifier(std::size_t num_classes, const RandomForestParams &params);
+    RandomForestClassifier(std::size_t num_classes, const RandomForestParams &params,
+                           bool use_scaling = true);
 
     /**
      * @brief Construct a new Random Forest Classifier object.
@@ -53,9 +60,10 @@ public:
      * @param rf The Random Forest model.
      * @param num_classes The number of classes.
      * @param params The Random Forest parameters that were used to train the model.
+     * @param use_scaling Whether to use scaling for the features.
      */
     RandomForestClassifier(mlpack::RandomForest<> &&rf, std::size_t num_classes,
-                           const RandomForestParams &params);
+                           const RandomForestParams &params, bool use_scaling = true);
 
     /**
      * @brief Train the classifier with the given features and labels.
@@ -107,6 +115,7 @@ public:
      * @param min_gain_split The vector of the minimum gain split to search.
      * @param max_depth The vector of the maximum depth to search.
      * @param validation_size The size of the validation set.
+     * @param use_scaling Whether to use scaling for the features.
      * @return The best Random Forest parameters and the best metric score.
      */
     template <typename Metric>
@@ -116,10 +125,12 @@ public:
                 const std::vector<std::size_t> &min_leaf_size,
                 const std::vector<double> &min_gain_split,
                 const std::vector<std::size_t> &max_depth,
-                const double validation_size = 0.3);
+                const double validation_size = 0.3, bool use_scaling = true);
 
 private:
     mlpack::RandomForest<> m_rf; // The Random Forest model
+    mutable Scaler m_scaler;     // Configurable scaler
+    bool m_use_scaling;          // Whether to use scaling for the features
     std::size_t m_num_classes;   // The number of classes
     std::size_t m_num_trees;     // The number of trees in the forest
     std::size_t m_min_leaf_size; // The minimum number of points in each tree's leaf nodes
