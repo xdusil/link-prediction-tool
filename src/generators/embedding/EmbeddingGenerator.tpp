@@ -99,7 +99,8 @@ EmbeddingGenerator<Vertex, EmbeddingModule, GroundTruthDependencies>::
             all_v2[i] = static_cast<int64_t>(v2);
 
             if constexpr (WithLabels) {
-                if (ground_truth_dependencies.contains({ip1, ip2})) {
+                if (ground_truth_dependencies.contains({ip1, ip2}) ||
+                    ground_truth_dependencies.contains({ip2, ip1})) {
                     arma_labels[i] = 1;
                 } else {
                     arma_labels[i] = 0;
