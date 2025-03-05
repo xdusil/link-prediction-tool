@@ -95,6 +95,8 @@ const DependencySet &DependencyAnalyzer::calculate_dependencies(
     if (output_filename.has_value()) {
         FileWriter writer(output_filename.value());
         writer.write(m_oss.str());
+        std::cout << "Ground truth dependencies written to " << output_filename.value()
+                  << std::endl;
     }
 
     print_dependency_stats(direct_dependencies, td2_dependencies, rr2_dependencies,
@@ -143,6 +145,8 @@ const DependencySet &DependencyAnalyzer::load_dependencies(const std::string &fi
         m_all_dependencies.insert({src_ip, dst_ip});
     }
 
+    std::cout << "Loaded " << m_all_dependencies.size() << " dependencies from "
+              << filename << std::endl;
     return m_all_dependencies;
 }
 
