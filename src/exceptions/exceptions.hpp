@@ -49,7 +49,7 @@ class RandomForestException : public ApplicationException {
  * @brief Unknown option exception class
  *
  * Exception will be thrown when parsing cmd arguments and unknown option is found
-*/
+ */
 class UnknownOptionException : ApplicationException {
     using ApplicationException::ApplicationException;
 };
@@ -58,7 +58,7 @@ class UnknownOptionException : ApplicationException {
  * @brief Missing argument exception class
  *
  * Exception will be thrown when parsing cmd arguments and missing argument is found
-*/
+ */
 class MissingArgumentException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
@@ -67,7 +67,16 @@ class MissingArgumentException : public ApplicationException {
  * @brief CLI validation exception class
  *
  * Exception will be thrown when error occurs during CLI validation
-*/
+ */
 class CliValidationException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};
+
+/**
+ * @brief Component not initialized exception class
+ *
+ * Exception will be thrown when a component is not initialized
+ */
+class ComponentNotInitializedException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
