@@ -1,6 +1,8 @@
 
 #include "LinkPredictionApp.hpp"
 #include "Types.hpp"
+#include "classifier/RandomForestClassifier.hpp"
+#include "config/config.hpp"
 #include "exceptions/exceptions.hpp"
 #include "generators/embedding/EmbeddingGenerator.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
@@ -104,7 +106,6 @@ void LinkPredictionApp::run_training_mode(
 
     // Save the trained classifier
     m_classifier->save(classifier_path);
-    std::cout << "Classifier saved to " << classifier_path << std::endl;
 }
 
 void LinkPredictionApp::run_prediction_mode(
@@ -177,6 +178,58 @@ void LinkPredictionApp::generate_predictions(const std::string &output_path) {
     std::cout << "Predictions written to " << output_path << "\n";
     std::cout << "Positive predictions: " << positive_count << "\n";
     std::cout << "Total predictions: " << predictions.size() << std::endl;
+}
+
+// Evaluate a classifier using a train/test split.
+template <typename Features, typename Labels>
+void evaluate_model_train_test_split(const RandomForestParams &params,
+                                     const Features &features, const Labels &labels,
+                                     double test_size = 0.25, bool use_scaling = true) {
+    arma::mat features_d = arma::conv_to<arma::mat>::from(features);
+
+    size_t num_classes = 2;
+    RandomForestClassifier<arma::mat, Labels> rf(num_classes, params, use_scaling);
+
+    // Containers for the split data.
+    arma::mat train_features, test_features;
+    Labels train_labels, test_labels;
+
+    // Split the data. (test_size indicates the fraction of columns for testing.)
+    // mlpack::data::StratifiedSplit(features_d, labels, trainFeatures, testFeatures,
+    //                               trainLabels, testLabels, test_size);
+
+    mlpack::data::Split(features_d, labels, train_features, test_features, train_labels,
+                        test_labels, test_size);
+
+    std::cout << "Train test split evaluation results with test size = " << test_size
+              << ":\n";
+
+    std::cout << "Train labels: \n";
+    std::cout << "---> Positive labels: " << arma::accu(train_labels) << std::endl;
+    std::cout << "---> Negative labels: "
+              << train_labels.size() - arma::accu(train_labels) << std::endl;
+
+    std::cout << "\n\n";
+    std::cout << "Test labels: \n";
+    std::cout << "---> Positive labels: " << arma::accu(test_labels) << std::endl;
+    std::cout << "---> Negative labels: " << test_labels.size() - arma::accu(test_labels)
+              << std::endl;
+    std::cout << "\n\n";
+
+    rf.train(train_features, train_labels);
+    Labels y_predicted = rf.predict(test_features);
+
+    std::cout << "Predicted labels: \n";
+    std::cout << "---> Positive labels: " << arma::accu(y_predicted) << std::endl;
+    std::cout << "---> Negative labels: " << y_predicted.size() - arma::accu(y_predicted)
+              << std::endl;
+    std::cout << "\n\n";
+
+    auto metrics = rf.evaluate(test_features, test_labels);
+    std::cout << "Accuracy: " << metrics.accuracy << std::endl;
+    std::cout << "Precision: " << metrics.precision << std::endl;
+    std::cout << "Recall: " << metrics.recall << std::endl;
+    std::cout << "F1 Score: " << metrics.f1_score << std::endl;
 }
 
 void LinkPredictionApp::process_data(const std::string &data_path) {
@@ -306,6 +359,18 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     std::cout << "  Precision: " << metrics.precision << std::endl;
     std::cout << "  Recall: " << metrics.recall << std::endl;
     std::cout << "  F1 Score: " << metrics.f1_score << std::endl;
+
+    RandomForestParams params;
+    params.num_trees = m_config.NUM_TREES;
+    params.min_leaf_size = m_config.MIN_LEAF_SIZE;
+    params.min_gain_split = m_config.MIN_GAIN_SPLIT;
+    params.max_depth = m_config.MAX_DEPTH;
+
+    ///////////
+    evaluate_model_train_test_split(params, features, labels, 0.25);
+    evaluate_model_train_test_split(params, features, labels, 0.5);
+    evaluate_model_train_test_split(params, features, labels, 0.75);
+    ///////////
 }
 
 RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
