@@ -3,8 +3,8 @@
 #include "mlpack/core/cv/metrics/average_strategy.hpp"
 #include "statistics/metrics.hpp"
 #include <mlpack/core.hpp>
-#include <mlpack/core/data/scaler_methods/min_max_scaler.hpp>
 #include <mlpack/methods/random_forest/random_forest.hpp>
+#include <mlpack/core/data/scaler_methods/min_max_scaler.hpp>
 
 /**
  * @brief The parameters for the Random Forest classifier.
@@ -28,7 +28,7 @@ template <typename Features, typename Labels,
           mlpack::AverageStrategy AvgerageStrategy = mlpack::AverageStrategy::Binary,
           typename Scaler = mlpack::data::MinMaxScaler>
 class RandomForestClassifier
-    : public IRandomForestClassifier<Features, Labels, statistics::Metrics> {
+    : public IRandomForestClassifier<Features, Labels, statistics::Metrics, arma::mat> {
 public:
     /**
      * @brief Construct a new Random Forest Classifier object.
@@ -51,8 +51,7 @@ public:
      * @param params The Random Forest parameters.
      * @param use_scaling Whether to use scaling for the features.
      */
-    RandomForestClassifier(std::size_t num_classes, const RandomForestParams &params,
-                           bool use_scaling = true);
+    RandomForestClassifier(std::size_t num_classes, const RandomForestParams &params, bool use_scaling = true);
 
     /**
      * @brief Construct a new Random Forest Classifier object.
@@ -80,6 +79,15 @@ public:
      * @return The predicted labels.
      */
     Labels predict(const Features &features) const override;
+
+    /**
+     * @brief Predict probabilities for each class for the given features.
+     *
+     * @param features The features.
+     * @return A tuple containing the predicted labels and a matrix of probabilities.
+    */
+    std::tuple<Labels, arma::mat> predict_proba(
+        const Features &features) const override;
 
     /**
      * @brief Evaluate the classifier using the given features and labels.

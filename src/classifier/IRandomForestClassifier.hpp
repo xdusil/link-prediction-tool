@@ -7,8 +7,10 @@
  *
  * @tparam Features The type of the features.
  * @tparam Labels The type of the labels.
+ * @tparam Metrics The type of evaluation metrics.
+ * @tparam ProbMatrix The type of probability matrix returned by predict_proba.
  */
-template <typename Features, typename Labels, typename Metrics>
+template <typename Features, typename Labels, typename Metrics, typename ProbMatrix>
 class IRandomForestClassifier {
 public:
     virtual ~IRandomForestClassifier() = default;
@@ -28,6 +30,15 @@ public:
      * @return The predicted labels.
      */
     virtual Labels predict(const Features &features) const = 0;
+
+    /**
+     * @brief Predict probabilities for each class for the given features.
+     *
+     * @param features The features.
+     * @return A tuple containing the predicted labels and a matrix of probabilities.
+     */
+    virtual std::tuple<Labels, ProbMatrix>
+    predict_proba(const Features &features) const = 0;
 
     /**
      * @brief Evaluate the classifier using the given features and labels.
