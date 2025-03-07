@@ -5,6 +5,7 @@
 #include <armadillo>
 #include <torch/torch.h>
 #include <tuple>
+#include <vector>
 
 /**
  * @brief Interface for generating embeddings.
@@ -57,5 +58,22 @@ public:
     virtual std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
     generate_dependency_embeddings_and_vertex_pairs(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
+        EmbeddingModule &embedding_module) = 0;
+    
+    /**
+     * @brief Generate dependency embeddings and labels.
+     *
+     * @param vertex_to_index The map of vertex to index.
+     * @param ground_truth The ground truth dependencies.
+     * @param embedding_module The embedding module.
+     * @return The tuple of the dependency embeddings and labels.
+     *        - combined: tensor of shape [num_pairs, embedding_dim]
+     *        - arma_labels: row vector of size num_pairs
+     *        - vertex_pairs: vector of IP address pairs
+     */
+    virtual std::tuple<torch::Tensor, arma::Row<size_t>, std::vector<std::pair<IPAddress, IPAddress>>>
+    generate_dependency_embeddings_labels_and_pairs(
+        const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
+        const GroundTruthDependencies &ground_truth_dependencies,
         EmbeddingModule &embedding_module) = 0;
 };

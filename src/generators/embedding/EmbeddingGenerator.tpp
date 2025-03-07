@@ -39,6 +39,17 @@ EmbeddingGenerator<Vertex, EmbeddingModule, GroundTruthDependencies>::
 }
 
 template <typename Vertex, typename EmbeddingModule, typename GroundTruthDependencies>
+std::tuple<torch::Tensor, arma::Row<size_t>, std::vector<std::pair<IPAddress, IPAddress>>>
+EmbeddingGenerator<Vertex, EmbeddingModule, GroundTruthDependencies>::
+    generate_dependency_embeddings_labels_and_pairs(
+        const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
+        const GroundTruthDependencies &ground_truth_dependencies,
+        EmbeddingModule &embedding_module) {
+    return generate_dependency_embeddings_and_labels_impl<true, true>(
+        vertex_to_index, ground_truth_dependencies, embedding_module);
+}
+
+template <typename Vertex, typename EmbeddingModule, typename GroundTruthDependencies>
 template <bool WithLabels, bool WithVertexPairs>
 std::tuple<torch::Tensor, arma::Row<size_t>, std::vector<std::pair<IPAddress, IPAddress>>>
 EmbeddingGenerator<Vertex, EmbeddingModule, GroundTruthDependencies>::
