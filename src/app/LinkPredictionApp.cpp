@@ -137,7 +137,8 @@ void LinkPredictionApp::run_prediction_mode(
     std::cout << "Prediction completed successfully." << std::endl;
 }
 
-void LinkPredictionApp::generate_predictions(const std::string &output_path, const std::optional<std::string> &ground_truth_path) {
+void LinkPredictionApp::generate_predictions(
+    const std::string &output_path, const std::optional<std::string> &ground_truth_path) {
     std::cout << "Generating predictions..." << std::endl;
 
     if (!m_classifier)
@@ -149,14 +150,32 @@ void LinkPredictionApp::generate_predictions(const std::string &output_path, con
     if (!m_dependency_analyzer)
         throw ComponentNotInitializedException("Dependency analyzer not initialized.");
 
-    EmbeddingGenerator<
-        Vertex, decltype(m_model->get_embeddings()),
-        decltype(m_dependency_analyzer->get_dependencies())>
+    EmbeddingGenerator<Vertex, decltype(m_model->get_embeddings()),
+                      decltype(m_dependency_analyzer->get_dependencies())>
         embedding_generator{};
 
-    auto [combined, vertex_pairs] =
-        embedding_generator.generate_dependency_embeddings_and_vertex_pairs(
-            m_graph_manager->get_ip_to_vertex(), m_model->get_embeddings());
+    torch::Tensor combined;
+    std::vector<std::pair<std::string, std::string>> vertex_pairs;
+    std::optional<arma::Row<size_t>> labels = std::nullopt;
+
+    if (ground_truth_path) {
+        m_dependency_analyzer->load_dependencies(*ground_truth_path);
+        auto [combined_val, labels_val, vertex_pairs_val] = embedding_generator.generate_dependency_embeddings_labels_and_pairs(
+            m_graph_manager->get_ip_to_vertex(),
+            m_dependency_analyzer->get_dependencies(), 
+            m_model->get_embeddings());
+            
+        combined = std::move(combined_val);
+        labels = std::move(labels_val);
+        vertex_pairs = std::move(vertex_pairs_val);
+    } else {
+        auto [combined_val, vertex_pairs_val] = embedding_generator.generate_dependency_embeddings_and_vertex_pairs(
+            m_graph_manager->get_ip_to_vertex(), 
+            m_model->get_embeddings());
+            
+        combined = std::move(combined_val);
+        vertex_pairs = std::move(vertex_pairs_val);
+    }
 
     // Convert to Armadillo matrix - no copy mem => ref needs to live
     auto [arma_features, ref] =
@@ -176,54 +195,25 @@ void LinkPredictionApp::generate_predictions(const std::string &output_path, con
 
         if (prediction == 1) {
             ++positive_count;
+            writer.write_line(src_ip + "," + dst_ip);
         }
-        writer.write_line(src_ip + "," + dst_ip);
     }
 
     std::cout << "Predictions written to " << output_path << "\n";
     std::cout << "Positive predictions: " << positive_count << "\n";
     std::cout << "Total predictions: " << predictions.size() << std::endl;
 
-    if (ground_truth_path) {
-        evaluate_predictions(predictions, vertex_pairs, *ground_truth_path);
+    // Evaluate against ground truth if available
+    if (labels.has_value()) {
+        auto metrics = m_classifier->evaluate(arma_features, *labels);
+        std::cout << "Classifier evaluation metrics:\n"
+                << "  Accuracy: " << metrics.accuracy << "\n"
+                << "  Precision: " << metrics.precision << "\n"
+                << "  Recall: " << metrics.recall << "\n"
+                << "  F1 Score: " << metrics.f1_score << std::endl;
     }
-    evaluate_predictions(predictions, vertex_pairs, "ground_truth.txt");
 }
 
-
-void LinkPredictionApp::evaluate_predictions(const auto &predictions, const auto &vertex_pairs, const std::string &ground_truth_path) {
-    std::cout << "Evaluating predictions..." << std::endl;
-
-    if (!m_dependency_analyzer)
-        throw ComponentNotInitializedException("Dependency analyzer not initialized.");
-    if (!m_classifier)
-        throw ComponentNotInitializedException("Classifier not initialized.");
-    if (vertex_pairs.size() != predictions.size())
-        throw std::runtime_error("Mismatch between predictions and vertex pairs.");
-
-    m_dependency_analyzer->load_dependencies(ground_truth_path);
-    const auto &all_deps = m_dependency_analyzer->get_dependencies();
-
-    arma::Row<size_t> arma_labels(predictions.size());
-    for (size_t i = 0; i < predictions.size(); ++i) {
-        const auto &pair = vertex_pairs[i];
-        const auto &src_ip = pair.first;
-        const auto &dst_ip = pair.second;
-        arma_labels[i] =
-            all_deps.contains({src_ip, dst_ip}) || all_deps.contains({dst_ip, src_ip})
-                ? 1
-                : 0;
-    }
-
-    //auto metrics = m_classifier->evaluate(arma_features, arma_labels);
-    statistics::Metrics metrics{};
-    std::cout << "Classifier evaluation metrics:\n"
-              << "  Accuracy: " << metrics.accuracy << "\n"
-              << "  Precision: " << metrics.precision << "\n"
-              << "  Recall: " << metrics.recall << "\n"
-              << "  F1 Score: " << metrics.f1_score << std::endl;
-
-}
 // Evaluate a classifier using a train/test split.
 template <typename Features, typename Labels>
 void evaluate_model_train_test_split(const RandomForestParams &params,

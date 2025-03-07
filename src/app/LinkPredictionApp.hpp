@@ -151,9 +151,6 @@ private:
     void generate_predictions(const std::string &output_path,
                               const std::optional<std::string> &ground_truth_path);
 
-    void evaluate_predictions(const auto &predictions, const auto &vertex_pairs,
-                              const std::string &ground_truth_path);
-
     // Configuration
     config::Config m_config;
 
