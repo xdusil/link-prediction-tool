@@ -73,14 +73,16 @@ public:
      * @brief Run the prediction mode
      *
      * @param classifier_path Path to the classifier model file
-     * @param data_path Path to the input data file
      * @param predictions_output_path Path to save the predicted dependencies
+     * @param data_path Path to the input data file
+     * @param ground_truth_path Path to the ground truth file for evaluation (optional)
      * @param blocked_ips_path Path to the blocked IPs file (optional)
      * @param internal_ips_path Path to the internal IPs file (optional)
      */
     void run_prediction_mode(
-        const std::string &classifier_path, const std::string &data_path,
-        const std::string &predictions_output_path,
+        const std::string &classifier_path, const std::string &predictions_output_path,
+        const std::string &data_path,
+        const std::optional<std::string> &ground_truth_path = std::nullopt,
         const std::optional<std::string> &blocked_ips_path = std::nullopt,
         const std::optional<std::string> &internal_ips_path = std::nullopt);
 
@@ -143,8 +145,14 @@ private:
      * This method generates predictions using the trained classifier.
      *
      * @param output_path Path to save the predicted dependencies
+     * @param ground_truth_path Path to the ground truth file for evaluation (optional)
      */
-    void generate_predictions(const std::string &output_path);
+
+    void generate_predictions(const std::string &output_path,
+                              const std::optional<std::string> &ground_truth_path);
+
+    void evaluate_predictions(const auto &predictions, const auto &vertex_pairs,
+                              const std::string &ground_truth_path);
 
     // Configuration
     config::Config m_config;

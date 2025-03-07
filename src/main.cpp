@@ -24,12 +24,12 @@ static void print_help() {
         << "  -o, --predictions-out PATH  Path to save predicted dependencies\n"
         << "\nOptional options for training mode:\n"
         << "  -s, --grid-search           Use grid search for hyperparameter tuning\n"
-        << "  -g, --ground-truth-in PATH  Path to existing ground truth file\n"
         << "  -G, --ground-truth-out PATH Path to save ground truth results\n"
         << "\nOptional options for both modes:\n"
         << "  -f, --config PATH           Path to configuration file\n"
         << "  -b, --blocked-ips PATH      Path to blocked IPs file\n"
         << "  -i, --internal-ips PATH     Path to internal IPs file\n"
+        << "  -g, --ground-truth-in PATH  Path to existing ground truth file\n"
         << "\nHelp:\n"
         << "  -h, --help                  Display this help message\n";
 }
@@ -107,9 +107,9 @@ void check_prediction_mode(const cmd_args &args) {
         throw CliValidationException("Missing required argument --predictions-out");
     }
 
-    if (args.ground_truth_output_path || args.ground_truth_input_path) {
+    if (args.ground_truth_output_path) {
         throw CliValidationException(
-            "Ground truth options are not available in prediction mode");
+            "Cannot specify --ground-truth-out in prediction mode");
     }
 }
 
@@ -209,9 +209,9 @@ int main(int argc, char *argv[]) {
         }
 
         if (args.prediction_mode) {
-            app.run_prediction_mode(*args.classifier_path, *args.data_path,
-                                    *args.predictions_output_path, args.blocked_ips_path,
-                                    args.internal_ips_path);
+            app.run_prediction_mode(*args.classifier_path, *args.predictions_output_path,
+                                    *args.data_path, args.ground_truth_input_path,
+                                    args.blocked_ips_path, args.internal_ips_path);
         }
 
     } catch (const std::exception &e) {

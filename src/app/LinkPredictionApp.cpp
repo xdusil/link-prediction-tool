@@ -8,6 +8,8 @@
 #include "graph/network/NetworkGraphDefinition.hpp"
 #include "io/FileReader.hpp"
 #include "io/FileWriter.hpp"
+#include "mlpack/core/data/scaler_methods/min_max_scaler.hpp"
+#include "statistics/metrics.hpp"
 #include "utils/ip/AllowedIPChecker.hpp"
 #include "utils/ip/BoostIPHandler.hpp"
 #include "utils/utils.hpp"
@@ -45,6 +47,8 @@ void LinkPredictionApp::common_training_or_prediction(
     m_allowed_ip_checker =
         std::make_unique<AllowedIPChecker>(std::nullopt, blocked_ips_path);
     m_internal_ip_checker = std::make_unique<BoostIPHandler>(internal_ips_path);
+    m_dependency_analyzer = std::make_unique<ground_truth::DependencyAnalyzer>(
+        m_config.N_OCCURRENCES, m_config.EPSILON, *m_allowed_ip_checker);
 
     // Process data and build graph
     process_data(data_path);
@@ -68,11 +72,10 @@ void LinkPredictionApp::run_training_mode(
     common_training_or_prediction(classifier_path, data_path, blocked_ips_path,
                                   internal_ips_path);
 
-    if (!m_allowed_ip_checker)
-        throw ComponentNotInitializedException("Allowed IP checker not initialized.");
-
-    m_dependency_analyzer = std::make_unique<ground_truth::DependencyAnalyzer>(
-        m_config.N_OCCURRENCES, m_config.EPSILON, *m_allowed_ip_checker);
+    if (!m_dependency_analyzer)
+        throw ComponentNotInitializedException("Dependency analyzer not initialized.");
+    if (!m_graph_manager)
+        throw ComponentNotInitializedException("Graph manager not initialized.");
 
     if (ground_truth_input_path) {
         // Load ground truth
@@ -104,13 +107,16 @@ void LinkPredictionApp::run_training_mode(
     // Train the classifier
     train_classifier(arma_features, arma_labels, use_grid_search);
 
+    if (!m_classifier)
+        throw ComponentNotInitializedException("Classifier not initialized.");
+
     // Save the trained classifier
     m_classifier->save(classifier_path);
 }
 
 void LinkPredictionApp::run_prediction_mode(
-    const std::string &classifier_path, const std::string &data_path,
-    const std::string &predictions_output_path,
+    const std::string &classifier_path, const std::string &predictions_output_path,
+    const std::string &data_path, const std::optional<std::string> &ground_truth_path,
     const std::optional<std::string> &blocked_ips_path,
     const std::optional<std::string> &internal_ips_path) {
 
@@ -120,22 +126,18 @@ void LinkPredictionApp::run_prediction_mode(
     common_training_or_prediction(classifier_path, data_path, blocked_ips_path,
                                   internal_ips_path);
 
-    // Create dependency analyzer
-    m_dependency_analyzer = std::make_unique<ground_truth::DependencyAnalyzer>(
-        m_config.N_OCCURRENCES, m_config.EPSILON, *m_allowed_ip_checker);
-
     // Load classifier
     m_classifier =
         std::make_unique<RandomForestClassifier<arma::fmat, arma::Row<size_t>>>();
     m_classifier->load(classifier_path);
 
     // Generate predictions
-    generate_predictions(predictions_output_path);
+    generate_predictions(predictions_output_path, ground_truth_path);
 
     std::cout << "Prediction completed successfully." << std::endl;
 }
 
-void LinkPredictionApp::generate_predictions(const std::string &output_path) {
+void LinkPredictionApp::generate_predictions(const std::string &output_path, const std::optional<std::string> &ground_truth_path) {
     std::cout << "Generating predictions..." << std::endl;
 
     if (!m_classifier)
@@ -144,10 +146,12 @@ void LinkPredictionApp::generate_predictions(const std::string &output_path) {
         throw ComponentNotInitializedException("Graph manager not initialized.");
     if (!m_model)
         throw ComponentNotInitializedException("Model not initialized.");
+    if (!m_dependency_analyzer)
+        throw ComponentNotInitializedException("Dependency analyzer not initialized.");
 
     EmbeddingGenerator<
         Vertex, decltype(m_model->get_embeddings()),
-        decltype(std::declval<ground_truth::DependencyAnalyzer>().get_dependencies())>
+        decltype(m_dependency_analyzer->get_dependencies())>
         embedding_generator{};
 
     auto [combined, vertex_pairs] =
@@ -162,6 +166,7 @@ void LinkPredictionApp::generate_predictions(const std::string &output_path) {
 
     // Write predictions to file
     FileWriter writer(output_path);
+    writer.write_line("src_ip,dst_ip");
     int positive_count = 0;
     for (size_t i = 0; i < predictions.size(); ++i) {
         const auto &pair = vertex_pairs[i];
@@ -170,16 +175,55 @@ void LinkPredictionApp::generate_predictions(const std::string &output_path) {
         const auto &prediction = predictions[i];
 
         if (prediction == 1) {
-            writer.write_line(src_ip + "," + dst_ip);
             ++positive_count;
         }
+        writer.write_line(src_ip + "," + dst_ip);
     }
 
     std::cout << "Predictions written to " << output_path << "\n";
     std::cout << "Positive predictions: " << positive_count << "\n";
     std::cout << "Total predictions: " << predictions.size() << std::endl;
+
+    if (ground_truth_path) {
+        evaluate_predictions(predictions, vertex_pairs, *ground_truth_path);
+    }
+    evaluate_predictions(predictions, vertex_pairs, "ground_truth.txt");
 }
 
+
+void LinkPredictionApp::evaluate_predictions(const auto &predictions, const auto &vertex_pairs, const std::string &ground_truth_path) {
+    std::cout << "Evaluating predictions..." << std::endl;
+
+    if (!m_dependency_analyzer)
+        throw ComponentNotInitializedException("Dependency analyzer not initialized.");
+    if (!m_classifier)
+        throw ComponentNotInitializedException("Classifier not initialized.");
+    if (vertex_pairs.size() != predictions.size())
+        throw std::runtime_error("Mismatch between predictions and vertex pairs.");
+
+    m_dependency_analyzer->load_dependencies(ground_truth_path);
+    const auto &all_deps = m_dependency_analyzer->get_dependencies();
+
+    arma::Row<size_t> arma_labels(predictions.size());
+    for (size_t i = 0; i < predictions.size(); ++i) {
+        const auto &pair = vertex_pairs[i];
+        const auto &src_ip = pair.first;
+        const auto &dst_ip = pair.second;
+        arma_labels[i] =
+            all_deps.contains({src_ip, dst_ip}) || all_deps.contains({dst_ip, src_ip})
+                ? 1
+                : 0;
+    }
+
+    //auto metrics = m_classifier->evaluate(arma_features, arma_labels);
+    statistics::Metrics metrics{};
+    std::cout << "Classifier evaluation metrics:\n"
+              << "  Accuracy: " << metrics.accuracy << "\n"
+              << "  Precision: " << metrics.precision << "\n"
+              << "  Recall: " << metrics.recall << "\n"
+              << "  F1 Score: " << metrics.f1_score << std::endl;
+
+}
 // Evaluate a classifier using a train/test split.
 template <typename Features, typename Labels>
 void evaluate_model_train_test_split(const RandomForestParams &params,
