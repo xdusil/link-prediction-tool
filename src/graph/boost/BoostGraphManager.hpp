@@ -119,6 +119,48 @@ public:
      */
     virtual const EdgeProperties &get_edge_properties(const Edge &edge) const override;
 
+    /**
+     * @brief Get the degree of a vertex.
+     *
+     * @param vertex The vertex to get the degree for.
+     * @return The degree of the vertex.
+     */
+     virtual std::size_t get_degree(const Vertex &vertex) const override;
+
+     /**
+      * @brief Get neighbors of a vertex.
+      *
+      * @param vertex The vertex to get neighbors for.
+      * @return Vector of neighbor vertices.
+      */
+     virtual std::vector<Vertex> get_neighbors(const Vertex &vertex) const override;
+ 
+     /**
+      * @brief Check if two vertices are connected.
+      *
+      * @param u First vertex
+      * @param v Second vertex
+      * @return True if vertices are connected, false otherwise.
+      */
+     virtual bool are_connected(const Vertex &u, const Vertex &v) const override;
+ 
+     /**
+      * @brief Get common neighbors between two vertices.
+      *
+      * @param u First vertex
+      * @param v Second vertex
+      * @return Vector of common neighbor vertices
+      */
+     virtual std::vector<Vertex> get_common_neighbors(const Vertex &u, const Vertex &v) const override;
+ 
+     /**
+      * @brief Get count of common neighbors between two vertices.
+      *
+      * @param u First vertex
+      * @param v Second vertex
+      * @return Number of common neighbors
+      */
+     virtual std::size_t get_common_neighbors_count(const Vertex &u, const Vertex &v) const override;
 private:
     Graph m_graph; // The graph managed by this class
 };

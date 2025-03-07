@@ -23,6 +23,9 @@ struct EdgeProperties {
     int src_port;
     int dst_port;
 
+    EdgeProperties()
+        : start_timestamp(0), end_timestamp(0), src_port(0), dst_port(0), protocol(0) {}
+
     EdgeProperties(const std::chrono::milliseconds &date_first,
                    const std::chrono::milliseconds &date_last, int protocol, int src_port,
                    int dst_port)
