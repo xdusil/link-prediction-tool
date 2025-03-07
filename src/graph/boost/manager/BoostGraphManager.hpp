@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../IGraphManager.hpp"
+#include "graph/IGraphManager.hpp"
 #include "graph/boost/BoostGraphTraits.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
 #include <boost/graph/adjacency_list.hpp>

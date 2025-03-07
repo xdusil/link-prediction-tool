@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../boost/BoostGraphManager.hpp"
+#include "graph/boost/manager/BoostGraphManager.hpp"
 #include "NetworkGraphDefinition.hpp"
 
 /**
