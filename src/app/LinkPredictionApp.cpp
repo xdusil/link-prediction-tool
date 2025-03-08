@@ -4,7 +4,8 @@
 #include "classifier/RandomForestClassifier.hpp"
 #include "config/config.hpp"
 #include "exceptions/exceptions.hpp"
-#include "generators/embedding/EmbeddingGenerator.hpp"
+#include "generators/feature/FeatureGenerator.hpp"
+#include "graph/boost/analytics/BoostGraphAnalytics.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
 #include "io/FileReader.hpp"
 #include "io/FileWriter.hpp"
@@ -49,7 +50,6 @@ void LinkPredictionApp::common_training_or_prediction(
     m_internal_ip_checker = std::make_unique<BoostIPHandler>(internal_ips_path);
     m_dependency_analyzer = std::make_unique<ground_truth::DependencyAnalyzer>(
         m_config.N_OCCURRENCES, m_config.EPSILON, *m_allowed_ip_checker);
-
     // Process data and build graph
     process_data(data_path);
     build_graph();
@@ -88,13 +88,13 @@ void LinkPredictionApp::run_training_mode(
 
     const auto &all_deps = m_dependency_analyzer->get_dependencies();
 
-    EmbeddingGenerator<Vertex, decltype(m_model->get_embeddings()), decltype(all_deps)>
-        embedding_generator{};
+    BoostGraphAnalytics analytics{*m_graph_manager};
+    FeatureGenerator<NetworkGraphManager::Base, decltype(m_model->get_embeddings()),
+                     decltype(all_deps)>
+        feature_generator{analytics, m_model->get_embeddings()};
 
-    // Generate embeddings and labels
-    auto [combined, arma_labels] =
-        embedding_generator.generate_dependency_embeddings_and_labels(
-            m_graph_manager->get_ip_to_vertex(), all_deps, m_model->get_embeddings());
+    auto [combined, arma_labels] = feature_generator.generate_labeled_features(
+        m_graph_manager->get_ip_to_vertex(), all_deps);
 
     // Convert to Armadillo matrix - no copy mem => ref needs to live
     auto [arma_features, ref] =
@@ -150,9 +150,10 @@ void LinkPredictionApp::generate_predictions(
     if (!m_dependency_analyzer)
         throw ComponentNotInitializedException("Dependency analyzer not initialized.");
 
-    EmbeddingGenerator<Vertex, decltype(m_model->get_embeddings()),
-                      decltype(m_dependency_analyzer->get_dependencies())>
-        embedding_generator{};
+    BoostGraphAnalytics analytics{*m_graph_manager};
+    FeatureGenerator<NetworkGraphManager::Base, decltype(m_model->get_embeddings()),
+                     decltype(m_dependency_analyzer->get_dependencies())>
+        feature_generator{analytics, m_model->get_embeddings()};
 
     torch::Tensor combined;
     std::vector<std::pair<std::string, std::string>> vertex_pairs;
@@ -160,19 +161,19 @@ void LinkPredictionApp::generate_predictions(
 
     if (ground_truth_path) {
         m_dependency_analyzer->load_dependencies(*ground_truth_path);
-        auto [combined_val, labels_val, vertex_pairs_val] = embedding_generator.generate_dependency_embeddings_labels_and_pairs(
-            m_graph_manager->get_ip_to_vertex(),
-            m_dependency_analyzer->get_dependencies(), 
-            m_model->get_embeddings());
-            
+        auto [combined_val, labels_val, vertex_pairs_val] =
+            feature_generator.generate_labeled_features_with_pairs(
+                m_graph_manager->get_ip_to_vertex(),
+                m_dependency_analyzer->get_dependencies());
+
         combined = std::move(combined_val);
         labels = std::move(labels_val);
         vertex_pairs = std::move(vertex_pairs_val);
     } else {
-        auto [combined_val, vertex_pairs_val] = embedding_generator.generate_dependency_embeddings_and_vertex_pairs(
-            m_graph_manager->get_ip_to_vertex(), 
-            m_model->get_embeddings());
-            
+        auto [combined_val, vertex_pairs_val] =
+            feature_generator.generate_unlabeled_features_with_pairs(
+                m_graph_manager->get_ip_to_vertex());
+
         combined = std::move(combined_val);
         vertex_pairs = std::move(vertex_pairs_val);
     }
@@ -207,10 +208,10 @@ void LinkPredictionApp::generate_predictions(
     if (labels.has_value()) {
         auto metrics = m_classifier->evaluate(arma_features, *labels);
         std::cout << "Classifier evaluation metrics:\n"
-                << "  Accuracy: " << metrics.accuracy << "\n"
-                << "  Precision: " << metrics.precision << "\n"
-                << "  Recall: " << metrics.recall << "\n"
-                << "  F1 Score: " << metrics.f1_score << std::endl;
+                  << "  Accuracy: " << metrics.accuracy << "\n"
+                  << "  Precision: " << metrics.precision << "\n"
+                  << "  Recall: " << metrics.recall << "\n"
+                  << "  F1 Score: " << metrics.f1_score << std::endl;
     }
 }
 
