@@ -96,10 +96,6 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
         }
     }
 
-    if (m_feature_config.normalize_features) {
-        normalize_features_tensor<float>(all_features);
-    }
-
     return {all_features, arma_labels, vertex_pairs};
 }
 
@@ -233,21 +229,4 @@ T FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::dot_p
     const torch::Tensor &a, const torch::Tensor &b) {
     // Calculate dot product: a·b
     return torch::dot(a, b).item<T>();
-}
-
-template <typename GraphTraits, typename EmbeddingModule,
-          typename GroundTruthDependencies>
-template <typename T>
-void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::normalize_features_tensor(torch::Tensor& features) {
-    // For each feature column, normalize to [0,1] or z-score
-    for (int64_t col = 0; col < features.size(1); col++) {
-        auto feature_col = features.select(1, col);
-        auto mean = feature_col.mean();
-        auto std = feature_col.std();
-        
-        if (std.item<T>() > 1e-5) {
-            // Z-score normalization
-            features.select(1, col) = (feature_col - mean) / std;
-        }
-    }
 }

@@ -22,8 +22,6 @@ public:
     bool embedding_ratio = true;
     bool embedding_abs_mean = true; // For both nodes v1 and v2
 
-    bool normalize_features = true; // Normalize features to [0,1] or z-score
-
     // Calculate feature dimension based on enabled features
     std::size_t get_dimension() const {
         std::size_t dim = 0;

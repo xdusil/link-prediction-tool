@@ -145,15 +145,6 @@ private:
                                            const torch::Tensor &v2_emb,
                                            torch::Tensor &features_tensor,
                                            std::size_t row_index);
-
-    /**
-     * @brief Normalize the features tensor.
-     *
-     * @tparam T The type of elements in the tensor.
-     * @param features The features tensor.
-     */
-    template <typename T>
-    void normalize_features_tensor(torch::Tensor &features);
 };
 
 #include "FeatureGenerator.tpp"
