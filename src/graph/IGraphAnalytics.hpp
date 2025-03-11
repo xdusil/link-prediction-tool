@@ -117,4 +117,13 @@ public:
      * @return Vector of neighbor vertices
      */
     virtual std::vector<Vertex> get_neighbors(const Vertex &v) const = 0;
+
+    // ---------- Graph Analytics ----------
+
+    /**
+     * @brief Get the average degree of the graph.
+     *
+     * @return The average degree
+     */
+    virtual double avg_degree() const = 0;
 };

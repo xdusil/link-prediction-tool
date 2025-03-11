@@ -111,3 +111,14 @@ std::vector<typename BoostGraphAnalytics<Graph>::Vertex>
 BoostGraphAnalytics<Graph>::get_neighbors(const Vertex &v) const {
     return m_graph_manager.get_neighbors(v);
 }
+
+template <typename Graph>
+double BoostGraphAnalytics<Graph>::avg_degree() const {
+    double avg = 0.0;
+    std::size_t num_vertices = 0;
+    for (const auto &v : m_graph_manager.get_vertices()) {
+        avg += m_graph_manager.get_degree(v);
+        num_vertices++;
+    }
+    return avg / num_vertices;
+}

@@ -30,11 +30,11 @@ public:
 
     /**
      * @brief Calculate Adamic-Adar index between two vertices.
-        *
-        * @param u First vertex
-        * @param v Second vertex
-        * @return The Adamic-Adar score
-    */
+     *
+     * @param u First vertex
+     * @param v Second vertex
+     * @return The Adamic-Adar score
+     */
     double adamic_adar(const Vertex &u, const Vertex &v) const override;
 
     /**
@@ -114,9 +114,16 @@ public:
      *
      * @param v The vertex to get the neighbors for.
      * @return The neighbors of the vertex.
-     */       
+     */
     std::vector<Vertex> get_neighbors(const Vertex &v) const override;
 
+    /**
+     * @brief Get the average degree of the graph.
+     *
+     * @return The average degree of the graph
+     */
+
+    double avg_degree() const override;
 
 private:
     const IGraphManager<GraphTraits> &m_graph_manager; // Reference to the graph manager
