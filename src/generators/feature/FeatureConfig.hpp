@@ -5,7 +5,6 @@
 
 class FeatureConfig {
 public:
-    // Feature flags - defaulting to what your code currently uses
     bool cosine_similarity = true;
     bool euclidean_distance = true;
     bool dot_product = true;
@@ -43,7 +42,7 @@ public:
         return dim;
     }
     
-    // Get names of enabled features (for debugging)
+    // Get the names of the enabled features
     std::vector<std::string> get_feature_names() const {
         std::vector<std::string> names;
         if (cosine_similarity) names.push_back("cosine_similarity");

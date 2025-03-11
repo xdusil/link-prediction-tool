@@ -129,6 +129,14 @@ private:
     T dot_product(const torch::Tensor &a, const torch::Tensor &b);
 
     /**
+     * @brief Get the average degree of the graph and cache it.
+     *
+     * @return The average degree.
+     */
+    template <typename T>
+    T get_set_avg_degree();
+
+    /**
      * @brief Create features and set them to a tensor.
      *
      * @tparam T The type of elements in the tensor.
@@ -145,6 +153,9 @@ private:
                                            const torch::Tensor &v2_emb,
                                            torch::Tensor &features_tensor,
                                            std::size_t row_index);
+
+    // Cached graph statistics to avoid recalculation
+    std::optional<double> m_avg_degree;
 };
 
 #include "FeatureGenerator.tpp"
