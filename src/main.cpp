@@ -23,7 +23,6 @@ static void print_help() {
         << "  -d, --data PATH             Path to input data file\n"
         << "  -o, --predictions-out PATH  Path to save predicted dependencies\n"
         << "\nOptional options for training mode:\n"
-        << "  -s, --grid-search           Use grid search for hyperparameter tuning\n"
         << "  -G, --ground-truth-out PATH Path to save ground truth results\n"
         << "\nOptional options for both modes:\n"
         << "  -f, --config PATH           Path to configuration file\n"
@@ -39,7 +38,6 @@ static struct option long_options[] = {
     {"classifier", required_argument, nullptr, 'c'},
     {"config", required_argument, nullptr, 'f'},
     {"data", required_argument, nullptr, 'd'},
-    {"grid-search", no_argument, nullptr, 's'},
     {"ground-truth-in", required_argument, nullptr, 'g'},
     {"ground-truth-out", required_argument, nullptr, 'G'},
     {"help", no_argument, nullptr, 'h'},
@@ -53,7 +51,6 @@ struct cmd_args {
     // Flags
     bool training_mode;
     bool prediction_mode;
-    bool use_grid_search;
     bool help;
 
     // Paths
@@ -90,10 +87,6 @@ void check_prediction_mode(const cmd_args &args) {
         throw CliValidationException("Cannot specify both training and prediction mode");
     }
 
-    if (args.use_grid_search) {
-        throw CliValidationException("Grid search is not available in prediction mode");
-    }
-
     // Validate required files
     if (!args.classifier_path) {
         throw CliValidationException("Missing required argument --classifier");
@@ -128,7 +121,7 @@ cmd_args parse_cmd_args(int argc, char *argv[]) {
     cmd_args args{}; // Initialize all fields
     int opt;
 
-    const char *short_opts = ":b:c:f:d:sg:G:hi:po:t";
+    const char *short_opts = ":b:c:f:d:g:G:hi:po:t";
 
     while ((opt = getopt_long(argc, argv, short_opts, long_options, nullptr)) != -1) {
         switch (opt) {
@@ -138,9 +131,6 @@ cmd_args parse_cmd_args(int argc, char *argv[]) {
             break;
         case 'p':
             args.prediction_mode = true;
-            break;
-        case 's':
-            args.use_grid_search = true;
             break;
         case 'h':
             args.help = true;
@@ -205,7 +195,7 @@ int main(int argc, char *argv[]) {
             app.run_training_mode(*args.classifier_path, *args.data_path,
                                   args.ground_truth_input_path,
                                   args.ground_truth_output_path, args.blocked_ips_path,
-                                  args.internal_ips_path, args.use_grid_search);
+                                  args.internal_ips_path);
         }
 
         if (args.prediction_mode) {
