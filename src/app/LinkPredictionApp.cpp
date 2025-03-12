@@ -40,22 +40,45 @@ LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_pa
     m_seed = std::chrono::system_clock::now().time_since_epoch().count();
 }
 
-void LinkPredictionApp::common_training_or_prediction(std::string data_path,
-    std::optional<std::string> blocked_ips_path,
-    std::optional<std::string> internal_ips_path) {
-
+void LinkPredictionApp::common_startup(std::optional<std::string> blocked_ips_path,
+                                       std::optional<std::string> internal_ips_path) {
     // Initialize IP checkers
     m_allowed_ip_checker =
         std::make_unique<AllowedIPChecker>(std::nullopt, blocked_ips_path);
     m_internal_ip_checker = std::make_unique<BoostIPHandler>(internal_ips_path);
+
     m_dependency_analyzer = std::make_unique<ground_truth::DependencyAnalyzer>(
         m_config.N_OCCURRENCES, m_config.EPSILON, *m_allowed_ip_checker);
+}
+
+void LinkPredictionApp::common_training_or_prediction(
+    std::string data_path, std::optional<std::string> blocked_ips_path,
+    std::optional<std::string> internal_ips_path) {
+
+    // Initialize common components
+    common_startup(blocked_ips_path, internal_ips_path);
+
     // Process data and build graph
     process_data(data_path);
     build_graph();
 
     // Generate embeddings
     generate_embeddings();
+}
+
+void LinkPredictionApp::run_ground_truth_mode(
+    const std::string &data_path, const std::string &ground_truth_output_path,
+    const std::optional<std::string> &blocked_ips_path) {
+    std::cout << "Starting ground truth only mode..." << std::endl;
+
+    // Initialize components
+    common_startup(blocked_ips_path, std::nullopt);
+
+    if (!m_dependency_analyzer)
+        throw ComponentNotInitializedException("Dependency analyzer not initialized.");
+
+    m_dependency_analyzer->calculate_dependencies(data_path, ground_truth_output_path);
+    std::cout << "Ground truth calculation completed successfully." << std::endl;
 }
 
 void LinkPredictionApp::run_training_mode(
@@ -68,8 +91,7 @@ void LinkPredictionApp::run_training_mode(
     std::cout << "Starting training mode..." << std::endl;
 
     // Initialize components
-    common_training_or_prediction(data_path, blocked_ips_path,
-                                  internal_ips_path);
+    common_training_or_prediction(data_path, blocked_ips_path, internal_ips_path);
 
     if (!m_dependency_analyzer)
         throw ComponentNotInitializedException("Dependency analyzer not initialized.");
@@ -122,8 +144,7 @@ void LinkPredictionApp::run_prediction_mode(
     std::cout << "Starting prediction mode..." << std::endl;
 
     // Initialize components
-    common_training_or_prediction(data_path, blocked_ips_path,
-                                  internal_ips_path);
+    common_training_or_prediction(data_path, blocked_ips_path, internal_ips_path);
 
     // Load classifier
     m_classifier =
@@ -426,7 +447,8 @@ RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
         RandomForestClassifier<decltype(features), decltype(labels)>::
             template grid_search<mlpack::F1<mlpack::AverageStrategy::Binary>>(
                 features, labels, 2, m_config.GRID_NUM_TREES, m_config.GRID_MIN_LEAF_SIZE,
-                m_config.GRID_MIN_GAIN_SPLIT, m_config.GRID_MAX_DEPTH, m_config.GRID_VALIDATION_SIZE);
+                m_config.GRID_MIN_GAIN_SPLIT, m_config.GRID_MAX_DEPTH,
+                m_config.GRID_VALIDATION_SIZE);
 
     std::cout << "Grid search complete." << std::endl;
     std::cout << "Best parameters:" << std::endl;

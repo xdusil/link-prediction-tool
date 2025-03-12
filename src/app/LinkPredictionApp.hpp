@@ -84,6 +84,19 @@ public:
         const std::optional<std::string> &blocked_ips_path = std::nullopt,
         const std::optional<std::string> &internal_ips_path = std::nullopt);
 
+    /**
+     * @brief Run the ground truth mode
+     *
+     * This mode calculates the ground truth dependencies only.
+     *
+     * @param data_path Path to the input data file
+     * @param ground_truth_output_path Path to save the calculated ground truth
+     * @param blocked_ips_path Path to the blocked IPs file (optional)
+     */
+    void run_ground_truth_mode(const std::string &data_path,
+                               const std::string &ground_truth_output_path,
+                               const std::optional<std::string> &blocked_ips_path);
+
 private:
     /**
      * @brief Perform common operations for training and prediction modes
@@ -95,6 +108,15 @@ private:
     void common_training_or_prediction(std::string data_path,
                                        std::optional<std::string> blocked_ips_path,
                                        std::optional<std::string> internal_ips_path);
+
+    /**
+     * @brief Perform common startup operations
+     *
+     * @param blocked_ips_path Path to the blocked IPs file (optional)
+     * @param internal_ips_path Path to the internal IPs file (optional)
+     */
+    void common_startup(std::optional<std::string> blocked_ips_path,
+                        std::optional<std::string> internal_ips_path);
 
     /**
      * @brief Process the input data
