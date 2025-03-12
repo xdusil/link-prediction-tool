@@ -59,15 +59,13 @@ public:
      * @param ground_truth_output_path Path to save the calculated ground truth (optional)
      * @param blocked_ips_path Path to the blocked IPs file (optional)
      * @param internal_ips_path Path to the internal IPs file (optional)
-     * @param use_grid_search Whether to use grid search for hyperparameter tuning
      */
     void run_training_mode(
         const std::string &classifier_path, const std::string &data_path,
         const std::optional<std::string> &ground_truth_path = std::nullopt,
         const std::optional<std::string> &ground_truth_output_path = std::nullopt,
         const std::optional<std::string> &blocked_ips_path = std::nullopt,
-        const std::optional<std::string> &internal_ips_path = std::nullopt,
-        bool use_grid_search = false);
+        const std::optional<std::string> &internal_ips_path = std::nullopt);
 
     /**
      * @brief Run the prediction mode

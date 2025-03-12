@@ -63,8 +63,7 @@ void LinkPredictionApp::run_training_mode(
     const std::optional<std::string> &ground_truth_input_path /*= std::nullopt*/,
     const std::optional<std::string> &ground_truth_output_path /*= std::nullopt*/,
     const std::optional<std::string> &blocked_ips_path /*= std::nullopt*/,
-    const std::optional<std::string> &internal_ips_path /*= std::nullopt*/,
-    bool use_grid_search /*= false*/) {
+    const std::optional<std::string> &internal_ips_path /*= std::nullopt*/) {
 
     std::cout << "Starting training mode..." << std::endl;
 
@@ -105,7 +104,7 @@ void LinkPredictionApp::run_training_mode(
               << "\n  Labels: " << arma_labels.n_elem << std::endl;
 
     // Train the classifier
-    train_classifier(arma_features, arma_labels, use_grid_search);
+    train_classifier(arma_features, arma_labels, m_config.GRID_SEARCH_ENABLED);
 
     if (!m_classifier)
         throw ComponentNotInitializedException("Classifier not initialized.");
@@ -413,16 +412,11 @@ RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
 
     std::cout << "Performing grid search for hyperparameters...\n";
 
-    // Define hyperparameter ranges
-    std::vector<std::size_t> num_trees = {10, 20, 50, 100};
-    std::vector<std::size_t> min_leaf_size = {1, 3, 5};
-    std::vector<double> min_gain_split = {0.0, 1e-7, 1e-5};
-    std::vector<std::size_t> max_depth = {0, 10, 20, 30};
-
-    std::cout << ">> numTrees: " << num_trees << std::endl;
-    std::cout << ">> minLeafSize: " << min_leaf_size << std::endl;
-    std::cout << ">> minGainSplit: " << min_gain_split << std::endl;
-    std::cout << ">> maxDepth: " << max_depth << std::endl;
+    std::cout << ">> numTrees: " << m_config.GRID_NUM_TREES << std::endl;
+    std::cout << ">> minLeafSize: " << m_config.GRID_MIN_LEAF_SIZE << std::endl;
+    std::cout << ">> minGainSplit: " << m_config.GRID_MIN_GAIN_SPLIT << std::endl;
+    std::cout << ">> maxDepth: " << m_config.GRID_MAX_DEPTH << std::endl;
+    std::cout << ">> validationSize: " << m_config.GRID_VALIDATION_SIZE << std::endl;
 
     // Perform grid search
     RandomForestParams best_params;
@@ -431,8 +425,8 @@ RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
     std::tie(best_params, best_score) =
         RandomForestClassifier<decltype(features), decltype(labels)>::
             template grid_search<mlpack::F1<mlpack::AverageStrategy::Binary>>(
-                features, labels, 2, num_trees, min_leaf_size, min_gain_split, max_depth,
-                0.3);
+                features, labels, 2, m_config.GRID_NUM_TREES, m_config.GRID_MIN_LEAF_SIZE,
+                m_config.GRID_MIN_GAIN_SPLIT, m_config.GRID_MAX_DEPTH, m_config.GRID_VALIDATION_SIZE);
 
     std::cout << "Grid search complete." << std::endl;
     std::cout << "Best parameters:" << std::endl;
