@@ -1,4 +1,6 @@
 #pragma once
+#include <vector>
+#include <cstddef>
 
 namespace config {
 
@@ -27,5 +29,14 @@ struct Config {
     int MIN_LEAF_SIZE = 1;
     double MIN_GAIN_SPLIT = 0.0;
     int MAX_DEPTH = 30;
+    
+    // Grid search parameters
+    bool GRID_SEARCH_ENABLED = false;
+    std::vector<std::size_t> GRID_NUM_TREES = {10, 20, 50, 100};
+    std::vector<std::size_t> GRID_MIN_LEAF_SIZE = {1, 3, 5};
+    std::vector<double> GRID_MIN_GAIN_SPLIT = {0.0, 1e-7, 1e-5};
+    std::vector<std::size_t> GRID_MAX_DEPTH = {0, 10, 20, 30};
+    double GRID_VALIDATION_SIZE = 0.25;
 };
+
 } // namespace config

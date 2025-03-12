@@ -3,6 +3,7 @@
 #include "../io/FileReader.hpp"
 #include "../json/JsonHelper.hpp"
 #include "boost/json/error.hpp"
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <sstream>
@@ -56,6 +57,42 @@ Config parse_json(const std::string &json_content) {
             config.MIN_GAIN_SPLIT = *val;
         if (auto val = JsonHelper::extract_value<int64_t>(json_obj, "MAX_DEPTH"))
             config.MAX_DEPTH = static_cast<int>(*val);
+
+        // Load grid search enabled flag
+        if (auto val = JsonHelper::extract_value<bool>(json_obj, "GRID_SEARCH_ENABLED"))
+            config.GRID_SEARCH_ENABLED = *val;
+
+        // Load grid search parameters
+        if (auto arr = JsonHelper::extract_array<int64_t>(json_obj, "GRID_NUM_TREES")) {
+            config.GRID_NUM_TREES.clear();
+            for (const auto &elem : *arr) {
+                config.GRID_NUM_TREES.push_back(static_cast<std::size_t>(elem));
+            }
+        }
+
+        if (auto arr =
+                JsonHelper::extract_array<int64_t>(json_obj, "GRID_MIN_LEAF_SIZE")) {
+            config.GRID_MIN_LEAF_SIZE.clear();
+            for (const auto &elem : *arr) {
+                config.GRID_MIN_LEAF_SIZE.push_back(static_cast<std::size_t>(elem));
+            }
+        }
+
+        if (auto arr =
+                JsonHelper::extract_array<double>(json_obj, "GRID_MIN_GAIN_SPLIT")) {
+            config.GRID_MIN_GAIN_SPLIT = *arr;
+        }
+
+        if (auto arr = JsonHelper::extract_array<int64_t>(json_obj, "GRID_MAX_DEPTH")) {
+            config.GRID_MAX_DEPTH.clear();
+            for (const auto &elem : *arr) {
+                config.GRID_MAX_DEPTH.push_back(static_cast<std::size_t>(elem));
+            }
+        }
+
+        if (auto val =
+                JsonHelper::extract_value<double>(json_obj, "GRID_VALIDATION_SIZE"))
+            config.GRID_VALIDATION_SIZE = *val;
 
     } catch (const std::exception &e) {
         throw ConfigurationException("Error parsing config file: " +
