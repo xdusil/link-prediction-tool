@@ -12,6 +12,16 @@ namespace json = boost::json;
  */
 class JsonHelper {
 public:
+
+    /**
+     * @brief Extract a value from a JSON object.
+     *
+     * @tparam T The type of the value to extract.
+     * @param data The JSON object.
+     * @param key The key of the value to extract.
+     * @return The extracted value if it exists and is of the correct type, std::nullopt
+     * otherwise.
+     */
     template <typename T>
     inline static std::optional<T> extract_value(const json::object &data,
                                                  const std::string &key) {
