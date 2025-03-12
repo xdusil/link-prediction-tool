@@ -88,12 +88,11 @@ private:
     /**
      * @brief Perform common operations for training and prediction modes
      *
-     * @param classifier_path Path to the classifier model file
      * @param data_path Path to the input data file
      * @param blocked_ips_path Path to the blocked IPs file (optional)
      * @param internal_ips_path Path to the internal IPs file (optional)
      */
-    void common_training_or_prediction(std::string classifier_path, std::string data_path,
+    void common_training_or_prediction(std::string data_path,
                                        std::optional<std::string> blocked_ips_path,
                                        std::optional<std::string> internal_ips_path);
 

@@ -14,6 +14,7 @@
 #include "utils/ip/AllowedIPChecker.hpp"
 #include "utils/ip/BoostIPHandler.hpp"
 #include "utils/utils.hpp"
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -39,8 +40,7 @@ LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_pa
     m_seed = std::chrono::system_clock::now().time_since_epoch().count();
 }
 
-void LinkPredictionApp::common_training_or_prediction(
-    std::string classifier_path, std::string data_path,
+void LinkPredictionApp::common_training_or_prediction(std::string data_path,
     std::optional<std::string> blocked_ips_path,
     std::optional<std::string> internal_ips_path) {
 
@@ -68,7 +68,7 @@ void LinkPredictionApp::run_training_mode(
     std::cout << "Starting training mode..." << std::endl;
 
     // Initialize components
-    common_training_or_prediction(classifier_path, data_path, blocked_ips_path,
+    common_training_or_prediction(data_path, blocked_ips_path,
                                   internal_ips_path);
 
     if (!m_dependency_analyzer)
@@ -122,7 +122,7 @@ void LinkPredictionApp::run_prediction_mode(
     std::cout << "Starting prediction mode..." << std::endl;
 
     // Initialize components
-    common_training_or_prediction(classifier_path, data_path, blocked_ips_path,
+    common_training_or_prediction(data_path, blocked_ips_path,
                                   internal_ips_path);
 
     // Load classifier
@@ -229,8 +229,8 @@ void evaluate_model_train_test_split(const RandomForestParams &params,
     Labels train_labels, test_labels;
 
     // Split the data. (test_size indicates the fraction of columns for testing.)
-    // mlpack::data::StratifiedSplit(features_d, labels, trainFeatures, testFeatures,
-    //                               trainLabels, testLabels, test_size);
+    // mlpack::data::StratifiedSplit(features_d, labels, train_features, test_features,
+    //                               train_labels, test_labels, test_size);
 
     mlpack::data::Split(features_d, labels, train_features, test_features, train_labels,
                         test_labels, test_size);

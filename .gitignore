@@ -6,3 +6,5 @@ build/
 
 # Ignore cache directories
 .cache/
+
+tmp/
