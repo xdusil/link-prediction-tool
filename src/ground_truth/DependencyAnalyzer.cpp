@@ -275,7 +275,7 @@ RR2DependencyMap DependencyAnalyzer::determine_RR2_dependencies(
                 if (count_appearances > m_n_occurrences) {
                     dependencies[dst_ip].push_back({mid_ip, src_ip});
                     m_all_dependencies.insert({dst_ip, mid_ip});
-                    m_oss << "RR2: (" << dst_ip << mid_ip << ")"
+                    m_oss << "RR2: (" << dst_ip << ", " << mid_ip << ")"
                           << "\n";
                     break;
                 }
