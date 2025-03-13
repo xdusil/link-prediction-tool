@@ -81,8 +81,11 @@ public:
      *
      * @param features The features.
      * @param labels The labels.
+     * @param use_weights Whether to use weights for the training - according to the
+     *                    number of occurrences of each class.
      */
-    void train(const Features &features, const Labels &labels) override;
+    void train(const Features &features, const Labels &labels,
+               bool use_weights = false) override;
 
     /**
      * @brief Predict the labels for the given features.
@@ -135,6 +138,7 @@ public:
      * @param max_depth The vector of the maximum depth to search.
      * @param validation_size The size of the validation set.
      * @param use_scaling Whether to use scaling for the features.
+     * @param use_weights Whether to use weights for the training - according to the
      * @return The best Random Forest parameters and the best metric score.
      */
     template <typename Metric>
@@ -144,7 +148,8 @@ public:
                 const std::vector<std::size_t> &min_leaf_size,
                 const std::vector<double> &min_gain_split,
                 const std::vector<std::size_t> &max_depth,
-                const double validation_size = 0.3, bool use_scaling = true);
+                const double validation_size = 0.3, bool use_scaling = true,
+                bool use_weights = false);
 
     /**
      * @brief Perform a grid search to find the best Random Forest parameters.
@@ -154,13 +159,15 @@ public:
      * @param num_classes The number of classes.
      * @param params The grid search parameters.
      * @param use_scaling Whether to use scaling for the features.
+     * @param use_weights Whether to use weights for the training - according to the
+     *                    number of occurrences of each class.
      * @return The best Random Forest parameters and the best metric score.
-    */
+     */
     template <typename Metric>
     static std::tuple<RandomForestParams, double>
     grid_search(const Features &features, const Labels &labels,
                 const std::size_t num_classes, const GridSearchParams &params,
-                bool use_scaling = true);
+                bool use_scaling = true, bool use_weights = false);
 
 private:
     mlpack::RandomForest<> m_rf; // The Random Forest model
@@ -171,6 +178,15 @@ private:
     std::size_t m_min_leaf_size; // The minimum number of points in each tree's leaf nodes
     double m_min_gain_split;     // The minimum gain for splitting a decision tree node
     std::size_t m_max_depth;     // The maximum depth for the tree
+
+    /**
+     * @brief Calculate the weights for the training data.
+     *
+     * @param labels The labels.
+     * @param weights The weights.
+     * @param num_classes The number of classes.
+     */
+    static void calculate_weights(const Labels &labels, arma::rowvec &weights, std::size_t num_classes);
 };
 
 #include "RandomForestClassifier.tpp"

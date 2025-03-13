@@ -20,8 +20,11 @@ public:
      *
      * @param features The features.
      * @param labels The labels.
+     * @param use_weights Whether to use weights for the training - according to the
+     *                    number of occurrences of each class.
      */
-    virtual void train(const Features &features, const Labels &labels) = 0;
+    virtual void train(const Features &features, const Labels &labels,
+                       bool use_weights = false) = 0;
 
     /**
      * @brief Predict the labels for the given features.

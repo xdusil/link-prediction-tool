@@ -5,6 +5,7 @@
 #include "exceptions/exceptions.hpp"
 #include "mlpack/core/cv/metrics/accuracy.hpp"
 #include "mlpack/core/cv/metrics/average_strategy.hpp"
+#include "mlpack/core/cv/metrics/f1.hpp"
 #include "mlpack/core/cv/metrics/metrics.hpp"
 #include "mlpack/methods/random_forest/random_forest.hpp"
 #include "utils/utils.hpp"
@@ -51,11 +52,57 @@ RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::RandomForestC
 
 template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
           typename Scaler>
-void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::train(
-    const Features &features, const Labels &labels) {
+void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::calculate_weights(
+    const Labels &labels, arma::rowvec &weights, std::size_t num_classes) {
+    if (num_classes == 0) {
+        throw RandomForestException("Number of classes must be greater than 0.");
+    }
+    // Count the occurrences of each class
+    arma::Row<size_t> counts(num_classes, arma::fill::zeros);
+    for (size_t i = 0; i < labels.n_elem; ++i) {
+        counts[labels[i]]++;
+    }
+    
+    // Calculate total number of samples
+    const size_t total_samples = labels.n_elem;
+    
+    // Calculate balanced weights (inverse of frequency)
+    // Higher weight for minority class, lower weight for majority class
+    arma::Row<double> class_weights(num_classes);
+    for (size_t i = 0; i < num_classes; ++i) {
+        class_weights[i] = counts[i] > 0 ? static_cast<double>(total_samples) / 
+                                          (static_cast<double>(num_classes) * counts[i]) : 0.0;
+    }
+    
+    std::cout << "Class distribution: ";
+    for (size_t i = 0; i < num_classes; ++i) {
+        std::cout << "Class " << i << ": " << counts[i] << " (" 
+                  << 100.0 * counts[i] / total_samples << "%), ";
+    }
+    std::cout << std::endl;
+    
+    std::cout << "Class weights: ";
+    for (size_t i = 0; i < num_classes; ++i) {
+        std::cout << "Class " << i << ": " << class_weights[i] << ", ";
+    }
+    std::cout << std::endl;
+    
+    // Apply class weights to each sample based on its class
+    weights.set_size(total_samples);
+    for (size_t i = 0; i < total_samples; ++i) {
+        weights[i] = class_weights[labels[i]];
+    }
+}
 
-    std::cout << "Training Random Forest with " << m_num_classes << " classes."
-              << std::endl;
+template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+          typename Scaler>
+void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::train(
+    const Features &features, const Labels &labels, bool use_weights /*= false*/) {
+    if (features.n_cols != labels.n_elem) {
+        throw RandomForestException("Number of features and labels must be equal.");
+    }
+
+    std::cout << "Training Random Forest with " << m_num_classes << " classes.\n";
     std::cout << "Features: " << features.n_rows << " x " << features.n_cols << std::endl;
 
     arma::mat feats = arma::conv_to<arma::mat>::from(features);
@@ -63,6 +110,15 @@ void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::train(
         m_scaler.Fit(feats);
         m_scaler.Transform(feats, feats);
     }
+
+    if (use_weights) {
+        arma::rowvec weights;
+        calculate_weights(labels, weights, m_num_classes);
+        m_rf.Train(feats, labels, m_num_classes, weights, m_num_trees, m_min_leaf_size,
+            m_min_gain_split, m_max_depth);
+        return;
+    }
+
     m_rf.Train(feats, labels, m_num_classes, m_num_trees, m_min_leaf_size,
                m_min_gain_split, m_max_depth);
 }
@@ -188,9 +244,10 @@ RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::grid_search(
     const std::vector<std::size_t> &num_trees,
     const std::vector<std::size_t> &min_leaf_size,
     const std::vector<double> &min_gain_split, const std::vector<std::size_t> &max_depth,
-    const double validation_size /*= 0.3*/, bool use_scaling /*= true*/) {
+    const double validation_size /*= 0.3*/, bool use_scaling /*= true*/, bool use_weights /*= false*/) {
     std::cout << "Performing grid search for Random Forest hyperparameters." << std::endl;
     RandomForestParams best_params;
+    double best_result = 0;
 
     if (num_classes < 2) {
         throw RandomForestException("Number of classes must be at least 2.");
@@ -209,15 +266,30 @@ RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::grid_search(
         scaler.Transform(feats, feats);
     }
 
-    mlpack::HyperParameterTuner<mlpack::RandomForest<>, Metric, mlpack::SimpleCV,
-                                ens::GridSearch>
-        tuner(validation_size, feats, labels, static_cast<size_t>(num_classes));
-
-    std::tie(best_params.num_trees, best_params.min_leaf_size, best_params.min_gain_split,
-             best_params.max_depth) =
-        tuner.Optimize(num_trees, min_leaf_size, min_gain_split, max_depth);
-
-    const double best_result = tuner.BestObjective();
+    arma::rowvec weights;
+    if (use_weights) {
+        calculate_weights(labels, weights, num_classes);
+        
+        // Create tuner with weights
+        mlpack::HyperParameterTuner<mlpack::RandomForest<>, Metric, mlpack::SimpleCV,
+                                    ens::GridSearch>
+            tuner(validation_size, feats, labels, static_cast<size_t>(num_classes), weights);
+            
+        std::tie(best_params.num_trees, best_params.min_leaf_size, best_params.min_gain_split,
+                 best_params.max_depth) =
+            tuner.Optimize(num_trees, min_leaf_size, min_gain_split, max_depth);
+            best_result = tuner.BestObjective();
+    } else {
+        // Regular tuner without weights
+        mlpack::HyperParameterTuner<mlpack::RandomForest<>, Metric, mlpack::SimpleCV,
+                                    ens::GridSearch>
+            tuner(validation_size, feats, labels, static_cast<size_t>(num_classes));
+            
+        std::tie(best_params.num_trees, best_params.min_leaf_size, best_params.min_gain_split,
+                 best_params.max_depth) =
+            tuner.Optimize(num_trees, min_leaf_size, min_gain_split, max_depth);
+            best_result = tuner.BestObjective();
+    }
 
     std::cout << "Best hyperparameters:\n";
     std::cout << "  numTrees:     " << best_params.num_trees << "\n";
@@ -235,8 +307,8 @@ template <typename Metric>
 std::tuple<RandomForestParams, double>
 RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::grid_search(
     const Features &features, const Labels &labels, const std::size_t num_classes,
-    const GridSearchParams &params, bool use_scaling /*= true*/) {
+    const GridSearchParams &params, bool use_scaling /*= true*/, bool use_weights /*= false*/) {
     return grid_search<Metric>(features, labels, num_classes, params.num_trees,
                                params.min_leaf_size, params.min_gain_split,
-                               params.max_depth, params.validation_size, use_scaling);
+                               params.max_depth, params.validation_size, use_scaling, use_weights);
 }
