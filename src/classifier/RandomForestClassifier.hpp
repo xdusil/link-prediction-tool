@@ -3,8 +3,8 @@
 #include "mlpack/core/cv/metrics/average_strategy.hpp"
 #include "statistics/metrics.hpp"
 #include <mlpack/core.hpp>
-#include <mlpack/methods/random_forest/random_forest.hpp>
 #include <mlpack/core/data/scaler_methods/min_max_scaler.hpp>
+#include <mlpack/methods/random_forest/random_forest.hpp>
 
 /**
  * @brief The parameters for the Random Forest classifier.
@@ -14,6 +14,17 @@ struct RandomForestParams {
     std::size_t min_leaf_size;
     double min_gain_split;
     std::size_t max_depth;
+};
+
+/**
+ * @brief The parameters for the Random Forest grid search.
+ */
+struct GridSearchParams {
+    std::vector<std::size_t> num_trees;
+    std::vector<std::size_t> min_leaf_size;
+    std::vector<double> min_gain_split;
+    std::vector<std::size_t> max_depth;
+    double validation_size;
 };
 
 /**
@@ -51,7 +62,8 @@ public:
      * @param params The Random Forest parameters.
      * @param use_scaling Whether to use scaling for the features.
      */
-    RandomForestClassifier(std::size_t num_classes, const RandomForestParams &params, bool use_scaling = true);
+    RandomForestClassifier(std::size_t num_classes, const RandomForestParams &params,
+                           bool use_scaling = true);
 
     /**
      * @brief Construct a new Random Forest Classifier object.
@@ -85,9 +97,8 @@ public:
      *
      * @param features The features.
      * @return A tuple containing the predicted labels and a matrix of probabilities.
-    */
-    std::tuple<Labels, arma::mat> predict_proba(
-        const Features &features) const override;
+     */
+    std::tuple<Labels, arma::mat> predict_proba(const Features &features) const override;
 
     /**
      * @brief Evaluate the classifier using the given features and labels.
@@ -134,6 +145,22 @@ public:
                 const std::vector<double> &min_gain_split,
                 const std::vector<std::size_t> &max_depth,
                 const double validation_size = 0.3, bool use_scaling = true);
+
+    /**
+     * @brief Perform a grid search to find the best Random Forest parameters.
+     *
+     * @param features The features.
+     * @param labels The labels.
+     * @param num_classes The number of classes.
+     * @param params The grid search parameters.
+     * @param use_scaling Whether to use scaling for the features.
+     * @return The best Random Forest parameters and the best metric score.
+    */
+    template <typename Metric>
+    static std::tuple<RandomForestParams, double>
+    grid_search(const Features &features, const Labels &labels,
+                const std::size_t num_classes, const GridSearchParams &params,
+                bool use_scaling = true);
 
 private:
     mlpack::RandomForest<> m_rf; // The Random Forest model

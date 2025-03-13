@@ -228,3 +228,15 @@ RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::grid_search(
 
     return std::make_tuple(best_params, best_result);
 }
+
+template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+          typename Scaler>
+template <typename Metric>
+std::tuple<RandomForestParams, double>
+RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::grid_search(
+    const Features &features, const Labels &labels, const std::size_t num_classes,
+    const GridSearchParams &params, bool use_scaling /*= true*/) {
+    return grid_search<Metric>(features, labels, num_classes, params.num_trees,
+                               params.min_leaf_size, params.min_gain_split,
+                               params.max_depth, params.validation_size, use_scaling);
+}
