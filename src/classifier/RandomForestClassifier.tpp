@@ -218,7 +218,8 @@ void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::load(
         // Load all data from the same archive
         archive(CEREAL_NVP(m_rf), CEREAL_NVP(m_scaler), CEREAL_NVP(m_num_classes),
                 CEREAL_NVP(m_num_trees), CEREAL_NVP(m_min_leaf_size),
-                CEREAL_NVP(m_min_gain_split), CEREAL_NVP(m_max_depth));
+                CEREAL_NVP(m_min_gain_split), CEREAL_NVP(m_max_depth),
+                CEREAL_NVP(m_use_scaling));
     } catch (const std::exception &e) {
         std::throw_with_nested(
             RandomForestException("Failed to load the Random Forest model from " + path));
