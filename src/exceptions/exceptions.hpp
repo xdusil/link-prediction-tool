@@ -80,3 +80,12 @@ class CliValidationException : public ApplicationException {
 class ComponentNotInitializedException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
+
+/**
+ * @brief Not supported exception class
+ *
+ * Exception will be thrown when a feature is not supported
+ */
+class NotSupportedException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};
