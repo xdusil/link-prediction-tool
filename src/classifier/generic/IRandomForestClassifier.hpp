@@ -1,0 +1,68 @@
+#pragma once
+#include <string>
+#include <vector>
+
+/**
+ * @brief Interface for a Random Forest classifier.
+ *
+ * @tparam Features The type of the features.
+ * @tparam Labels The type of the labels.
+ * @tparam Metrics The type of evaluation metrics.
+ * @tparam ProbMatrix The type of probability matrix returned by predict_proba.
+ */
+template <typename Features, typename Labels, typename Metrics, typename ProbMatrix>
+class IRandomForestClassifier {
+public:
+    virtual ~IRandomForestClassifier() = default;
+
+    /**
+     * @brief Train the classifier with the given features and labels.
+     *
+     * @param features The features.
+     * @param labels The labels.
+     * @param use_weights Whether to use weights for the training - according to the
+     *                    number of occurrences of each class.
+     */
+    virtual void train(const Features &features, const Labels &labels,
+                       bool use_weights = false) = 0;
+
+    /**
+     * @brief Predict the labels for the given features.
+     *
+     * @param features The features.
+     * @return The predicted labels.
+     */
+    virtual Labels predict(const Features &features) const = 0;
+
+    /**
+     * @brief Predict probabilities for each class for the given features.
+     *
+     * @param features The features.
+     * @return A tuple containing the predicted labels and a matrix of probabilities.
+     */
+    virtual std::tuple<Labels, ProbMatrix>
+    predict_proba(const Features &features) const = 0;
+
+    /**
+     * @brief Evaluate the classifier using the given features and labels.
+     *
+     * @param features The features.
+     * @param labels The labels.
+     * @return The metrics of the classifier.
+     */
+    virtual Metrics evaluate(const Features &features, const Labels &labels) = 0;
+
+    /**
+     * @brief Save the classifier to a file.
+     *
+     * @param path The file path to save the classifier.
+     */
+    virtual void save(const std::string &path) const = 0;
+
+    /**
+     * @brief Load the classifier from a file.
+     *
+     * @param path The file path to load the classifier from.
+     */
+    virtual void load(const std::string &path) = 0;
+};
