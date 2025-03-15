@@ -32,11 +32,11 @@ struct GridSearchParams {
  *
  * @tparam Features The type of the features.
  * @tparam Labels The type of the labels.
- * @tparam AvgerageStrategy The average strategy for the metrics.
+ * @tparam AverageType The type of the average strategy.
  * @tparam Scaler The type of the scaler.
  */
 template <typename Features, typename Labels,
-          mlpack::AverageStrategy AvgerageStrategy = mlpack::AverageStrategy::Binary,
+          statistics::AverageType AverageType = statistics::AverageType::BINARY,
           typename Scaler = mlpack::data::MinMaxScaler>
 class RandomForestClassifier
     : public IRandomForestClassifier<Features, Labels, statistics::Metrics, arma::mat> {

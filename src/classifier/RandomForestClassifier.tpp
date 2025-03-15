@@ -14,16 +14,16 @@
 #include <ostream>
 #include <tuple>
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
-RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::RandomForestClassifier(
+RandomForestClassifier<Features, Labels, AverageType, Scaler>::RandomForestClassifier(
     std::size_t num_classes /*= 2*/, std::size_t num_trees /*= 10*/,
     std::size_t min_leaf_size /*= 1*/, double min_gain_split /*= 0.0*/,
     std::size_t max_depth /*= 0*/, bool use_scaling /*= true*/)
     : m_num_classes(num_classes), m_num_trees(num_trees), m_min_leaf_size(min_leaf_size),
       m_min_gain_split(min_gain_split), m_max_depth(max_depth),
       m_use_scaling(use_scaling) {
-    if (AverageStrategy == mlpack::AverageStrategy::Binary && num_classes != 2) {
+    if (AverageType == statistics::AverageType::BINARY && num_classes != 2) {
         throw RandomForestException(
             "Binary average strategy can only be used with 2 classes.");
     }
@@ -33,26 +33,26 @@ RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::RandomForestC
     }
 }
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
-RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::RandomForestClassifier(
+RandomForestClassifier<Features, Labels, AverageType, Scaler>::RandomForestClassifier(
     std::size_t num_classes, const RandomForestParams &params,
     bool use_scaling /*= true*/)
     : RandomForestClassifier(num_classes, params.num_trees, params.min_leaf_size,
                              params.min_gain_split, params.max_depth, use_scaling) {}
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
-RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::RandomForestClassifier(
+RandomForestClassifier<Features, Labels, AverageType, Scaler>::RandomForestClassifier(
     mlpack::RandomForest<> &&rf, std::size_t num_classes,
     const RandomForestParams &params, bool use_scaling /*= true*/)
     : RandomForestClassifier(num_classes, params, use_scaling) {
     m_rf = std::move(rf);
 }
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
-void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::calculate_weights(
+void RandomForestClassifier<Features, Labels, AverageType, Scaler>::calculate_weights(
     const Labels &labels, arma::rowvec &weights, std::size_t num_classes) {
     if (num_classes == 0) {
         throw RandomForestException("Number of classes must be greater than 0.");
@@ -62,31 +62,33 @@ void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::calculat
     for (size_t i = 0; i < labels.n_elem; ++i) {
         counts[labels[i]]++;
     }
-    
+
     // Calculate total number of samples
     const size_t total_samples = labels.n_elem;
-    
+
     // Calculate balanced weights (inverse of frequency)
     // Higher weight for minority class, lower weight for majority class
     arma::Row<double> class_weights(num_classes);
     for (size_t i = 0; i < num_classes; ++i) {
-        class_weights[i] = counts[i] > 0 ? static_cast<double>(total_samples) / 
-                                          (static_cast<double>(num_classes) * counts[i]) : 0.0;
+        class_weights[i] = counts[i] > 0
+                               ? static_cast<double>(total_samples) /
+                                     (static_cast<double>(num_classes) * counts[i])
+                               : 0.0;
     }
-    
+
     std::cout << "Class distribution: ";
     for (size_t i = 0; i < num_classes; ++i) {
-        std::cout << "Class " << i << ": " << counts[i] << " (" 
+        std::cout << "Class " << i << ": " << counts[i] << " ("
                   << 100.0 * counts[i] / total_samples << "%), ";
     }
     std::cout << std::endl;
-    
+
     std::cout << "Class weights: ";
     for (size_t i = 0; i < num_classes; ++i) {
         std::cout << "Class " << i << ": " << class_weights[i] << ", ";
     }
     std::cout << std::endl;
-    
+
     // Apply class weights to each sample based on its class
     weights.set_size(total_samples);
     for (size_t i = 0; i < total_samples; ++i) {
@@ -94,9 +96,9 @@ void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::calculat
     }
 }
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
-void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::train(
+void RandomForestClassifier<Features, Labels, AverageType, Scaler>::train(
     const Features &features, const Labels &labels, bool use_weights /*= false*/) {
     if (features.n_cols != labels.n_elem) {
         throw RandomForestException("Number of features and labels must be equal.");
@@ -115,7 +117,7 @@ void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::train(
         arma::rowvec weights;
         calculate_weights(labels, weights, m_num_classes);
         m_rf.Train(feats, labels, m_num_classes, weights, m_num_trees, m_min_leaf_size,
-            m_min_gain_split, m_max_depth);
+                   m_min_gain_split, m_max_depth);
         return;
     }
 
@@ -123,9 +125,9 @@ void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::train(
                m_min_gain_split, m_max_depth);
 }
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
-Labels RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::predict(
+Labels RandomForestClassifier<Features, Labels, AverageType, Scaler>::predict(
     const Features &features) const {
     auto feats = arma::conv_to<arma::mat>::from(features);
     if (m_use_scaling) {
@@ -139,10 +141,10 @@ Labels RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::predic
     return predictions;
 }
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
 std::tuple<Labels, arma::mat>
-RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::predict_proba(
+RandomForestClassifier<Features, Labels, AverageType, Scaler>::predict_proba(
     const Features &features) const {
     // Predict using the Random Forest
     Labels predictions;
@@ -156,29 +158,24 @@ RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::predict_proba
     return {predictions, probabilities};
 }
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
 statistics::Metrics
-RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::evaluate(
+RandomForestClassifier<Features, Labels, AverageType, Scaler>::evaluate(
     const Features &features, const Labels &labels) {
 
-    // Predict using the Random Forest
-    auto feats = arma::conv_to<arma::mat>::from(features);
-    if (m_use_scaling) {
-        m_scaler.Transform(feats, feats);
-    }
+    // Get predictions and probabilities
+    auto [predictions, probabilities] = predict_proba(features);
 
-    statistics::Metrics metrics;
-    metrics.accuracy = mlpack::Accuracy::Evaluate(m_rf, feats, labels);
-    metrics.precision = mlpack::Precision<AverageStrategy>::Evaluate(m_rf, feats, labels);
-    metrics.recall = mlpack::Recall<AverageStrategy>::Evaluate(m_rf, feats, labels);
-    metrics.f1_score = mlpack::F1<AverageStrategy>::Evaluate(m_rf, feats, labels);
-    return metrics;
+    // Calculate metrics
+    const arma::rowvec positive_scores = probabilities.row(1);
+    return statistics::calculate_metrics(predictions, labels, positive_scores,
+                                         AverageType, m_num_classes);
 }
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
-void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::save(
+void RandomForestClassifier<Features, Labels, AverageType, Scaler>::save(
     const std::string &path) const {
     try {
         // Open a single output archive
@@ -202,9 +199,9 @@ void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::save(
     std::cout << "Classifier saved to " << path << std::endl;
 }
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
-void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::load(
+void RandomForestClassifier<Features, Labels, AverageType, Scaler>::load(
     const std::string &path) {
     try {
         // Open a single input archive
@@ -225,7 +222,7 @@ void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::load(
             RandomForestException("Failed to load the Random Forest model from " + path));
     }
 
-    if (AverageStrategy == mlpack::AverageStrategy::Binary && m_num_classes != 2) {
+    if (AverageType == statistics::AverageType::BINARY && m_num_classes != 2) {
         throw RandomForestException(
             "Binary average strategy can only be used with 2 classes.");
     }
@@ -236,16 +233,17 @@ void RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::load(
               << m_max_depth << std::endl;
 }
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
 template <typename Metric>
 std::tuple<RandomForestParams, double>
-RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::grid_search(
+RandomForestClassifier<Features, Labels, AverageType, Scaler>::grid_search(
     const Features &features, const Labels &labels, const std::size_t num_classes,
     const std::vector<std::size_t> &num_trees,
     const std::vector<std::size_t> &min_leaf_size,
     const std::vector<double> &min_gain_split, const std::vector<std::size_t> &max_depth,
-    const double validation_size /*= 0.3*/, bool use_scaling /*= true*/, bool use_weights /*= false*/) {
+    const double validation_size /*= 0.3*/, bool use_scaling /*= true*/,
+    bool use_weights /*= false*/) {
     std::cout << "Performing grid search for Random Forest hyperparameters." << std::endl;
     RandomForestParams best_params;
     double best_result = 0;
@@ -270,26 +268,27 @@ RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::grid_search(
     arma::rowvec weights;
     if (use_weights) {
         calculate_weights(labels, weights, num_classes);
-        
+
         // Create tuner with weights
         mlpack::HyperParameterTuner<mlpack::RandomForest<>, Metric, mlpack::SimpleCV,
                                     ens::GridSearch>
-            tuner(validation_size, feats, labels, static_cast<size_t>(num_classes), weights);
-            
-        std::tie(best_params.num_trees, best_params.min_leaf_size, best_params.min_gain_split,
-                 best_params.max_depth) =
+            tuner(validation_size, feats, labels, static_cast<size_t>(num_classes),
+                  weights);
+
+        std::tie(best_params.num_trees, best_params.min_leaf_size,
+                 best_params.min_gain_split, best_params.max_depth) =
             tuner.Optimize(num_trees, min_leaf_size, min_gain_split, max_depth);
-            best_result = tuner.BestObjective();
+        best_result = tuner.BestObjective();
     } else {
         // Regular tuner without weights
         mlpack::HyperParameterTuner<mlpack::RandomForest<>, Metric, mlpack::SimpleCV,
                                     ens::GridSearch>
             tuner(validation_size, feats, labels, static_cast<size_t>(num_classes));
-            
-        std::tie(best_params.num_trees, best_params.min_leaf_size, best_params.min_gain_split,
-                 best_params.max_depth) =
+
+        std::tie(best_params.num_trees, best_params.min_leaf_size,
+                 best_params.min_gain_split, best_params.max_depth) =
             tuner.Optimize(num_trees, min_leaf_size, min_gain_split, max_depth);
-            best_result = tuner.BestObjective();
+        best_result = tuner.BestObjective();
     }
 
     std::cout << "Best hyperparameters:\n";
@@ -302,14 +301,16 @@ RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::grid_search(
     return std::make_tuple(best_params, best_result);
 }
 
-template <typename Features, typename Labels, mlpack::AverageStrategy AverageStrategy,
+template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
 template <typename Metric>
 std::tuple<RandomForestParams, double>
-RandomForestClassifier<Features, Labels, AverageStrategy, Scaler>::grid_search(
+RandomForestClassifier<Features, Labels, AverageType, Scaler>::grid_search(
     const Features &features, const Labels &labels, const std::size_t num_classes,
-    const GridSearchParams &params, bool use_scaling /*= true*/, bool use_weights /*= false*/) {
+    const GridSearchParams &params, bool use_scaling /*= true*/,
+    bool use_weights /*= false*/) {
     return grid_search<Metric>(features, labels, num_classes, params.num_trees,
                                params.min_leaf_size, params.min_gain_split,
-                               params.max_depth, params.validation_size, use_scaling, use_weights);
+                               params.max_depth, params.validation_size, use_scaling,
+                               use_weights);
 }
