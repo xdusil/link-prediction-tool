@@ -40,6 +40,18 @@ std::size_t BoostGraphAnalytics<Graph>::common_neighbors_count(const Vertex &u, 
 }
 
 template <typename Graph>
+double BoostGraphAnalytics<Graph>::normalized_common_neighbors_count(const Vertex &u, const Vertex &v) const {
+    std::size_t cn = common_neighbors_count(u, v);
+    std::size_t deg_u = m_graph_manager.get_degree(u);
+    std::size_t deg_v = m_graph_manager.get_degree(v);
+    
+    // Maximum possible common neighbors is min(deg_u, deg_v)
+    std::size_t max_possible = std::min(deg_u, deg_v);
+    
+    return max_possible > 0 ? static_cast<double>(cn) / max_possible : 0.0;
+}
+
+template <typename Graph>
 std::vector<typename BoostGraphAnalytics<Graph>::Vertex>
 BoostGraphAnalytics<Graph>::get_common_neighbors(const Vertex &u, const Vertex &v) const {
     return m_graph_manager.get_common_neighbors(u, v);

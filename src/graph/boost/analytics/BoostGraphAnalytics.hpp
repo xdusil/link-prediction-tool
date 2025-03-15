@@ -56,6 +56,19 @@ public:
     std::size_t common_neighbors_count(const Vertex &u, const Vertex &v) const override;
 
     /**
+     * @brief Calculate normalized common neighbors count between two vertices.
+     *
+     * This metric is the common neighbors count divided by the maximum possible
+     * number of common neighbors for these two vertices, which is min(deg_u, deg_v).
+     *
+     * @param u First vertex
+     * @param v Second vertex
+     * @return Normalized common neighbors count in range [0,1]
+     */
+    double normalized_common_neighbors_count(const Vertex &u,
+                                             const Vertex &v) const override;
+
+    /**
      * @brief Get common neighbors between two vertices.
      *
      * @param u First vertex
