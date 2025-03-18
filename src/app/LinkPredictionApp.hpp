@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Types.hpp"
-#include "classifier/RandomForestClassifier.hpp"
+#include "classifier/generic/RandomForestClassifier.hpp"
+#include "classifier/binary/BinaryRandomForestClassifier.hpp"
 #include "config/config.hpp"
 #include "config/config_loader.hpp"
 #include "constrained_collections/counters/EvictingCounter.hpp"
@@ -189,7 +190,7 @@ private:
     std::unique_ptr<SkipGramModel> m_model;
 
     // Classifier
-    std::unique_ptr<RandomForestClassifier<arma::fmat, arma::Row<size_t>>> m_classifier;
+    std::unique_ptr<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>> m_classifier;
 
     // Ground Truth
     std::unique_ptr<ground_truth::DependencyAnalyzer> m_dependency_analyzer;

@@ -1,7 +1,6 @@
 
 #include "LinkPredictionApp.hpp"
 #include "Types.hpp"
-#include "classifier/RandomForestClassifier.hpp"
 #include "config/config.hpp"
 #include "exceptions/exceptions.hpp"
 #include "generators/feature/FeatureGenerator.hpp"
@@ -148,7 +147,7 @@ void LinkPredictionApp::run_prediction_mode(
 
     // Load classifier
     m_classifier =
-        std::make_unique<RandomForestClassifier<arma::fmat, arma::Row<size_t>>>();
+        std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>();
     m_classifier->load(classifier_path);
 
     // Generate predictions
@@ -231,7 +230,11 @@ void LinkPredictionApp::generate_predictions(
                   << "  Accuracy: " << metrics.accuracy << "\n"
                   << "  Precision: " << metrics.precision << "\n"
                   << "  Recall: " << metrics.recall << "\n"
-                  << "  F1 Score: " << metrics.f1_score << std::endl;
+                  << "  F1 Score: " << metrics.f1_score
+                  << (metrics.roc_auc.has_value()
+                          ? "\n  ROC AUC: " + std::to_string(metrics.roc_auc.value())
+                          : "")
+                  << std::endl;
     }
 }
 
@@ -239,11 +242,11 @@ void LinkPredictionApp::generate_predictions(
 template <typename Features, typename Labels>
 void evaluate_model_train_test_split(const RandomForestParams &params,
                                      const Features &features, const Labels &labels,
-                                     double test_size = 0.25, bool use_scaling = true) {
+                                     double test_size = 0.25, bool use_scaling = true,
+                                     bool use_weights = false) {
     arma::mat features_d = arma::conv_to<arma::mat>::from(features);
 
-    size_t num_classes = 2;
-    RandomForestClassifier<arma::mat, Labels> rf(num_classes, params, use_scaling);
+    BinaryRandomForestClassifier<arma::mat, Labels> rf(params, use_scaling);
 
     // Containers for the split data.
     arma::mat train_features, test_features;
@@ -271,7 +274,7 @@ void evaluate_model_train_test_split(const RandomForestParams &params,
               << std::endl;
     std::cout << "\n\n";
 
-    rf.train(train_features, train_labels);
+    rf.train(train_features, train_labels, use_weights);
     Labels y_predicted = rf.predict(test_features);
 
     std::cout << "Predicted labels: \n";
@@ -285,6 +288,9 @@ void evaluate_model_train_test_split(const RandomForestParams &params,
     std::cout << "Precision: " << metrics.precision << std::endl;
     std::cout << "Recall: " << metrics.recall << std::endl;
     std::cout << "F1 Score: " << metrics.f1_score << std::endl;
+    if (metrics.roc_auc.has_value()) {
+        std::cout << "ROC AUC: " << metrics.roc_auc.value() << std::endl;
+    }
 }
 
 void LinkPredictionApp::process_data(const std::string &data_path) {
@@ -392,19 +398,19 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
         // Perform grid search
         RandomForestParams best_params = perform_grid_search(features, labels);
         m_classifier =
-            std::make_unique<RandomForestClassifier<arma::fmat, arma::Row<size_t>>>(
-                2, best_params.num_trees, best_params.min_leaf_size,
+            std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>(
+                best_params.num_trees, best_params.min_leaf_size,
                 best_params.min_gain_split, best_params.max_depth);
     } else {
         // Create classifier
         m_classifier =
-            std::make_unique<RandomForestClassifier<arma::fmat, arma::Row<size_t>>>(
-                2, m_config.NUM_TREES, m_config.MIN_LEAF_SIZE, m_config.MIN_GAIN_SPLIT,
+            std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>(
+                m_config.NUM_TREES, m_config.MIN_LEAF_SIZE, m_config.MIN_GAIN_SPLIT,
                 m_config.MAX_DEPTH);
     }
 
     // Train classifier
-    m_classifier->train(features, labels);
+    m_classifier->train(features, labels, m_config.USE_WEIGHTS);
 
     // Evaluate classifier
     statistics::Metrics metrics = m_classifier->evaluate(features, labels);
@@ -414,6 +420,9 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     std::cout << "  Precision: " << metrics.precision << std::endl;
     std::cout << "  Recall: " << metrics.recall << std::endl;
     std::cout << "  F1 Score: " << metrics.f1_score << std::endl;
+    if (metrics.roc_auc.has_value()) {
+        std::cout << "  ROC-AUC: " << metrics.roc_auc.value() << std::endl;
+    }
 
     RandomForestParams params;
     params.num_trees = m_config.NUM_TREES;
@@ -422,9 +431,10 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     params.max_depth = m_config.MAX_DEPTH;
 
     ///////////
-    evaluate_model_train_test_split(params, features, labels, 0.25);
-    evaluate_model_train_test_split(params, features, labels, 0.5);
-    evaluate_model_train_test_split(params, features, labels, 0.75);
+    // evaluate_model_train_test_split(params, features, labels, 0.25, true,
+    // m_config.USE_WEIGHTS); evaluate_model_train_test_split(params, features, labels,
+    // 0.5, true, m_config.USE_WEIGHTS); evaluate_model_train_test_split(params, features,
+    // labels, 0.75, true, m_config.USE_WEIGHTS);
     ///////////
 }
 
@@ -448,7 +458,7 @@ RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
             template grid_search<mlpack::F1<mlpack::AverageStrategy::Binary>>(
                 features, labels, 2, m_config.GRID_NUM_TREES, m_config.GRID_MIN_LEAF_SIZE,
                 m_config.GRID_MIN_GAIN_SPLIT, m_config.GRID_MAX_DEPTH,
-                m_config.GRID_VALIDATION_SIZE);
+                m_config.GRID_VALIDATION_SIZE, true, m_config.USE_WEIGHTS);
 
     std::cout << "Grid search complete." << std::endl;
     std::cout << "Best parameters:" << std::endl;
