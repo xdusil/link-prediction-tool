@@ -15,6 +15,7 @@ static void print_help() {
         << "\nModes (one required):\n"
         << "  -t, --training              Run in training mode\n"
         << "  -p, --prediction            Run in prediction mode\n"
+        << "  -x, --extract               Extract ground truth only\n"
         << "\nRequired options for training mode:\n"
         << "  -c, --classifier PATH       Path to classifier model file (to save)\n"
         << "  -d, --data PATH             Path to input data file\n"
@@ -38,6 +39,7 @@ static struct option long_options[] = {
     {"classifier", required_argument, nullptr, 'c'},
     {"config", required_argument, nullptr, 'f'},
     {"data", required_argument, nullptr, 'd'},
+    {"extract", no_argument, nullptr, 'x'},
     {"ground-truth-in", required_argument, nullptr, 'g'},
     {"ground-truth-out", required_argument, nullptr, 'G'},
     {"help", no_argument, nullptr, 'h'},
@@ -51,6 +53,7 @@ struct cmd_args {
     // Flags
     bool training_mode;
     bool prediction_mode;
+    bool ground_truth_mode;
     bool help;
 
     // Paths
@@ -72,6 +75,10 @@ void check_training_mode(const cmd_args &args) {
         throw CliValidationException("Cannot specify both training and prediction mode");
     }
 
+    if (args.ground_truth_mode) {
+        throw CliValidationException("Cannot combine training with ground-truth-only mode");
+    }
+
     // Validate required files
     if (!args.classifier_path) {
         throw CliValidationException("Missing required argument --classifier");
@@ -83,8 +90,12 @@ void check_training_mode(const cmd_args &args) {
 }
 
 void check_prediction_mode(const cmd_args &args) {
+
     if (args.training_mode) {
         throw CliValidationException("Cannot specify both training and prediction mode");
+    }
+    if (args.ground_truth_mode) {
+        throw CliValidationException("Cannot combine prediction with ground-truth-only mode");
     }
 
     // Validate required files
@@ -106,14 +117,47 @@ void check_prediction_mode(const cmd_args &args) {
     }
 }
 
-void check_cli_args(const cmd_args &args) {
-    if (!args.training_mode && !args.prediction_mode) {
-        throw CliValidationException("Must specify either training or prediction mode");
+void check_ground_truth_mode(const cmd_args &args) {
+    if (args.training_mode || args.prediction_mode) {
+        throw CliValidationException("Cannot combine ground-truth-only with other modes");
     }
+
+    if (!args.data_path) {
+        throw CliValidationException("Missing required argument --data");
+    }
+
+    if (!args.ground_truth_output_path) {
+        throw CliValidationException("Missing required argument --ground-truth-out");
+    }
+    
+    if (args.classifier_path) {
+        throw CliValidationException("Classifier not needed in ground-truth-only mode");
+    }
+    
+    if (args.predictions_output_path) {
+        throw CliValidationException("Predictions output not used in ground-truth-only mode");
+    }
+
+    if (args.ground_truth_input_path) {
+        throw CliValidationException("Ground truth input not used in ground-truth-only mode");
+    }
+
+    if (args.internal_ips_path) {
+        throw CliValidationException("Internal IPs not used in ground-truth-only mode");
+    }
+}
+
+void check_cli_args(const cmd_args &args) {
+    if (!args.training_mode && !args.prediction_mode && !args.ground_truth_mode) {
+        throw CliValidationException("Must specify a mode: training, prediction, or ground-truth-only");
+    }
+    
     if (args.training_mode) {
         check_training_mode(args);
-    } else {
+    } else if (args.prediction_mode) {
         check_prediction_mode(args);
+    } else {
+        check_ground_truth_mode(args);
     }
 }
 
@@ -121,7 +165,7 @@ cmd_args parse_cmd_args(int argc, char *argv[]) {
     cmd_args args{}; // Initialize all fields
     int opt;
 
-    const char *short_opts = ":b:c:f:d:g:G:hi:po:t";
+    const char *short_opts = ":b:c:f:d:g:G:hi:po:tx";
 
     while ((opt = getopt_long(argc, argv, short_opts, long_options, nullptr)) != -1) {
         switch (opt) {
@@ -131,6 +175,9 @@ cmd_args parse_cmd_args(int argc, char *argv[]) {
             break;
         case 'p':
             args.prediction_mode = true;
+            break;
+        case 'x':
+            args.ground_truth_mode = true;
             break;
         case 'h':
             args.help = true;
@@ -196,12 +243,13 @@ int main(int argc, char *argv[]) {
                                   args.ground_truth_input_path,
                                   args.ground_truth_output_path, args.blocked_ips_path,
                                   args.internal_ips_path);
-        }
-
-        if (args.prediction_mode) {
+        } else if (args.prediction_mode) {
             app.run_prediction_mode(*args.classifier_path, *args.predictions_output_path,
                                     *args.data_path, args.ground_truth_input_path,
                                     args.blocked_ips_path, args.internal_ips_path);
+        } else {
+            app.run_ground_truth_mode(*args.data_path, *args.ground_truth_output_path,
+                                           args.blocked_ips_path);
         }
 
     } catch (const std::exception &e) {
