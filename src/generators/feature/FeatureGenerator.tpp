@@ -148,7 +148,7 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     // Network structure features
     if (m_feature_config.common_neighbors) {
         features_accessor[row_index][j++] =
-            m_graph_analytics.common_neighbors_count(v1, v2);
+            m_graph_analytics.normalized_common_neighbors_count(v1, v2);
     }
     if (m_feature_config.jaccard_coefficient) {
         features_accessor[row_index][j++] = m_graph_analytics.jaccard_coefficient(v1, v2);
@@ -156,8 +156,10 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
 
     // Node-level features
     if (m_feature_config.node_degree) {
-        features_accessor[row_index][j++] = m_graph_analytics.degree(v1) / get_set_avg_degree<T>();
-        features_accessor[row_index][j++] = m_graph_analytics.degree(v2) / get_set_avg_degree<T>();
+        features_accessor[row_index][j++] =
+            m_graph_analytics.degree(v1) / get_set_avg_degree<T>();
+        features_accessor[row_index][j++] =
+            m_graph_analytics.degree(v2) / get_set_avg_degree<T>();
     }
 
     // Statistical features from embeddings
@@ -185,7 +187,7 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
         features_accessor[row_index][j++] =
             v1_norm > 0 && v2_norm > 0 ? v1_norm / v2_norm : 0.0;
     }
-    
+
     // Embedding absolute mean features
     if (m_feature_config.embedding_abs_mean) {
         features_accessor[row_index][j++] = v1_emb.abs().mean().item<T>();
@@ -234,7 +236,8 @@ T FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::dot_p
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
 template <typename T>
-T FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::get_set_avg_degree() {
+T FeatureGenerator<GraphTraits, EmbeddingModule,
+                   GroundTruthDependencies>::get_set_avg_degree() {
     if (m_avg_degree.has_value()) {
         return m_avg_degree.value();
     }
