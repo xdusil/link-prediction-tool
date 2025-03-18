@@ -1,8 +1,13 @@
 #pragma once
+#include "config/config.hpp"
 #include <cstddef>
 #include <vector>
 #include <string>
+#include <iostream>
 
+/**
+ * @brief Configuration for the features
+ */
 class FeatureConfig {
 public:
     bool cosine_similarity = true;
@@ -20,6 +25,11 @@ public:
     bool resource_allocation = true;
     bool embedding_ratio = true;
     bool embedding_abs_mean = true; // For both nodes v1 and v2
+    bool element_wise_product = true;
+
+    std::size_t embedding_dim = 0; // Dimension of the embeddings
+
+    FeatureConfig() = default;
 
     // Calculate feature dimension based on enabled features
     std::size_t get_dimension() const {
@@ -39,6 +49,7 @@ public:
         dim += resource_allocation ? 1 : 0;
         dim += embedding_ratio ? 1 : 0;
         dim += embedding_abs_mean ? 2 : 0; // Two features: abs_mean(v1_emb), abs_mean(v2_emb)
+        dim += element_wise_product ? embedding_dim : 0;
         return dim;
     }
     
@@ -68,6 +79,11 @@ public:
         if (embedding_abs_mean) {
             names.push_back("embed_abs_mean_v1");
             names.push_back("embed_abs_mean_v2");
+        }
+        if (element_wise_product) {
+            for (std::size_t i = 0; i < embedding_dim; ++i) {
+                names.push_back("element_wise_product_" + std::to_string(i));
+            }
         }
         return names;
     }

@@ -27,9 +27,7 @@ public:
      */
     FeatureGenerator(const IGraphAnalytics<GraphTraits> &graph_analytics,
                      const EmbeddingModule &embedding_module,
-                     const FeatureConfig &config = FeatureConfig())
-        : m_graph_analytics(graph_analytics), m_embedding_module(embedding_module),
-          m_feature_config(config) {}
+                     const FeatureConfig &config = FeatureConfig());
 
     /**
      * @brief Generate feature tensors with corresponding labels.
@@ -76,6 +74,7 @@ private:
     const IGraphAnalytics<GraphTraits> &m_graph_analytics;
     const EmbeddingModule &m_embedding_module;
     FeatureConfig m_feature_config;
+    std::optional<double> m_avg_degree;  // Cached graph statistics to avoid recalculation
 
     /**
      * @brief Generate feature tensors with corresponding labels, and vertex pairs.
@@ -153,9 +152,6 @@ private:
                                            const torch::Tensor &v2_emb,
                                            torch::Tensor &features_tensor,
                                            std::size_t row_index);
-
-    // Cached graph statistics to avoid recalculation
-    std::optional<double> m_avg_degree;
 };
 
 #include "FeatureGenerator.tpp"

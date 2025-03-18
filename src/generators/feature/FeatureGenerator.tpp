@@ -6,6 +6,17 @@
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
+FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::FeatureGenerator(
+    const IGraphAnalytics<GraphTraits> &graph_analytics,
+    const EmbeddingModule &embedding_module,
+    const FeatureConfig &config /*= FeatureConfig()*/)
+    : m_graph_analytics(graph_analytics), m_embedding_module(embedding_module),
+      m_feature_config(config) {
+    m_feature_config.embedding_dim = embedding_module->options.embedding_dim();
+}
+
+template <typename GraphTraits, typename EmbeddingModule,
+          typename GroundTruthDependencies>
 std::tuple<torch::Tensor, arma::Row<size_t>>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     generate_labeled_features(
@@ -114,6 +125,9 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
         assert(features_tensor.scalar_type() == c10::ScalarType::Float);
     } else if constexpr (std::is_same_v<T, double>) {
         assert(features_tensor.scalar_type() == c10::ScalarType::Double);
+    } else {
+        static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>,
+                      "Only float and double types are supported");
     }
 
     // Get an accessor for efficient tensor access
@@ -192,6 +206,13 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     if (m_feature_config.embedding_abs_mean) {
         features_accessor[row_index][j++] = v1_emb.abs().mean().item<T>();
         features_accessor[row_index][j++] = v2_emb.abs().mean().item<T>();
+    }
+
+    // Element-wise product of embeddings
+    if (m_feature_config.element_wise_product) {
+        for (int i = 0; i < v1_emb.size(0); i++) {
+            features_accessor[row_index][j++] = v1_emb[i].item<T>() * v2_emb[i].item<T>();
+        }
     }
 }
 
