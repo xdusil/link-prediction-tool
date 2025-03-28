@@ -89,3 +89,13 @@ class ComponentNotInitializedException : public ApplicationException {
 class NotSupportedException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
+
+/**
+ * @brief JSON exception class
+ *
+ * Exception will be thrown when an error occurs during JSON parsing or manipulation with
+ * JSON objects
+ */
+class JSONException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};
