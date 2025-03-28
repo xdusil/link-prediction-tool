@@ -218,7 +218,8 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::load(
                   << " with threshold = " << m_binary_threshold << ", " << 
                     "num trees = " << this->m_num_trees << ", min leaf size = " <<
                     this->m_min_leaf_size << ", min gain split = " << this->m_min_gain_split <<
-                    ", max depth = " << this->m_max_depth << std::endl;
+                    ", max depth = " << this->m_max_depth << ", with scaling: " <<
+                    this->m_use_scaling << std::endl;
 
     } catch (const std::exception &e) {
         std::throw_with_nested(

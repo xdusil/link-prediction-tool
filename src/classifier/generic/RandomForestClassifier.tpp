@@ -227,7 +227,7 @@ void RandomForestClassifier<Features, Labels, AverageType, Scaler>::load(
     std::cout << "Classifier loaded from " << path << "\n"
               << "with " << m_num_trees << " trees, min leaf size " << m_min_leaf_size
               << ", min gain split " << m_min_gain_split << ", and max depth "
-              << m_max_depth << std::endl;
+              << m_max_depth << ", with scaling: " << m_use_scaling << std::endl;
 }
 
 template <typename Features, typename Labels, statistics::AverageType AverageType,
