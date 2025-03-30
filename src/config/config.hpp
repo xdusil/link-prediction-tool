@@ -1,6 +1,8 @@
 #pragma once
-#include <vector>
+#include "classifier/generic/RandomForestClassifier.hpp"
+#include "generators/feature/FeatureConfig.hpp"
 #include <cstddef>
+#include <vector>
 
 namespace config {
 
@@ -17,26 +19,33 @@ struct Config {
     int EPSILON_REV = 1000;
     int EMBEDDING_DIM = 64;
     int WALK_LENGTH = 5;
-    int CONTEXT_SIZE = 2;
-    int WALKS_PER_NODE = 10;
+    int CONTEXT_SIZE = 4;
     int NUM_NEGATIVE_SAMPLES = 1;
     int EPOCHS = 15;
     int NUM_THREADS = 4;
     double LEARNING_RATE = 0.01;
+    std::optional<double> CLASSIFIER_THRESHOLD;
 
-    // Random Forest parameters
-    int NUM_TREES = 50;
-    int MIN_LEAF_SIZE = 1;
-    double MIN_GAIN_SPLIT = 0.0;
-    int MAX_DEPTH = 30;
-    
-    // Grid search parameters
-    bool GRID_SEARCH_ENABLED = false;
-    std::vector<std::size_t> GRID_NUM_TREES = {10, 20, 50, 100};
-    std::vector<std::size_t> GRID_MIN_LEAF_SIZE = {1, 3, 5};
-    std::vector<double> GRID_MIN_GAIN_SPLIT = {0.0, 1e-7, 1e-5};
-    std::vector<std::size_t> GRID_MAX_DEPTH = {0, 10, 20, 30};
-    double GRID_VALIDATION_SIZE = 0.25;
+    bool USE_WEIGHTS = false;
+    bool USE_SCALING = true;
+    bool USE_GRID_SEARCH = false;
+    bool USE_THRESHOLD_CALIBRATION = false;
+
+    RandomForestParams RF_PARAMS = {50, 1, 0.0, 30};
+
+    GridSearchParams GRID_PARAMS = {
+        {10, 20, 50, 100}, {1, 3, 5}, {0.0, 1e-7, 1e-5}, {0, 10, 20, 30}, 0.25};
+
+    FeatureConfig FEATURE_CONFIG{};
 };
+
+/**
+ * @brief Load configuration from a file
+ *
+ * @param filename The name of the file to load the configuration from
+ * @return The loaded configuration
+ * @throws ConfigurationException if the file cannot be read or the parsing fails
+ */
+Config load(const std::string &filename);
 
 } // namespace config
