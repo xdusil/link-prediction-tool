@@ -1,7 +1,6 @@
 #include "FlowProcessor.hpp"
 #include "utils/ip/IIPChecker.hpp"
 
-// Constructor
 FlowProcessor::FlowProcessor(IEvictingCounter<IPAddress> &internal_counter,
                              IEvictingCounter<IPAddress> &external_counter,
                              ICapacityLimitedReservoir<IPAddress, IPEdge> &reservoir,
@@ -11,7 +10,6 @@ FlowProcessor::FlowProcessor(IEvictingCounter<IPAddress> &internal_counter,
       m_reservoir(reservoir), m_allowed_ips_checker(allowed_ips_checker),
       m_internal_ips_checker(internal_ips_checker) {}
 
-// Process initial flows
 void FlowProcessor::process_flow_file(const std::string &filename) {
     FileReader reader(filename);
     std::string line;
@@ -38,13 +36,14 @@ void FlowProcessor::process_flow_file(const std::string &filename) {
                 update_counters(*dst_ip);
             }
 
+            m_total_flows++;
+
         } catch (const std::exception &) {
             continue;
         }
     }
 }
 
-// Process filtered flows
 void FlowProcessor::process_filtered_flows(const std::string &filename) {
     FileReader reader(filename);
     std::string line;
@@ -77,7 +76,6 @@ void FlowProcessor::process_filtered_flows(const std::string &filename) {
     }
 }
 
-// Update counters
 inline void FlowProcessor::update_counters(const std::string &ip) {
     if (m_internal_ips_checker.check_ip(ip)) {
         m_internal_counter.add_or_decrement(ip);
@@ -86,7 +84,6 @@ inline void FlowProcessor::update_counters(const std::string &ip) {
     }
 }
 
-// Parse flow from JSON
 IPEdge FlowProcessor::parse_flow_from_json(const boost::json::object &data) const {
     return {
         data.at("sourceIPv4Address").as_string().c_str(),
@@ -108,7 +105,6 @@ IPEdge FlowProcessor::parse_flow_from_json(const boost::json::object &data) cons
                                       : data.at("biFlowEndMilliseconds").as_int64()}};
 }
 
-// Add edge to reservoir
 void FlowProcessor::add_edge_to_reservoir(const std::string &src_ip,
                                           const std::string &dst_ip, IPEdge &edge) {
     m_reservoir.add(src_ip, edge);
@@ -117,7 +113,25 @@ void FlowProcessor::add_edge_to_reservoir(const std::string &src_ip,
     m_reservoir.add(dst_ip, edge);
 }
 
-// Log missing keys
 void FlowProcessor::log_missing_keys(const std::string &line) const {
     std::cerr << "Missing keys in JSON object: " << line << std::endl;
 }
+
+std::size_t FlowProcessor::get_internal_addresses_count() const {
+    return m_internal_counter.get_items().size();
+}
+
+std::size_t FlowProcessor::get_external_addresses_count() const {
+    return m_external_counter.get_items().size();
+}
+
+std::size_t FlowProcessor::get_total_edges_count() const {
+    // Count total edges
+    std::size_t total_edges = 0;
+    for (const auto &key : m_reservoir.get_keys()) {
+        total_edges += m_reservoir.get_size(key);
+    }
+    return total_edges;
+}
+
+std::size_t FlowProcessor::get_total_flows_count() const { return m_total_flows; }

@@ -54,6 +54,34 @@ public:
      */
     void process_filtered_flows(const std::string &filename);
 
+    /**
+     * @brief Gets the count of internal IP addresses.
+     *
+     * @return The count of internal IP addresses.
+     */
+    std::size_t get_internal_addresses_count() const;
+
+    /**
+     * @brief Gets the count of external IP addresses.
+     *
+     * @return The count of external IP addresses.
+     */
+    std::size_t get_external_addresses_count() const;
+
+    /**
+     * @brief Gets the count of total edges in the reservoir.
+     *
+     * @return The count of total edges in the reservoir.
+     */
+    std::size_t get_total_edges_count() const;
+
+    /**
+     * @brief Gets the total number of flows processed.
+     *
+     * @return The total number of flows processed.
+     */
+    std::size_t get_total_flows_count() const;
+
 private:
     IEvictingCounter<IPAddress>
         &m_internal_counter; // Evicting counter for internal IP addresses
@@ -63,6 +91,7 @@ private:
         &m_reservoir;                         // Capacity-limited reservoir for IP edges
     const IIPChecker &m_allowed_ips_checker;  // Allowed IP checker
     const IIPChecker &m_internal_ips_checker; // Internal IP checker
+    std::size_t m_total_flows = 0;            // Total number of flows processed
 
     /**
      * @brief Updates the internal or external IP address counters.
