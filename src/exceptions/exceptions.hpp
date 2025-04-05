@@ -50,7 +50,7 @@ class RandomForestException : public ApplicationException {
  *
  * Exception will be thrown when parsing cmd arguments and unknown option is found
  */
-class UnknownOptionException : ApplicationException {
+class UnknownOptionException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
 
