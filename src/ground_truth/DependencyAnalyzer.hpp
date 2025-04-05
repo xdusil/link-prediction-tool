@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ground_truth/IDependencyAnalyzer.hpp"
 #include "utils/ip/IIPChecker.hpp"
 #include <chrono>
 #include <ostream>
@@ -76,7 +77,8 @@ using RR3DependencyMap = std::unordered_map<IPAddress, std::vector<RR3Dependency
 using DependencySet = std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>;
 
 // Main class for analyzing dependencies in network flows
-class DependencyAnalyzer {
+class DependencyAnalyzer :
+    public IDependencyAnalyzer<DependencySet> {
 public:
     /**
      * @brief Constructor to initialize the dependency analyzer.
@@ -97,7 +99,7 @@ public:
      */
     const DependencySet &
     calculate_dependencies(const std::string &filename,
-                               std::optional<std::string> output_filename = std::nullopt);
+                               std::optional<std::string> output_filename = std::nullopt) override;
 
     /**
      * @brief Load dependencies from a file.
@@ -105,14 +107,14 @@ public:
      * @param filename The name of the file to load dependencies from.
      * @return A set of all dependencies.
      */
-    const DependencySet &load_dependencies(const std::string &filename);
+    const DependencySet &load_dependencies(const std::string &filename) override;
 
     /**
      * @brief Get all dependencies.
      *
      * @return A set of all dependencies.
      */
-    const DependencySet& get_dependencies() const;
+    const DependencySet& get_dependencies() const override;
 
 private:
     /**
