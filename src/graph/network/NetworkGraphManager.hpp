@@ -58,7 +58,7 @@ public:
      */
     bool add_edge_and_vertex_if_not_exists(const VertexProperties &src_properties,
                                            const VertexProperties &dst_properties,
-                                           const EdgeProperties &properties);
+                                           const EdgeProperties &properties) override;
 
     /**
      * @brief Get map of IP addresses to vertex descriptors.

@@ -47,6 +47,19 @@ public:
                           const EdgeProperties &properties) = 0;
 
     /**
+     * @brief Add an edge between two vertices with associated properties.
+     * If the vertices do not exist, they are added to the graph.
+     *
+     * @param src_properties Properties of the source vertex.
+     * @param dst_properties Properties of the destination vertex.
+     * @param properties Properties of the edge to add.
+     * @return True if the edge was successfully added, false otherwise.
+     */
+     virtual bool add_edge_and_vertex_if_not_exists(const VertexProperties &src_properties,
+        const VertexProperties &dst_properties,
+        const EdgeProperties &properties) = 0;
+
+    /**
      * @brief Get count of vertices in the graph.
      *
      * @return The number of vertices in the graph.
