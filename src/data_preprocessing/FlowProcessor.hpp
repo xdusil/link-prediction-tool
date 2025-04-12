@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../constrained_collections/counters/IEvictingCounter.hpp"
-#include "../constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
+#include "constrained_collections/counters/IEvictingCounter.hpp"
+#include "constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
+#include "IFlowProcessor.hpp"
 #include "Types.hpp"
 #include "io/FileReader.hpp"
 #include "utils/ip/IIPChecker.hpp"
@@ -16,7 +17,7 @@
  * internal and external IP address counters, and adding flow edges to a
  * reservoir.
  */
-class FlowProcessor {
+class FlowProcessor : public IFlowProcessor {
 public:
     /**
      * @brief Constructor for FlowProcessor.
