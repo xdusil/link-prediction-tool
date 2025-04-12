@@ -315,16 +315,11 @@ void LinkPredictionApp::process_data(const std::string &data_path) {
     processor.process_flow_file(data_path);      // fill internal and external counters
     processor.process_filtered_flows(data_path); // fill reservoir
 
-    // Count total edges
-    int total_edges = 0;
-    for (const auto &key : m_reservoir->get_keys()) {
-        total_edges += m_reservoir->get_size(key);
-    }
-
     std::cout << "Data processing complete.\n";
-    std::cout << "Internal addresses: " << m_internal_counter->get_items().size() << "\n";
-    std::cout << "External addresses: " << m_external_counter->get_items().size() << "\n";
-    std::cout << "Total edges in reservoir: " << total_edges << std::endl;
+    std::cout << "Internal addresses: " << processor.get_internal_addresses_count() << "\n";
+    std::cout << "External addresses: " << processor.get_external_addresses_count() << "\n";
+    std::cout << "Total edges in reservoir: " << processor.get_total_edges_count() << std::endl;
+    std::cout << "Total flows in reservoir: " << processor.get_total_flows_count() << std::endl;
 }
 
 void LinkPredictionApp::build_graph() {
