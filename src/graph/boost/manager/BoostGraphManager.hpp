@@ -15,7 +15,7 @@
  * @tparam Graph The type of the graph to manage.
  */
 template <typename Graph>
-class BoostGraphManager : public IGraphManager<BoostGraphTraits<Graph>> {
+class BoostGraphManager : public virtual IGraphManager<BoostGraphTraits<Graph>> {
 public:
     // Define the base class
     using Base = BoostGraphTraits<Graph>;

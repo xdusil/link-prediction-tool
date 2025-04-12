@@ -38,3 +38,8 @@ bool NetworkGraphManager::add_edge_and_vertex_if_not_exists(const VertexProperti
 
     return add_edge(src_it->second, dst_it->second, properties);
 }
+
+// Get map of IP addresses to vertex descriptors.
+const std::unordered_map<std::string, Vertex> &NetworkGraphManager::get_ip_to_vertex() const {
+    return ip_to_vertex;
+}

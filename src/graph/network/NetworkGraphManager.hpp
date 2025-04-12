@@ -1,7 +1,9 @@
 #pragma once
 
-#include "graph/boost/manager/BoostGraphManager.hpp"
 #include "NetworkGraphDefinition.hpp"
+#include "graph/boost/BoostGraphTraits.hpp"
+#include "graph/boost/manager/BoostGraphManager.hpp"
+#include "graph/network/INetworkGraphManager.hpp"
 
 /**
  * @brief Graph manager implementation for network graphs.
@@ -9,8 +11,14 @@
  * This class provides methods for adding vertices and edges to a network graph.
  * The graph is based on the definitions in `NetworkGraphDefinition.hpp`.
  */
-class NetworkGraphManager : public BoostGraphManager<Graph> {
+class NetworkGraphManager : public BoostGraphManager<Graph>,
+                            public INetworkGraphManager<BoostGraphTraits<Graph>> {
 public:
+    using typename BoostGraphManager<Graph>::Vertex;
+    using typename BoostGraphManager<Graph>::Edge;
+    using typename BoostGraphManager<Graph>::VertexProperties;
+    using typename BoostGraphManager<Graph>::EdgeProperties;
+    
     // Constructor
     NetworkGraphManager() = default;
 
@@ -65,9 +73,7 @@ public:
      *
      * @return The map of IP addresses to vertex descriptors.
      */
-    const std::unordered_map<std::string, Vertex> &get_ip_to_vertex() const {
-        return ip_to_vertex;
-    }
+    const std::unordered_map<std::string, Vertex> &get_ip_to_vertex() const override;
 
 private:
     std::unordered_map<std::string, Vertex>
