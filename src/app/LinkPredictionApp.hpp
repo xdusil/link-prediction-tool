@@ -4,7 +4,6 @@
 #include "classifier/generic/RandomForestClassifier.hpp"
 #include "classifier/binary/BinaryRandomForestClassifier.hpp"
 #include "config/config.hpp"
-#include "config/config_loader.hpp"
 #include "constrained_collections/counters/EvictingCounter.hpp"
 #include "constrained_collections/reservoirs/CapacityLimitedReservoir.hpp"
 #include "data_preprocessing/FlowProcessor.hpp"

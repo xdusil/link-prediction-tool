@@ -1,6 +1,7 @@
 
 #include "LinkPredictionApp.hpp"
 #include "Types.hpp"
+#include "classifier/generic/RandomForestClassifier.hpp"
 #include "config/config.hpp"
 #include "exceptions/exceptions.hpp"
 #include "generators/feature/FeatureGenerator.hpp"
@@ -125,7 +126,7 @@ void LinkPredictionApp::run_training_mode(
               << "\n  Labels: " << arma_labels.n_elem << std::endl;
 
     // Train the classifier
-    train_classifier(arma_features, arma_labels, m_config.GRID_SEARCH_ENABLED);
+    train_classifier(arma_features, arma_labels, m_config.USE_GRID_SEARCH);
 
     if (!m_classifier)
         throw ComponentNotInitializedException("Classifier not initialized.");
@@ -400,17 +401,20 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
         m_classifier =
             std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>(
                 best_params.num_trees, best_params.min_leaf_size,
-                best_params.min_gain_split, best_params.max_depth);
+                best_params.min_gain_split, best_params.max_depth, m_config.USE_SCALING);
     } else {
         // Create classifier
         m_classifier =
-            std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>(
-                m_config.NUM_TREES, m_config.MIN_LEAF_SIZE, m_config.MIN_GAIN_SPLIT,
-                m_config.MAX_DEPTH);
+            std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>(m_config.RF_PARAMS, m_config.USE_SCALING);
     }
 
     // Train classifier
-    m_classifier->train(features, labels, m_config.USE_WEIGHTS);
+    if (m_config.USE_THRESHOLD_CALIBRATION) {
+        m_classifier->train_with_calibration(features, labels, m_config.USE_WEIGHTS);
+    } else {
+        m_classifier->train(features, labels, m_config.USE_WEIGHTS);
+    }
+    
 
     // Evaluate classifier
     statistics::Metrics metrics = m_classifier->evaluate(features, labels);
@@ -423,12 +427,6 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     if (metrics.roc_auc.has_value()) {
         std::cout << "  ROC-AUC: " << metrics.roc_auc.value() << std::endl;
     }
-
-    RandomForestParams params;
-    params.num_trees = m_config.NUM_TREES;
-    params.min_leaf_size = m_config.MIN_LEAF_SIZE;
-    params.min_gain_split = m_config.MIN_GAIN_SPLIT;
-    params.max_depth = m_config.MAX_DEPTH;
 
     ///////////
     // evaluate_model_train_test_split(params, features, labels, 0.25, true,
@@ -443,11 +441,12 @@ RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
 
     std::cout << "Performing grid search for hyperparameters...\n";
 
-    std::cout << ">> numTrees: " << m_config.GRID_NUM_TREES << std::endl;
-    std::cout << ">> minLeafSize: " << m_config.GRID_MIN_LEAF_SIZE << std::endl;
-    std::cout << ">> minGainSplit: " << m_config.GRID_MIN_GAIN_SPLIT << std::endl;
-    std::cout << ">> maxDepth: " << m_config.GRID_MAX_DEPTH << std::endl;
-    std::cout << ">> validationSize: " << m_config.GRID_VALIDATION_SIZE << std::endl;
+    const GridSearchParams &grid_params = m_config.GRID_PARAMS;
+    std::cout << ">> numTrees: " << grid_params.num_trees << std::endl;
+    std::cout << ">> minLeafSize: " << grid_params.min_leaf_size << std::endl;
+    std::cout << ">> minGainSplit: " << grid_params.min_gain_split << std::endl;
+    std::cout << ">> maxDepth: " << grid_params.max_depth << std::endl;
+    std::cout << ">> validationSize: " << grid_params.validation_size << std::endl;
 
     // Perform grid search
     RandomForestParams best_params;
@@ -456,9 +455,9 @@ RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
     std::tie(best_params, best_score) =
         RandomForestClassifier<decltype(features), decltype(labels)>::
             template grid_search<mlpack::F1<mlpack::AverageStrategy::Binary>>(
-                features, labels, 2, m_config.GRID_NUM_TREES, m_config.GRID_MIN_LEAF_SIZE,
-                m_config.GRID_MIN_GAIN_SPLIT, m_config.GRID_MAX_DEPTH,
-                m_config.GRID_VALIDATION_SIZE, true, m_config.USE_WEIGHTS);
+                features, labels, 2, grid_params.num_trees, grid_params.min_leaf_size,
+                grid_params.min_gain_split, grid_params.max_depth,
+                grid_params.validation_size, m_config.USE_SCALING, m_config.USE_WEIGHTS);
 
     std::cout << "Grid search complete." << std::endl;
     std::cout << "Best parameters:" << std::endl;
