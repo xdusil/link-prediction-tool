@@ -10,7 +10,7 @@
 #include "generators/context/SlidingWindowContextGenerator.hpp"
 #include "generators/dependency/CandidateDependencyGenerator.hpp"
 #include "graph/network/NetworkGraphManager.hpp"
-#include "ground_truth/DependencyAnalyzer.hpp"
+#include "ground_truth/DependencyAnalyser.hpp"
 #include "model/SkipGramModel.hpp"
 #include "model/data/DataLoader.hpp"
 #include "model/optimizer/Optimizer.hpp"
@@ -192,7 +192,7 @@ private:
     std::unique_ptr<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>> m_classifier;
 
     // Ground Truth
-    std::unique_ptr<ground_truth::DependencyAnalyzer> m_dependency_analyzer;
+    std::unique_ptr<ground_truth::DependencyAnalyser> m_dependency_analyser;
 
     // Random seed
     unsigned int m_seed = 42;

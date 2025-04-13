@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ground_truth/IDependencyAnalyzer.hpp"
+#include "ground_truth/IDependencyAnalyser.hpp"
 #include "utils/ip/IIPChecker.hpp"
 #include <chrono>
 #include <ostream>
@@ -76,19 +76,19 @@ using TD3DependencyMap = std::unordered_map<IPAddress, std::vector<TD3Dependency
 using RR3DependencyMap = std::unordered_map<IPAddress, std::vector<RR3Dependency>>;
 using DependencySet = std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>;
 
-// Main class for analyzing dependencies in network flows
-class DependencyAnalyzer :
-    public IDependencyAnalyzer<DependencySet> {
+// Main class for analysing dependencies in network flows
+class DependencyAnalyser :
+    public IDependencyAnalyser<DependencySet> {
 public:
     /**
-     * @brief Constructor to initialize the dependency analyzer.
+     * @brief Constructor to initialize the dependency analyser.
      *
      * @param n_occurrences Minimum number of occurrences required to confirm a
      * dependency.
      * @param epsilon Maximum allowable time difference between flows for RR dependencies.
      * @param allowed_ips_checker The IP checker to check if an IP is allowed.
      */
-    DependencyAnalyzer(int n_occurrences, int epsilon, IIPChecker &allowed_ips_checker);
+    DependencyAnalyser(int n_occurrences, int epsilon, IIPChecker &allowed_ips_checker);
 
     /**
      * @brief Calculate all dependencies between IP addresses.
@@ -193,7 +193,7 @@ private:
         const std::vector<EdgeProperties> &edge_properties) const;
 
     /**
-     * @brief Reset the dependency analyzer.
+     * @brief Reset the dependency analyser.
      */
     void reset();
     

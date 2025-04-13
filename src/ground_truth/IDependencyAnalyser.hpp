@@ -14,9 +14,9 @@ namespace ground_truth {
  * @tparam DependencySet The type of the set of dependencies.
  */
 template <typename DependencySet>
-class IDependencyAnalyzer {
+class IDependencyAnalyser {
 public:
-    virtual ~IDependencyAnalyzer() = default;
+    virtual ~IDependencyAnalyser() = default;
 
     /**
      * @brief Calculate all dependencies between IP addresses.
