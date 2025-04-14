@@ -3,6 +3,27 @@
 #include <vector>
 
 /**
+ * @brief The parameters for the Random Forest classifier.
+ */
+struct RandomForestParams {
+    std::size_t num_trees;
+    std::size_t min_leaf_size;
+    double min_gain_split;
+    std::size_t max_depth;
+};
+
+/**
+ * @brief The parameters for the Random Forest grid search.
+ */
+struct GridSearchParams {
+    std::vector<std::size_t> num_trees;
+    std::vector<std::size_t> min_leaf_size;
+    std::vector<double> min_gain_split;
+    std::vector<std::size_t> max_depth;
+    double validation_size;
+};
+
+/**
  * @brief Interface for a Random Forest classifier.
  *
  * @tparam Features The type of the features.
@@ -24,7 +45,7 @@ public:
      *                    number of occurrences of each class.
      */
     virtual void train(const Features &features, const Labels &labels,
-                       bool use_weights = false) = 0;
+                       bool use_weights) = 0;
 
     /**
      * @brief Predict the labels for the given features.
