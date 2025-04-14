@@ -2,6 +2,7 @@
 
 #include <armadillo>
 #include <torch/torch.h>
+#include <omp.h>
 #include <optional>
 #include <random>
 #include <tuple>
@@ -111,6 +112,23 @@ struct TensorMatrixView {
 template <typename T>
 TensorMatrixView<T> conv_2d_tensor_to_arma(const torch::Tensor &tensor, bool copy_mem,
                                     bool transpose);
+
+/**
+ * @brief Set the number of threads for global operations.
+ *
+ * This function sets the number of threads for both Torch and OpenMP.
+ *
+ * @param threads The number of threads to set.
+ */
+inline void set_global_threads_count(int threads) {
+    
+    // Torch
+    torch::set_num_threads(threads);
+    torch::set_num_interop_threads(threads);
+
+    // OpenMP
+    omp_set_num_threads(threads);
+}
 
 } // namespace utils
 
