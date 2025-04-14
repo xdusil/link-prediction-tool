@@ -235,6 +235,15 @@ Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
     set_validated_opt<double>(obj, "CLASSIFIER_THRESHOLD", config.CLASSIFIER_THRESHOLD,
                               is_unit_interval{});
 
+    // String parameters
+    set_validated<std::string>(
+        obj, "METRIC_TO_OPTIMISE", config.METRIC_TO_OPTIMISE, [](const std::string &val) {
+            return std::pair{val == "accuracy" || val == "f1" || val == "precision" ||
+                                 val == "recall",
+                             "Invalid metric: " + val +
+                                 ". Valid options are: accuracy, f1, precision, recall."};
+        });
+
     // Boolean parameters
     set_validated<bool>(obj, "USE_WEIGHTS", config.USE_WEIGHTS, always_true{});
     set_validated<bool>(obj, "USE_SCALING", config.USE_SCALING, always_true{});
