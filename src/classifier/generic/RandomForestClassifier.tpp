@@ -1,12 +1,13 @@
 #pragma once
 
-#include "statistics/metrics.hpp"
 #include "RandomForestClassifier.hpp"
 #include "exceptions/exceptions.hpp"
 #include "mlpack/core/cv/metrics/accuracy.hpp"
 #include "mlpack/core/cv/metrics/average_strategy.hpp"
 #include "mlpack/core/cv/metrics/f1.hpp"
 #include "mlpack/core/cv/metrics/metrics.hpp"
+#include "mlpack/core/cv/metrics/precision.hpp"
+#include "mlpack/core/cv/metrics/recall.hpp"
 #include "mlpack/methods/random_forest/random_forest.hpp"
 #include "utils/utils.hpp"
 #include <cstddef>
@@ -236,11 +237,14 @@ template <typename Metric>
 std::tuple<RandomForestParams, double>
 RandomForestClassifier<Features, Labels, AverageType, Scaler>::grid_search(
     const Features &features, const Labels &labels, const std::size_t num_classes,
-    const std::vector<std::size_t> &num_trees,
-    const std::vector<std::size_t> &min_leaf_size,
-    const std::vector<double> &min_gain_split, const std::vector<std::size_t> &max_depth,
-    const double validation_size /*= 0.3*/, bool use_scaling /*= true*/,
+    const GridSearchParams &params, bool use_scaling /*= true*/,
     bool use_weights /*= false*/) {
+    const auto &num_trees = params.num_trees;
+    const auto &min_leaf_size = params.min_leaf_size;
+    const auto &min_gain_split = params.min_gain_split;
+    const auto &max_depth = params.max_depth;
+    const auto &validation_size = params.validation_size;
+
     std::cout << "Performing grid search for Random Forest hyperparameters." << std::endl;
     RandomForestParams best_params;
     double best_result = 0;
@@ -300,14 +304,40 @@ RandomForestClassifier<Features, Labels, AverageType, Scaler>::grid_search(
 
 template <typename Features, typename Labels, statistics::AverageType AverageType,
           typename Scaler>
-template <typename Metric>
 std::tuple<RandomForestParams, double>
 RandomForestClassifier<Features, Labels, AverageType, Scaler>::grid_search(
     const Features &features, const Labels &labels, const std::size_t num_classes,
     const GridSearchParams &params, bool use_scaling /*= true*/,
-    bool use_weights /*= false*/) {
-    return grid_search<Metric>(features, labels, num_classes, params.num_trees,
-                               params.min_leaf_size, params.min_gain_split,
-                               params.max_depth, params.validation_size, use_scaling,
-                               use_weights);
+    bool use_weights /*= false*/, const std::string &metric /*= "f1"*/) {
+
+    auto to_mlpack_strategy = [](const statistics::AverageType &type) {
+        switch (type) {
+        case statistics::AverageType::BINARY:
+            return mlpack::Binary;
+        case statistics::AverageType::MICRO:
+            return mlpack::Micro;
+        case statistics::AverageType::MACRO:
+
+            return mlpack::Macro;
+        default:
+            throw RandomForestException("Unknown average type.");
+        }
+    };
+    constexpr auto strategy = to_mlpack_strategy(AverageType);
+    // Call the appropriate template specialization based on the metric string
+    if (metric == "f1") {
+        return grid_search<mlpack::F1<strategy>>(
+            features, labels, num_classes, params, use_scaling, use_weights);
+    } else if (metric == "accuracy") {
+        return grid_search<mlpack::Accuracy>(
+            features, labels, num_classes, params, use_scaling, use_weights);;
+    } else if (metric == "precision") {
+        return grid_search<mlpack::Precision<strategy>>(
+            features, labels, num_classes, params, use_scaling, use_weights);;
+    } else if (metric == "recall") {
+        return grid_search<mlpack::Recall<strategy>>(
+            features, labels, num_classes, params, use_scaling, use_weights);;
+    } else {
+        throw RandomForestException("Unknown metric: " + metric);
+    }
 }

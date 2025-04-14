@@ -18,7 +18,8 @@ template <typename Features, typename Labels,
           statistics::AverageType AverageType = statistics::AverageType::BINARY,
           typename Scaler = mlpack::data::MinMaxScaler>
 class RandomForestClassifier
-    : public virtual IRandomForestClassifier<Features, Labels, statistics::Metrics, arma::mat> {
+    : public virtual IRandomForestClassifier<Features, Labels, statistics::Metrics,
+                                             arma::mat> {
 public:
     /**
      * @brief Construct a new Random Forest Classifier object.
@@ -111,24 +112,18 @@ public:
      * @param features The features.
      * @param labels The labels.
      * @param num_classes The number of classes.
-     * @param num_trees The vector of the number of trees to search.
-     * @param min_leaf_size The vector of the minimum leaf size to search.
-     * @param min_gain_split The vector of the minimum gain split to search.
-     * @param max_depth The vector of the maximum depth to search.
-     * @param validation_size The size of the validation set.
+     * @param params The grid search parameters.
      * @param use_scaling Whether to use scaling for the features.
      * @param use_weights Whether to use weights for the training - according to the
+     *                    number of occurrences of each class.
+     * @tparam Metric The metric to optimise.
      * @return The best Random Forest parameters and the best metric score.
      */
     template <typename Metric>
     static std::tuple<RandomForestParams, double>
     grid_search(const Features &features, const Labels &labels,
-                const std::size_t num_classes, const std::vector<std::size_t> &num_trees,
-                const std::vector<std::size_t> &min_leaf_size,
-                const std::vector<double> &min_gain_split,
-                const std::vector<std::size_t> &max_depth,
-                const double validation_size = 0.3, bool use_scaling = true,
-                bool use_weights = false);
+                const std::size_t num_classes, const GridSearchParams &params,
+                bool use_scaling = true, bool use_weights = false);
 
     /**
      * @brief Perform a grid search to find the best Random Forest parameters.
@@ -140,53 +135,55 @@ public:
      * @param use_scaling Whether to use scaling for the features.
      * @param use_weights Whether to use weights for the training - according to the
      *                    number of occurrences of each class.
+     * @param metric The metric to optimise ("f1", "precision", "recall", "accuracy").
      * @return The best Random Forest parameters and the best metric score.
      */
-    template <typename Metric>
     static std::tuple<RandomForestParams, double>
     grid_search(const Features &features, const Labels &labels,
                 const std::size_t num_classes, const GridSearchParams &params,
-                bool use_scaling = true, bool use_weights = false);
+                bool use_scaling = true, bool use_weights = false,
+                const std::string &metric = "f1");
 
-protected:
-    mlpack::RandomForest<> m_rf; // The Random Forest model
-    mutable Scaler m_scaler;     // Configurable scaler
-    bool m_use_scaling;          // Whether to use scaling for the features
-    std::size_t m_num_classes;   // The number of classes
-    std::size_t m_num_trees;     // The number of trees in the forest
-    std::size_t m_min_leaf_size; // The minimum number of points in each tree's leaf nodes
-    double m_min_gain_split;     // The minimum gain for splitting a decision tree node
-    std::size_t m_max_depth;     // The maximum depth for the tree
+    protected:
+        mlpack::RandomForest<> m_rf; // The Random Forest model
+        mutable Scaler m_scaler;     // Configurable scaler
+        bool m_use_scaling;          // Whether to use scaling for the features
+        std::size_t m_num_classes;   // The number of classes
+        std::size_t m_num_trees;     // The number of trees in the forest
+        std::size_t
+            m_min_leaf_size;     // The minimum number of points in each tree's leaf nodes
+        double m_min_gain_split; // The minimum gain for splitting a decision tree node
+        std::size_t m_max_depth; // The maximum depth for the tree
 
-    /**
-     * @brief Calculate the weights for the training data.
-     *
-     * @param labels The labels.
-     * @param weights The weights.
-     * @param num_classes The number of classes.
-     */
-    static void calculate_weights(const Labels &labels, arma::rowvec &weights,
-                                  std::size_t num_classes);
+        /**
+         * @brief Calculate the weights for the training data.
+         *
+         * @param labels The labels.
+         * @param weights The weights.
+         * @param num_classes The number of classes.
+         */
+        static void calculate_weights(const Labels &labels, arma::rowvec &weights,
+                                      std::size_t num_classes);
 
-    /**
-     * @brief Serialize the Random Forest Classifier.
-     *
-     * This method enables proper inheritance-based serialization.
-     * Derived classes should override this method and call the base version.
-     *
-     * @tparam Archive The type of the archive.
-     * @param archive The archive to serialize to/from.
-     */
-    template <class Archive>
-    void serialize(Archive &archive) {
-        archive(CEREAL_NVP(m_rf), CEREAL_NVP(m_scaler), CEREAL_NVP(m_num_classes),
-                CEREAL_NVP(m_num_trees), CEREAL_NVP(m_min_leaf_size),
-                CEREAL_NVP(m_min_gain_split), CEREAL_NVP(m_max_depth),
-                CEREAL_NVP(m_use_scaling));
-    }
+        /**
+         * @brief Serialize the Random Forest Classifier.
+         *
+         * This method enables proper inheritance-based serialization.
+         * Derived classes should override this method and call the base version.
+         *
+         * @tparam Archive The type of the archive.
+         * @param archive The archive to serialize to/from.
+         */
+        template <class Archive>
+        void serialize(Archive & archive) {
+            archive(CEREAL_NVP(m_rf), CEREAL_NVP(m_scaler), CEREAL_NVP(m_num_classes),
+                    CEREAL_NVP(m_num_trees), CEREAL_NVP(m_min_leaf_size),
+                    CEREAL_NVP(m_min_gain_split), CEREAL_NVP(m_max_depth),
+                    CEREAL_NVP(m_use_scaling));
+        }
 
-    // Allow cereal access to protected/private members
-    friend class cereal::access;
-};
+        // Allow cereal access to protected/private members
+        friend class cereal::access;
+    };
 
 #include "RandomForestClassifier.tpp"
