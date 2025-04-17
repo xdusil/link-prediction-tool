@@ -4,6 +4,8 @@ project(LinkPredictionApp VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+add_definitions(-DARMA_DONT_USE_WRAPPER)
+
 # Generate compile commands
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -29,6 +31,7 @@ if(OpenMP_FOUND)
     
     # Add a definition to tell the code to use OpenMP
     add_definitions(-DMLPACK_USE_OPENMP)
+    add_definitions(-DUSE_OPENMP)
 endif()
 
 # Find paths to include directories
@@ -51,7 +54,6 @@ find_path(CEREAL_INCLUDE_DIR_FOUND
 # Recursively find all source files in the src directory
 file(GLOB_RECURSE SOURCES
     "${SRC_DIR}/*.cpp"
-    "${SRC_DIR}/*.tpp"
     "${SRC_DIR}/*.hpp"
 )
 
