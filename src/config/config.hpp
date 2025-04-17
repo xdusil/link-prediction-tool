@@ -46,7 +46,9 @@ struct Config {
  *
  * @param filename The name of the file to load the configuration from
  * @return The loaded configuration
- * @throws ConfigurationException if the file cannot be read or the parsing fails
+ * @throws ConfigurationException if the file cannot be read or
+ *                                   the parsing fails or
+ *                                   the validation fails
  */
 Config load(const std::string &filename);
 
