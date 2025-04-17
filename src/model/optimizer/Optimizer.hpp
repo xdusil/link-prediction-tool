@@ -17,18 +17,20 @@ public:
      * @param model The model to optimize.
      * @param learning_rate The learning rate for the optimizer.
      */
-    Optimizer(torch::nn::Module& model, double learning_rate);
+    Optimizer(auto& model, double learning_rate);
     
     /**
      * @brief Zero the gradients of the optimizer.
      */
-    void zero_grad() override;
+    inline void zero_grad() override;
 
     /**
      * @brief Perform a single optimization step.
      */
-    void step() override;
+    inline void step() override;
 
 private:
     std::unique_ptr<torch::optim::Optimizer> m_optimizer; // Optimizer object
 };
+
+#include "Optimizer.tpp"
