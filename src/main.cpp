@@ -3,6 +3,8 @@
 #include <boost/json/src.hpp> // for boost json - has to be included only once in the project
 #include <cstdio>
 #include <cstdlib>
+#include <exception>
+#include "utils/utils.hpp"
 #include <getopt.h>
 #include <iostream>
 #include <optional>
@@ -259,7 +261,7 @@ int main(int argc, char *argv[]) {
         }
 
     } catch (const std::exception &e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        utils::print_exception(e);
         return EXIT_FAILURE;
     }
 
