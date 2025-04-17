@@ -1,5 +1,6 @@
 #include "tag_invokes.hpp"
 #include "config/config.hpp"
+#include "exceptions/exceptions.hpp"
 #include "utils/validators/simple_validators.hpp"
 
 namespace json = boost::json;
@@ -27,12 +28,16 @@ void set_validated_common(
                                        const std::string &)>
         extractor) {
 
-    const auto &error_msg = validator(Inner{}).second;
-    auto v = [&validator](const Inner &val) { return validator(val).first; };
-    auto val_opt = extractor(obj, key, v, error_msg);
-    if (val_opt) {
-        place = *val_opt;
-    }
+    try {
+        const auto &error_msg = validator(Inner{}).second;
+        auto v = [&validator](const Inner &val) { return validator(val).first; };
+        auto val_opt = extractor(obj, key, v, error_msg);
+        if (val_opt) {
+            place = *val_opt;
+        }
+    } catch (const std::exception &e) {
+        std::throw_with_nested(
+            ConfigurationException("Error while getting value for key: " + key));}
 }
 
 /**

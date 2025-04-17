@@ -58,7 +58,7 @@ Config load(const std::string &filename) {
     try {
         reader.read_all(json_content);
     } catch (const std::exception &e) {
-        std::throw_with_nested(ConfigurationException("Could not read config file"));
+        std::throw_with_nested(ConfigurationException("Could not read config file" + filename));
     }
 
     Config config = parse_json(json_content);
