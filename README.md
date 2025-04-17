@@ -1,13 +1,34 @@
 # LinkPredictionApp
 
 ## Overview
-This project builds a C++ application for link prediction of device dependencies in a network.
+LinkPredictionApp is a high‑performance C++ application for detecting dependencies between devices in a network. It combines graph‑based analysis, network flow processing, and machine learning to identify and predict device communication dependencies with high accuracy.
+
+## Features
+- **Three Operational Modes**: Training, prediction, and ground truth extraction  
+- **Graph‑based Network Analysis**: Build network graphs from raw flow data  
+- **Machine Learning for Dependency Prediction**: Uses Random Forest classification with feature engineering  
+- **Highly Configurable**: Runtime configuration via JSON config files or command‑line options  
+- **Performance Optimized**: Multi‑threaded operation to handle large-scale networks  
+- **Comprehensive Evaluation**: Built‑in metrics for model performance assessment  
 
 ## Table of Contents
-- [Overview](#overview)
-- [Dependencies](#dependencies)
-- [Installation](#installation)
-- [Usage](#usage)
+- [Overview](#overview)  
+- [Features](#features)  
+- [Dependencies](#dependencies)  
+  - [Required](#required)  
+  - [Directory/Path Variables](#directorypath-variables)  
+- [Installation](#installation)  
+- [Usage](#usage)  
+  - [Command‑Line Interface](#command-line-interface)  
+  - [Training Mode](#training-mode)  
+  - [Prediction Mode](#prediction-mode)  
+  - [Ground Truth Extraction Mode](#ground-truth-extraction-mode)  
+- [Configuration](#configuration)  
+  - [Example Configuration File](#example-configuration-file)  
+  - [Example Blocked or Internal IPs File](#example-blocked-or-internal-ips-file)
+  - [Example Flow Data File](#example-flow-data-file)
+- [Input/Output File Formats](#inputoutput-file-formats)  
+- [Performance Considerations](#performance-considerations)
 
 ## Dependencies
 
@@ -60,15 +81,184 @@ cmake .. \
 4. **Build the Project**
 If the configuration step completes successfully, you can build:
 ```bash
-make -j4
+make -j$(nproc)
 ```
-This will produce an executable named LinkPredictionApp in your build directory.
 
-5. **Run the Application**
-Once the build is complete, run the executable:
+# Usage
+
+### Command-Line Interface
+The application supports three main modes:
+
+```text
+  -t, --training       Training mode: build & train a classifier
+  -p, --prediction     Prediction mode: use an existing classifier
+  -x, --extract        Ground truth extraction mode
+  -c, --config PATH    JSON configuration file
+  -v, --verbose        Enable detailed output & timing
+```
+
+For a full list of options, run:
 ```bash
-./LinkPredictionApp
+./LinkPredictionApp --help
 ```
 
-## Usage
-The application requires `data_bt1.json` file to be present in the build directory. This file contains the network data in JSON format. The application reads the data, performs link prediction, and outputs the results to the console.
+### Training Mode
+Build and train a dependency prediction model.
+
+```bash
+./LinkPredictionApp -t \
+  --data flow_data.json \
+  --classifier model.bin \
+  [--ground-truth-in truth.csv] \
+  [--ground-truth-out truth_out.csv] \
+  [--blocked-ips blocked.txt] \
+  [--internal-ips internal.txt] \
+  [--config config.json] \
+  [--verbose]
+```
+
+- `--data PATH` *(required)*: Input flow data (JSON)  
+- `--classifier PATH` *(required)*: Where to save the trained model  
+- `--ground-truth-in PATH`: Use existing ground truth instead of recalculating  
+- `--ground-truth-out PATH`: Save extracted ground truth  
+- `--blocked-ips PATH`: List of IPs to ignore (TXT)  
+- `--internal-ips PATH`: List of internal network IPs (TXT)  
+- `--config PATH`: JSON configuration file  
+- `--verbose`: Detailed output & timing information  
+
+### Prediction Mode
+Use a pre‑trained model to predict dependencies.
+
+```bash
+./LinkPredictionApp -p \
+  --classifier model.bin \
+  --data flow_data.json \
+  --predictions-out preds.csv \
+  [--ground-truth-in truth.csv] \
+  [--blocked-ips blocked.txt] \
+  [--internal-ips internal.txt] \
+  [--config config.json] \
+  [--verbose]
+```
+
+- `--classifier PATH` *(required)*: Load classifier model  
+- `--data PATH` *(required)*: Input flow data (JSON)  
+- `--predictions-out PATH` *(required)*: Save predictions (CSV)  
+- Other options as in Training Mode  
+
+### Ground Truth Extraction Mode
+Extract ground truth dependencies without training.
+
+```bash
+./LinkPredictionApp -x \
+  --data flow_data.json \
+  --ground-truth-out truth.csv \
+  [--blocked-ips blocked.txt] \
+  [--config config.json] \
+  [--verbose]
+```
+
+- `--data PATH` *(required)*: Input flow data (JSON)  
+- `--ground-truth-out PATH` *(required)*: Save ground truth (CSV)  
+- Optional: `--blocked-ips`, `--config`, `--verbose`  
+
+## Configuration
+The application can be configured via a JSON file passed with `--config`. This controls pipeline behavior, embedding generation, and classifier settings.
+
+### Example Configuration File
+```json
+{
+    "COUNT_EXTERNAL": 100,
+    "COUNT_INTERNAL": 50,
+    "MAX_EDGES": 500,
+    "N_OCCURRENCES": 10,
+    "EPSILON": 1000,
+    "N_APPEARANCES": 10,
+    "EPSILON_REV": 1000,
+    "EMBEDDING_DIM": 64,
+    "WALK_LENGTH": 5,
+    "CONTEXT_SIZE": 4,
+    "NUM_NEGATIVE_SAMPLES": 1,
+    "EPOCHS": 15,
+    "NUM_THREADS": 30,
+    "LEARNING_RATE": 0.01,
+    "CLASSIFIER_THRESHOLD": 0.5,
+    "USE_WEIGHTS": false,
+    "USE_SCALING": true,
+    "USE_GRID_SEARCH": false,
+    "USE_THRESHOLD_CALIBRATION": false,
+    "RF_PARAMS": {
+        "num_trees": 50,
+        "min_leaf_size": 1,
+        "min_gain_split": 0.0,
+        "max_depth": 30
+    },
+    "GRID_PARAMS": {
+        "num_trees": [
+            10,
+            20,
+            50,
+            100
+        ],
+        "min_leaf_size": [
+            1,
+            3,
+            5
+        ],
+        "min_gain_split": [
+            0.0,
+            1e-7,
+            1e-5
+        ],
+        "max_depth": [
+            0,
+            10,
+            20,
+            30
+        ],
+        "validation_size": 0.25
+    },
+    "FEATURE_CONFIG": {
+        "cosine_similarity": false,
+        "euclidean_distance": false,
+        "dot_product": false,
+        "hadamard_sum": false,
+        "hadamard_mean": false,
+        "l1_distance": false,
+        "common_neighbors": false,
+        "jaccard_coefficient": false,
+        "node_degree": false,
+        "embed_std": false,
+        "adamic_adar": false,
+        "preferential_attachment": false,
+        "resource_allocation": false,
+        "embedding_ratio": false,
+        "embedding_abs_mean": false,
+        "element_wise_product": true
+    }
+}
+```
+
+### Example blocked or internal IPs file
+```text
+4.122.55.21/32
+10.1.4.46
+10.1.4.47
+```
+
+### Example flow data file
+```json
+{"biFlowEndMilliseconds":1553069758864,"biFlowStartMilliseconds":1553069758864,"destinationIPv4Address":"9.66.11.12","destinationTransportPort":1914,"flowEndMilliseconds":1553069758864,"flowStartMilliseconds":1553069758864,"protocolIdentifier":6,"sourceIPv4Address":"4.122.55.221","sourceTransportPort":49581, "timestamp":1553069758864}
+{"biFlowEndMilliseconds":1553069758864,"biFlowStartMilliseconds":1553069758864,"destinationIPv4Address":"9.66.11.12","destinationTransportPort":801,"flowEndMilliseconds":1553069758864,"flowStartMilliseconds":1553069758864,"protocolIdentifier":6,"sourceIPv4Address":"4.122.55.221","sourceTransportPort":49581,"timestamp":1553069758864}
+```
+
+## Input/Output File Formats
+- **Input Flow Data**: JSON array of flow records  
+- **Blocked IPs**: Plain‑text, one IP or CIDR per line (TXT) 
+- **Internal IPs**: Plain‑text, one IP or CIDR per line (TXT) 
+- **Ground Truth & Predictions**: CSV with columns `src_ip,dst_ip,type`
+
+## Performance Considerations
+- If `NUM_THREADS` is not set, the application will use all available CPU cores
+- It is recommended to use OpenMP for multi-threading - ensure it is installed on your system.
+- Use `--verbose` to monitor processing times and identify bottlenecks.
