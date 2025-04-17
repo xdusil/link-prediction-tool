@@ -1,7 +1,8 @@
 #pragma once
-#include "classifier/generic/RandomForestClassifier.hpp"
+#include "classifier/generic/IRandomForestClassifier.hpp"
 #include "generators/feature/FeatureConfig.hpp"
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace config {
@@ -22,8 +23,8 @@ struct Config {
     int CONTEXT_SIZE = 4;
     int NUM_NEGATIVE_SAMPLES = 1;
     int EPOCHS = 15;
-    int NUM_THREADS = 4;
     double LEARNING_RATE = 0.01;
+    std::optional<int> NUM_THREADS;
     std::optional<double> CLASSIFIER_THRESHOLD;
     std::string METRIC_TO_OPTIMISE = "f1";
 

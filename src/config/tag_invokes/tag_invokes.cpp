@@ -228,7 +228,7 @@ Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
     set_validated<int>(obj, "NUM_NEGATIVE_SAMPLES", config.NUM_NEGATIVE_SAMPLES,
                        is_non_negative{});
     set_validated<int>(obj, "EPOCHS", config.EPOCHS, is_positive{});
-    set_validated<int>(obj, "NUM_THREADS", config.NUM_THREADS, is_positive{});
+    set_validated_opt<int>(obj, "NUM_THREADS", config.NUM_THREADS, is_positive{});
 
     // Double parameters
     set_validated<double>(obj, "LEARNING_RATE", config.LEARNING_RATE, is_unit_interval{});
