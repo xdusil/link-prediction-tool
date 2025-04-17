@@ -14,10 +14,11 @@ struct SkipGramInput {
 /**
  * @brief SkipGram model for learning embeddings
  */
-class SkipGramModel : public IModel<SkipGramInput,       // Input type
-                                    torch::Tensor,       // Output type
-                                    torch::Tensor,       // Loss type
-                                    torch::nn::Embedding // Embedding type
+class SkipGramModel : public IModel<SkipGramInput,             // Input type
+                                    torch::Tensor,             // Output type
+                                    torch::Tensor,             // Loss type
+                                    torch::nn::Embedding,      // Embedding type
+                                    std::vector<torch::Tensor> // Parameters type
                                     >,
                       public torch::nn::Module {
 public:
@@ -53,6 +54,13 @@ public:
      * @return The model's embeddings.
      */
     torch::nn::Embedding &get_embeddings() override;
+
+    /**
+     * @brief Returns the model's parameters.
+     *
+     * @return The model's parameters.
+     */
+    std::vector<torch::Tensor> get_parameters() override;
 
     /**
      * @brief Saves the model to a file.

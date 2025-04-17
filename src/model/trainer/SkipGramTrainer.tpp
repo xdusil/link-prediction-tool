@@ -4,7 +4,7 @@
 #include <iostream>
 
 template <typename T>
-SkipGramTrainer<T>::SkipGramTrainer(SkipGramModel &model, IDataLoader<T> &data_loader,
+SkipGramTrainer<T>::SkipGramTrainer(auto &model, IDataLoader<T> &data_loader,
                                     IOptimizer &optimizer)
     : m_model(model), m_data_loader(data_loader), m_optimizer(optimizer) {}
 

@@ -8,8 +8,10 @@
  * @tparam TOutput Type of output predictions
  * @tparam TLoss Type of loss value
  * @tparam TEmbedding Type of embeddings
+ * @tparam TParameters Type of model parameters
  */
-template <typename TInput, typename TOutput, typename TLoss, typename TEmbedding>
+template <typename TInput, typename TOutput, typename TLoss, typename TEmbedding,
+          typename TParameters>
 class IModel {
 public:
     virtual ~IModel() = default;
@@ -37,6 +39,13 @@ public:
      * @return The model's embeddings.
      */
     virtual TEmbedding &get_embeddings() = 0;
+
+    /**
+     * @brief Returns the model's parameters.
+     *
+     * @return The model's parameters.
+     */
+    virtual TParameters get_parameters() = 0;
 
     /**
      * @brief Saves the model to a file.
