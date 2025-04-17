@@ -2,7 +2,9 @@
 
 #include <armadillo>
 #include <torch/torch.h>
-#include <omp.h>
+#ifdef USE_OPENMP
+    #include <omp.h>
+#endif
 #include <optional>
 #include <random>
 #include <tuple>
@@ -127,7 +129,9 @@ inline void set_global_threads_count(int threads) {
     torch::set_num_interop_threads(threads);
 
     // OpenMP
-    omp_set_num_threads(threads);
+    #ifdef USE_OPENMP
+        omp_set_num_threads(threads);
+    #endif
 }
 
 /**
