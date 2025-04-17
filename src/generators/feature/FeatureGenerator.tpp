@@ -11,9 +11,7 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::Feature
     const EmbeddingModule &embedding_module,
     const FeatureConfig &config /*= FeatureConfig()*/)
     : m_graph_analytics(graph_analytics), m_embedding_module(embedding_module),
-      m_feature_config(config) {
-    m_feature_config.embedding_dim = embedding_module->options.embedding_dim();
-}
+      m_feature_config(config) {}
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
@@ -61,7 +59,8 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     const std::size_t num_vertices = vertex_to_index.size();
     const std::size_t num_pairs =
         num_vertices * (num_vertices - 1); // avoid self-connections
-    const std::size_t feature_dim = m_feature_config.get_dimension();
+    const std::size_t feature_dim = m_feature_config.get_dimension(
+        m_embedding_module->options.embedding_dim());
 
     // Prepare result containers
     torch::TensorOptions opts = torch::TensorOptions().dtype(torch::kFloat32);
@@ -120,7 +119,8 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
                                       std::size_t row_index) {
     // assert tensor has the correct shape and correct type T
     assert(features_tensor.dim() == 2);
-    assert(features_tensor.size(1) == m_feature_config.get_dimension());
+    assert(features_tensor.size(1) == m_feature_config.get_dimension(
+        m_embedding_module->options.embedding_dim()));
     if constexpr (std::is_same_v<T, float>) {
         assert(features_tensor.scalar_type() == c10::ScalarType::Float);
     } else if constexpr (std::is_same_v<T, double>) {
@@ -170,16 +170,20 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
 
     // Node-level features
     if (m_feature_config.node_degree) {
-        features_accessor[row_index][j++] =
-            m_graph_analytics.degree(v1) / get_set_avg_degree<T>();
-        features_accessor[row_index][j++] =
-            m_graph_analytics.degree(v2) / get_set_avg_degree<T>();
+        T deg1 = m_graph_analytics.degree(v1) / get_set_avg_degree<T>();
+        T deg2 = m_graph_analytics.degree(v2) / get_set_avg_degree<T>();
+
+        features_accessor[row_index][j++] = std::min(deg1, deg2);
+        features_accessor[row_index][j++] = std::max(deg1, deg2);
     }
 
     // Statistical features from embeddings
     if (m_feature_config.embed_std) {
-        features_accessor[row_index][j++] = v1_emb.std().item<T>();
-        features_accessor[row_index][j++] = v2_emb.std().item<T>();
+        T std1 = v1_emb.std().item<T>();
+        T std2 = v2_emb.std().item<T>();
+
+        features_accessor[row_index][j++] = std::min(std1, std2);
+        features_accessor[row_index][j++] = std::max(std1, std2);
     }
 
     // Other features
@@ -196,16 +200,24 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
 
     // Embedding ratio features
     if (m_feature_config.embedding_ratio) {
-        float v1_norm = v1_emb.norm().item<T>();
-        float v2_norm = v2_emb.norm().item<T>();
-        features_accessor[row_index][j++] =
-            v1_norm > 0 && v2_norm > 0 ? v1_norm / v2_norm : 0.0;
+        T v1_norm = v1_emb.norm().item<T>();
+        T v2_norm = v2_emb.norm().item<T>();
+
+        if (v1_norm > 0 && v2_norm > 0) {
+            features_accessor[row_index][j++] =
+                std::min(v1_norm, v2_norm) / std::max(v1_norm, v2_norm);
+        } else {
+            features_accessor[row_index][j++] = 0.0;
+        }
     }
 
     // Embedding absolute mean features
     if (m_feature_config.embedding_abs_mean) {
-        features_accessor[row_index][j++] = v1_emb.abs().mean().item<T>();
-        features_accessor[row_index][j++] = v2_emb.abs().mean().item<T>();
+        T mean1 = v1_emb.abs().mean().item<T>();
+        T mean2 = v2_emb.abs().mean().item<T>();
+
+        features_accessor[row_index][j++] = std::min(mean1, mean2);
+        features_accessor[row_index][j++] = std::max(mean1, mean2);
     }
 
     // Element-wise product of embeddings
