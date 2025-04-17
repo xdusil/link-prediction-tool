@@ -19,6 +19,7 @@
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <thread>
 
 LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_path) {
     // Load configuration
@@ -39,6 +40,14 @@ LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_pa
 
     // set seed
     m_seed = std::chrono::system_clock::now().time_since_epoch().count();
+
+    // set threads
+    m_config.NUM_THREADS = m_config.NUM_THREADS.value_or(std::thread::hardware_concurrency());
+    if (*m_config.NUM_THREADS <= 0)
+        m_config.NUM_THREADS = 1;
+
+    utils::set_global_threads_count(*m_config.NUM_THREADS);
+    std::cout << "Using " << *m_config.NUM_THREADS << " threads.\n";
 }
 
 void LinkPredictionApp::common_startup(std::optional<std::string> blocked_ips_path,
