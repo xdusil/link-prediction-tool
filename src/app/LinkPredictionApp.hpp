@@ -2,29 +2,20 @@
 
 #include "Types.hpp"
 #include "classifier/binary/IBinaryRandomForestClassifier.hpp"
-#include "classifier/generic/RandomForestClassifier.hpp"
 #include "config/config.hpp"
-#include "constrained_collections/counters/EvictingCounter.hpp"
-#include "constrained_collections/reservoirs/CapacityLimitedReservoir.hpp"
-#include "data_preprocessing/FlowProcessor.hpp"
-#include "generators/context/SlidingWindowContextGenerator.hpp"
-#include "generators/dependency/CandidateDependencyGenerator.hpp"
-#include "graph/network/NetworkGraphManager.hpp"
+#include "constrained_collections/counters/IEvictingCounter.hpp"
+#include "constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
+#include "graph/boost/BoostGraphTraits.hpp"
+#include "graph/network/NetworkGraphDefinition.hpp"
+#include "graph/network/INetworkGraphManager.hpp"
 #include "ground_truth/DependencyAnalyser.hpp"
 #include "model/SkipGramModel.hpp"
-#include "model/data/DataLoader.hpp"
-#include "model/optimizer/Optimizer.hpp"
-#include "model/trainer/SkipGramTrainer.hpp"
-#include "random_walk/logic/custom/CustomRandomWalkLogic.hpp"
-#include "random_walk/manager/RandomWalkManager.hpp"
+#include "model/trainer/ITrainer.hpp"
 #include "statistics/metrics.hpp"
-#include "utils/ip/AllowedIPChecker.hpp"
-#include "utils/ip/BoostIPHandler.hpp"
-#include <memory>
+#include "utils/ip/IIPChecker.hpp"
+#include <armadillo>
 #include <optional>
 #include <string>
-#include <unordered_set>
-#include <vector>
 
 /**
  * @brief Main application class for link prediction
@@ -202,10 +193,16 @@ private:
     std::unique_ptr<ICapacityLimitedReservoir<IPAddress, IPEdge>> m_reservoir;
 
     // Graph Management
-    std::unique_ptr<NetworkGraphManager> m_graph_manager;
+    std::unique_ptr<INetworkGraphManager<BoostGraphTraits<Graph>>> m_graph_manager;
 
     // Model Components
-    std::unique_ptr<SkipGramModel> m_model;
+    std::unique_ptr<IModel<SkipGramInput,             // Input type
+                           torch::Tensor,             // Output type
+                           torch::Tensor,             // Loss type
+                           torch::nn::Embedding,      // Embedding type
+                           std::vector<torch::Tensor> // Parameters type
+                           >>
+        m_model;
 
     // Classifier
     std::unique_ptr<IBinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>,
@@ -213,7 +210,8 @@ private:
         m_classifier;
 
     // Ground Truth
-    std::unique_ptr<ground_truth::IDependencyAnalyser<ground_truth::DependencySet>> m_dependency_analyser;
+    std::unique_ptr<ground_truth::IDependencyAnalyser<ground_truth::DependencySet>>
+        m_dependency_analyser;
 
     // Random seed
     unsigned int m_seed = 42;

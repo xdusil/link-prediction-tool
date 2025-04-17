@@ -4,17 +4,28 @@
 #include "classifier/binary/BinaryRandomForestClassifier.hpp"
 #include "classifier/generic/RandomForestClassifier.hpp"
 #include "config/config.hpp"
+#include "data_preprocessing/FlowProcessor.hpp"
+#include "constrained_collections/reservoirs/CapacityLimitedReservoir.hpp"
+#include "constrained_collections/counters/EvictingCounter.hpp"
+#include "generators/context/SlidingWindowContextGenerator.hpp"
 #include "exceptions/exceptions.hpp"
+#include "generators/dependency/CandidateDependencyGenerator.hpp"
 #include "generators/feature/FeatureGenerator.hpp"
 #include "graph/boost/analytics/BoostGraphAnalytics.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
 #include "io/FileReader.hpp"
+#include "model/trainer/SkipGramTrainer.hpp"
+#include "model/optimizer/Optimizer.hpp"
+#include "model/data/DataLoader.hpp"
+#include "random_walk/logic/custom/CustomRandomWalkLogic.hpp"
+#include "random_walk/manager/RandomWalkManager.hpp"
 #include "io/FileWriter.hpp"
 #include "mlpack/core/data/scaler_methods/min_max_scaler.hpp"
 #include "statistics/metrics.hpp"
 #include "utils/ip/AllowedIPChecker.hpp"
 #include "utils/ip/BoostIPHandler.hpp"
 #include "utils/utils.hpp"
+#include "utils/timers/timers.hpp"
 #include <cstddef>
 #include <fstream>
 #include <iostream>
@@ -23,6 +34,10 @@
 
 LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_path /*= std::nullopt*/,
                                      bool verbose /*= false*/) {
+    utils::VerboseTimer::set_verbose(verbose);
+    log_verbose("Verbose mode enabled");
+    log_verbose("Configuration path: ", config_path ? *config_path : "using defaults");
+
     // Load configuration
     if (config_path) {
         m_config = config::load(*config_path);
@@ -48,7 +63,7 @@ LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_pa
         m_config.NUM_THREADS = 1;
 
     utils::set_global_threads_count(*m_config.NUM_THREADS);
-    std::cout << "Using " << *m_config.NUM_THREADS << " threads.\n";
+    log_verbose("Using ", *m_config.NUM_THREADS, " threads.");
 }
 
 void LinkPredictionApp::common_startup(std::optional<std::string> blocked_ips_path,
@@ -81,6 +96,7 @@ void LinkPredictionApp::run_ground_truth_mode(
     const std::string &data_path, const std::string &ground_truth_output_path,
     const std::optional<std::string> &blocked_ips_path) {
     std::cout << "Starting ground truth only mode..." << std::endl;
+    utils::VerboseTimer timer("Ground truth calculation");
 
     // Initialize components
     common_startup(blocked_ips_path, std::nullopt);
@@ -100,6 +116,7 @@ void LinkPredictionApp::run_training_mode(
     const std::optional<std::string> &internal_ips_path /*= std::nullopt*/) {
 
     std::cout << "Starting training mode..." << std::endl;
+    utils::VerboseTimer timer("Training mode");
 
     // Initialize components
     common_training_or_prediction(data_path, blocked_ips_path, internal_ips_path);
@@ -153,6 +170,7 @@ void LinkPredictionApp::run_prediction_mode(
     const std::optional<std::string> &internal_ips_path) {
 
     std::cout << "Starting prediction mode..." << std::endl;
+    utils::VerboseTimer timer("Prediction mode");
 
     // Initialize components
     common_training_or_prediction(data_path, blocked_ips_path, internal_ips_path);
