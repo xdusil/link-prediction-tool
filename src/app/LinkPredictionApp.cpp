@@ -152,6 +152,10 @@ void LinkPredictionApp::run_prediction_mode(
         std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>();
     m_classifier->load(classifier_path);
 
+    if (m_config.CLASSIFIER_THRESHOLD) {
+        m_classifier->set_threshold(*m_config.CLASSIFIER_THRESHOLD);
+    }
+
     // Generate predictions
     generate_predictions(predictions_output_path, ground_truth_path);
 
@@ -362,7 +366,7 @@ void LinkPredictionApp::generate_embeddings() {
 
     // Create random walk manager
     RandomWalkManager<NetworkGraphManager::Base> walk_manager(
-        *m_graph_manager, m_config.NUM_THREADS, walk_logic, m_config.WALK_LENGTH, m_seed);
+        *m_graph_manager, m_config.NUM_THREADS.value(), walk_logic, m_config.WALK_LENGTH, m_seed);
 
     // Set up context and dependency generators
     SlidingWindowContextGenerator<Vertex> context_generator(m_config.CONTEXT_SIZE);
@@ -402,6 +406,10 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
         // Create classifier
         m_classifier =
             std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>(m_config.RF_PARAMS, m_config.USE_SCALING);
+    }
+
+    if (m_config.CLASSIFIER_THRESHOLD) {
+        m_classifier->set_threshold(*m_config.CLASSIFIER_THRESHOLD);
     }
 
     // Train classifier
