@@ -130,6 +130,39 @@ inline void set_global_threads_count(int threads) {
     omp_set_num_threads(threads);
 }
 
+/**
+ * @brief Print an exception and its nested exceptions with better formatting.
+ *
+ * @param e The exception to print.
+ * @param level The nesting level (used for indentation).
+ * @param prefix Optional custom prefix for the message.
+ */
+ inline void print_exception(const std::exception& e, int level = 0, const std::string& prefix = "") {
+    // Prepare symbols for better visualization
+    const std::string indent(level * 2, ' ');
+    const std::string arrow = level > 0 ? "└─ " : "";
+    
+    // Print the exception with better formatting
+    std::cerr << indent << arrow;
+    if (!prefix.empty()) {
+        std::cerr << prefix << ": ";
+    }
+    
+    // Just print the exception message without the complicated type info
+    std::cerr << e.what() << std::endl;
+
+    try {
+        // Re-throw to check for nested exceptions
+        std::rethrow_if_nested(e);
+    } catch (const std::exception& nested) {
+        // Recursively print nested exceptions
+        print_exception(nested, level + 1, "Caused by");
+    } catch (...) {
+        // Handle non-standard exceptions
+        std::cerr << indent << "  └─ Unknown exception" << std::endl;
+    }
+}
+
 } // namespace utils
 
 #include "utils.tpp"
