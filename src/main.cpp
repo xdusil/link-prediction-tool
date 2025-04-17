@@ -30,6 +30,7 @@ static void print_help() {
         << "  -b, --blocked-ips PATH      Path to blocked IPs file\n"
         << "  -i, --internal-ips PATH     Path to internal IPs file\n"
         << "  -g, --ground-truth-in PATH  Path to existing ground truth file\n"
+        << "  -v, --verbose               Enable verbose output\n"
         << "\nHelp:\n"
         << "  -h, --help                  Display this help message\n";
 }
@@ -47,6 +48,7 @@ static struct option long_options[] = {
     {"prediction", no_argument, nullptr, 'p'},
     {"predictions-out", required_argument, nullptr, 'o'},
     {"training", no_argument, nullptr, 't'},
+    {"verbose", no_argument, nullptr, 'v'},
     {0, 0, 0, 0}};
 
 struct cmd_args {
@@ -54,6 +56,7 @@ struct cmd_args {
     bool training_mode;
     bool prediction_mode;
     bool ground_truth_mode;
+    bool verbose;
     bool help;
 
     // Paths
@@ -165,7 +168,7 @@ cmd_args parse_cmd_args(int argc, char *argv[]) {
     cmd_args args{}; // Initialize all fields
     int opt;
 
-    const char *short_opts = ":b:c:f:d:g:G:hi:po:tx";
+    const char *short_opts = ":b:c:f:d:g:G:hi:po:txv";
 
     while ((opt = getopt_long(argc, argv, short_opts, long_options, nullptr)) != -1) {
         switch (opt) {
@@ -208,6 +211,9 @@ cmd_args parse_cmd_args(int argc, char *argv[]) {
         case 'o':
             args.predictions_output_path = optarg;
             break;
+        case 'v':
+            args.verbose = true;
+            break;
 
         // Error handling
         case '?':
@@ -236,7 +242,7 @@ int main(int argc, char *argv[]) {
 
         check_cli_args(args);
 
-        LinkPredictionApp app(args.config_path);
+        LinkPredictionApp app(args.config_path, args.verbose);
 
         if (args.training_mode) {
             app.run_training_mode(*args.classifier_path, *args.data_path,

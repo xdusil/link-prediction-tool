@@ -37,8 +37,10 @@ public:
     /**
      * @brief Construct a new LinkPredictionApp
      * @param config_path Path to the configuration file (optional)
+     * @param verbose Enable verbose output (default: false)
      */
-    LinkPredictionApp(const std::optional<std::string> &config_path = std::nullopt);
+    LinkPredictionApp(const std::optional<std::string> &config_path = std::nullopt,
+                      bool verbose = false);
 
     LinkPredictionApp(const LinkPredictionApp &) = delete;
     LinkPredictionApp &operator=(const LinkPredictionApp &) = delete;
@@ -170,6 +172,23 @@ private:
     void generate_predictions(const std::string &output_path,
                               const std::optional<std::string> &ground_truth_path);
 
+    /**
+     * @brief Helper function to log messages when verbose mode is enabled
+     *
+     * @tparam Args The types of the arguments
+     * @param args The arguments to log
+     *
+     * This method uses fold expressions to log multiple arguments.
+     * It only logs if the verbose flag is set to true.
+     */
+    template <typename... Args>
+    void log_verbose(Args &&...args) const {
+        if (m_verbose) {
+            (std::cout << ... << std::forward<Args>(args));
+            std::cout << std::endl;
+        }
+    }
+
     // Configuration
     config::Config m_config;
 
@@ -198,4 +217,7 @@ private:
 
     // Random seed
     unsigned int m_seed = 42;
+
+    // Verbose logging
+    bool m_verbose = false;
 };

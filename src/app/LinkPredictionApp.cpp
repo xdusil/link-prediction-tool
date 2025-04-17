@@ -21,7 +21,8 @@
 #include <optional>
 #include <thread>
 
-LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_path) {
+LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_path /*= std::nullopt*/,
+                                     bool verbose /*= false*/) {
     // Load configuration
     if (config_path) {
         m_config = config::load(*config_path);
