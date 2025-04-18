@@ -33,7 +33,7 @@
 #include <thread>
 
 LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_path /*= std::nullopt*/,
-                                     bool verbose /*= false*/) {
+                                     bool verbose /*= false*/) : m_verbose(verbose) {
     utils::VerboseTimer::set_verbose(verbose);
     log_verbose("Verbose mode enabled");
     log_verbose("Configuration path: ", config_path ? *config_path : "using defaults");
@@ -140,7 +140,8 @@ void LinkPredictionApp::run_training_mode(
     BoostGraphAnalytics analytics{*m_graph_manager};
     FeatureGenerator<NetworkGraphManager::Base, decltype(m_model->get_embeddings()),
                      decltype(all_deps)>
-        feature_generator{analytics, m_model->get_embeddings()};
+        feature_generator{analytics, m_model->get_embeddings(),
+            m_config.FEATURE_CONFIG};
 
     auto [combined, arma_labels] = feature_generator.generate_labeled_features(
         m_graph_manager->get_ip_to_vertex(), all_deps);
@@ -152,6 +153,9 @@ void LinkPredictionApp::run_training_mode(
     std::cout << "Training data prepared.\n"
               << "  Features: " << arma_features.n_rows << "x" << arma_features.n_cols
               << "\n  Labels: " << arma_labels.n_elem << std::endl;
+    
+    log_verbose("Using features: ");
+    log_verbose("  - ", utils::join(m_config.FEATURE_CONFIG.get_feature_names(m_config.EMBEDDING_DIM), ", "));
 
     // Train the classifier
     train_classifier(arma_features, arma_labels, m_config.USE_GRID_SEARCH);
@@ -206,7 +210,8 @@ void LinkPredictionApp::generate_predictions(
     BoostGraphAnalytics analytics{*m_graph_manager};
     FeatureGenerator<NetworkGraphManager::Base, decltype(m_model->get_embeddings()),
                      decltype(m_dependency_analyser->get_dependencies())>
-        feature_generator{analytics, m_model->get_embeddings()};
+        feature_generator{analytics, m_model->get_embeddings(),
+                          m_config.FEATURE_CONFIG};
 
     torch::Tensor combined;
     std::vector<std::pair<std::string, std::string>> vertex_pairs;
@@ -348,11 +353,11 @@ void LinkPredictionApp::process_data(const std::string &data_path) {
     processor.process_flow_file(data_path);      // fill internal and external counters
     processor.process_filtered_flows(data_path); // fill reservoir
 
-    std::cout << "Data processing complete.\n";
+    std::cout << "Processed flows: " << processor.get_total_flows_count() << "\n";
     std::cout << "Internal addresses: " << processor.get_internal_addresses_count() << "\n";
     std::cout << "External addresses: " << processor.get_external_addresses_count() << "\n";
     std::cout << "Total edges in reservoir: " << processor.get_total_edges_count() << std::endl;
-    std::cout << "Total flows in reservoir: " << processor.get_total_flows_count() << std::endl;
+    std::cout << "Data processing complete.\n";
 }
 
 void LinkPredictionApp::build_graph() {
@@ -461,10 +466,12 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     }
 
     ///////////
-    // evaluate_model_train_test_split(params, features, labels, 0.25, true,
-    // m_config.USE_WEIGHTS); evaluate_model_train_test_split(params, features, labels,
-    // 0.5, true, m_config.USE_WEIGHTS); evaluate_model_train_test_split(params, features,
-    // labels, 0.75, true, m_config.USE_WEIGHTS);
+    // auto params = m_config.RF_PARAMS;
+    // evaluate_model_train_test_split(params, features, labels, 0.25, m_config.USE_SCALING,
+    // m_config.USE_WEIGHTS);
+    // evaluate_model_train_test_split(params, features, labels,
+    // 0.5, m_config.USE_SCALING, m_config.USE_WEIGHTS); evaluate_model_train_test_split(params, features,
+    // labels, 0.75, m_config.USE_SCALING, m_config.USE_WEIGHTS);
     ///////////
 }
 
