@@ -42,7 +42,7 @@ public:
      *
      * @param filename The name of the file to read flow data from.
      */
-    void process_flow_file(const std::string &filename);
+    void process_flow_file(const std::string &filename) override;
 
     /**
      * @brief Processes filtered flow data from a file.
@@ -53,35 +53,35 @@ public:
      *
      * @param filename The name of the file to read flow data from.
      */
-    void process_filtered_flows(const std::string &filename);
+    void process_filtered_flows(const std::string &filename) override;
 
     /**
      * @brief Gets the count of internal IP addresses.
      *
      * @return The count of internal IP addresses.
      */
-    std::size_t get_internal_addresses_count() const;
+    std::size_t get_internal_addresses_count() const override;
 
     /**
      * @brief Gets the count of external IP addresses.
      *
      * @return The count of external IP addresses.
      */
-    std::size_t get_external_addresses_count() const;
+    std::size_t get_external_addresses_count() const override;
 
     /**
      * @brief Gets the count of total edges in the reservoir.
      *
      * @return The count of total edges in the reservoir.
      */
-    std::size_t get_total_edges_count() const;
+    std::size_t get_total_edges_count() const override;
 
     /**
      * @brief Gets the total number of flows processed.
      *
      * @return The total number of flows processed.
      */
-    std::size_t get_total_flows_count() const;
+    std::size_t get_total_flows_count() const override;
 
 private:
     IEvictingCounter<IPAddress>
