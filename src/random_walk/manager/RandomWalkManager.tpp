@@ -6,6 +6,10 @@
 #include <random>
 #include <thread>
 
+#ifdef USE_OPENMP
+#include <omp.h>
+#endif
+
 // Construct a new Random Walk Manager object.
 template <typename GraphTraits, typename RNG>
 RandomWalkManager<GraphTraits, RNG>::RandomWalkManager(
@@ -61,6 +65,28 @@ RandomWalkManager<GraphTraits, RNG>::generate_random_walks(InputIt begin,
                                                            InputIt end) const {
     auto vertex_count = std::distance(begin, end);
     std::vector<std::vector<Vertex>> all_walks(vertex_count);
+    size_t num_threads =
+        std::min(static_cast<size_t>(m_num_threads), static_cast<size_t>(vertex_count));
+    
+#ifdef USE_OPENMP
+    // OpenMP implementation
+    #pragma omp parallel num_threads(num_threads)
+    {
+        int thread_id = omp_get_thread_num();
+        int total_threads = omp_get_num_threads();
+        
+        size_t segment_size = vertex_count / total_threads;
+        size_t start_idx = thread_id * segment_size;
+        size_t end_idx = (thread_id == total_threads - 1) ? 
+                        vertex_count : start_idx + segment_size;
+        
+        for (size_t i = start_idx; i < end_idx; ++i) {
+            all_walks[i] = std::move(m_walk_logic.generate_single_walk(
+                m_graph, *(begin + i), m_walk_length, m_rngs[thread_id]));
+        }
+    }
+#else
+    // Non-OpenMP implementation
     std::vector<std::thread> threads;
 
     auto generate_walks_segment = [this, &all_walks](InputIt start, InputIt end,
@@ -71,8 +97,6 @@ RandomWalkManager<GraphTraits, RNG>::generate_random_walks(InputIt begin,
         }
     };
 
-    size_t num_threads =
-        std::min(static_cast<size_t>(m_num_threads), static_cast<size_t>(vertex_count));
     size_t segment_size = vertex_count / num_threads;
 
     // Launch threads
@@ -87,6 +111,7 @@ RandomWalkManager<GraphTraits, RNG>::generate_random_walks(InputIt begin,
     for (auto &thread : threads) {
         thread.join();
     }
+#endif
 
     return all_walks;
 }
