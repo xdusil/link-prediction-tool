@@ -116,6 +116,17 @@ TensorMatrixView<T> conv_2d_tensor_to_arma(const torch::Tensor &tensor, bool cop
                                     bool transpose);
 
 /**
+ * @brief Join a container of strings with a delimiter.
+ *
+ * @tparam Cont The container type (e.g., std::vector<std::string>).
+ * @param strings The container of strings to join.
+ * @param delimiter The delimiter to use for joining.
+ * @return A single string with the joined elements.
+ */
+template <typename Cont>
+std::string join(const Cont& strings, const std::string& delimiter);
+
+/**
  * @brief Set the number of threads for global operations.
  *
  * This function sets the number of threads for both Torch and OpenMP.

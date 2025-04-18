@@ -119,4 +119,17 @@ TensorMatrixView<T> conv_2d_tensor_to_arma(const torch::Tensor &tensor, bool cop
         copy_mem ? torch::Tensor() : safe_tensor // Only keep tensor alive if not copying
     };
 }
+
+template <typename Cont>
+std::string join(const Cont& strings, const std::string& delimiter) {
+    std::ostringstream oss;
+    for (size_t i = 0; i < strings.size(); ++i) {
+        oss << strings[i];
+        if (i != strings.size() - 1) {
+            oss << delimiter;
+        }
+    }
+    return oss.str();
+}
+
 } // namespace utils
