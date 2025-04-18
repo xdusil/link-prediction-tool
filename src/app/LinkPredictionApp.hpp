@@ -175,6 +175,7 @@ private:
     template <typename... Args>
     void log_verbose(Args &&...args) const {
         if (m_verbose) {
+            std::cout << "[VERBOSE] ";
             (std::cout << ... << std::forward<Args>(args));
             std::cout << std::endl;
         }
