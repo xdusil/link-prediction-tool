@@ -38,12 +38,6 @@ Config parse_json(const std::string &json_content) {
         json::value jv = JsonHelper::parse_json(json_content);
         Config config = json::value_to<Config>(jv);
 
-        const json::value ch = json::value_from(config);
-        // export the config to JSON
-        std::string json_str = json::serialize(ch);
-        // print the JSON string
-        std::cout << "Parsed JSON: " << json_str << std::endl;
-
         return config;
     } catch (const std::exception &e) {
         std::throw_with_nested(
