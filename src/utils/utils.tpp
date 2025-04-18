@@ -1,5 +1,7 @@
 #pragma once
 
+#include "boost/json/serialize.hpp"
+#include "config/tag_invokes/tag_invokes.hpp" 
 #include "utils.hpp"
 
 namespace utils {
@@ -130,6 +132,12 @@ std::string join(const Cont& strings, const std::string& delimiter) {
         }
     }
     return oss.str();
+}
+
+template <typename T>
+std::string to_string(const T &obj) {
+    const boost::json::value jv = boost::json::value_from(obj);
+    return boost::json::serialize(jv);
 }
 
 } // namespace utils

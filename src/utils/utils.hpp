@@ -127,6 +127,14 @@ template <typename Cont>
 std::string join(const Cont& strings, const std::string& delimiter);
 
 /**
+ * @brief Get the string representation of an object.
+ *
+ * @tparam T The type of the object.
+ */
+template <typename T>
+std::string to_string(const T& obj);
+
+/**
  * @brief Set the number of threads for global operations.
  *
  * This function sets the number of threads for both Torch and OpenMP.
