@@ -102,7 +102,8 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::set_threshold(
 
 template <typename Features, typename Labels, typename Scaler>
 void BinaryRandomForestClassifier<Features, Labels, Scaler>::calibrate_threshold(
-    const Features &val_features, const Labels &val_labels, const std::string &metric /*= f1*/) {
+    const Features &val_features, const Labels &val_labels,
+    const std::string &metric /*= f1*/) {
 
     // Default calibration range with 0.05 steps
     find_optimal_threshold(val_features, val_labels, metric, 0.05, 0.95, 0.05);
@@ -111,7 +112,8 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::calibrate_threshold
 template <typename Features, typename Labels, typename Scaler>
 void BinaryRandomForestClassifier<Features, Labels, Scaler>::find_optimal_threshold(
     const Features &val_features, const Labels &val_labels, const std::string &metric,
-    double min_threshold /*= 0.01 */, double max_threshold /*= 0.99 */, double step /*= 0.01*/) {
+    double min_threshold /*= 0.01 */, double max_threshold /*= 0.99 */,
+    double step /*= 0.01*/) {
 
     // Get probabilities for each class
     auto [_, probabilities] = Base::predict_proba(val_features);
@@ -215,14 +217,25 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::load(
         archive(*this);
 
         std::cout << "Binary classifier loaded from " << path
-                  << " with threshold = " << m_binary_threshold << ", " << 
-                    "num trees = " << this->m_num_trees << ", min leaf size = " <<
-                    this->m_min_leaf_size << ", min gain split = " << this->m_min_gain_split <<
-                    ", max depth = " << this->m_max_depth << ", with scaling: " <<
-                    this->m_use_scaling << std::endl;
+                  << " with threshold = " << m_binary_threshold << ", "
+                  << "num trees = " << this->m_num_trees
+                  << ", min leaf size = " << this->m_min_leaf_size
+                  << ", min gain split = " << this->m_min_gain_split
+                  << ", max depth = " << this->m_max_depth
+                  << ", with scaling: " << this->m_use_scaling << std::endl;
 
     } catch (const std::exception &e) {
         std::throw_with_nested(
             RandomForestException("Failed to load binary classifier from " + path));
     }
+}
+
+template <typename Features, typename Labels, typename Scaler>
+template <class Archive>
+void BinaryRandomForestClassifier<Features, Labels, Scaler>::serialize(Archive &archive) {
+    // First serialize the base class
+    archive(cereal::base_class<Base>(this));
+
+    // Then serialize our members
+    archive(CEREAL_NVP(m_binary_threshold));
 }

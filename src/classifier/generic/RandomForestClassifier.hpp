@@ -175,12 +175,7 @@ public:
          * @param archive The archive to serialize to/from.
          */
         template <class Archive>
-        void serialize(Archive & archive) {
-            archive(CEREAL_NVP(m_rf), CEREAL_NVP(m_scaler), CEREAL_NVP(m_num_classes),
-                    CEREAL_NVP(m_num_trees), CEREAL_NVP(m_min_leaf_size),
-                    CEREAL_NVP(m_min_gain_split), CEREAL_NVP(m_max_depth),
-                    CEREAL_NVP(m_use_scaling));
-        }
+        void serialize(Archive & archive);
 
         // Allow cereal access to protected/private members
         friend class cereal::access;

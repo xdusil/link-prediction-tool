@@ -326,18 +326,29 @@ RandomForestClassifier<Features, Labels, AverageType, Scaler>::grid_search(
     constexpr auto strategy = to_mlpack_strategy(AverageType);
     // Call the appropriate template specialization based on the metric string
     if (metric == "f1") {
-        return grid_search<mlpack::F1<strategy>>(
-            features, labels, num_classes, params, use_scaling, use_weights);
+        return grid_search<mlpack::F1<strategy>>(features, labels, num_classes, params,
+                                                 use_scaling, use_weights);
     } else if (metric == "accuracy") {
-        return grid_search<mlpack::Accuracy>(
-            features, labels, num_classes, params, use_scaling, use_weights);;
+        return grid_search<mlpack::Accuracy>(features, labels, num_classes, params,
+                                             use_scaling, use_weights);
     } else if (metric == "precision") {
-        return grid_search<mlpack::Precision<strategy>>(
-            features, labels, num_classes, params, use_scaling, use_weights);;
+        return grid_search<mlpack::Precision<strategy>>(features, labels, num_classes,
+                                                        params, use_scaling, use_weights);
     } else if (metric == "recall") {
-        return grid_search<mlpack::Recall<strategy>>(
-            features, labels, num_classes, params, use_scaling, use_weights);;
+        return grid_search<mlpack::Recall<strategy>>(features, labels, num_classes,
+                                                     params, use_scaling, use_weights);
     } else {
         throw RandomForestException("Unknown metric: " + metric);
     }
+}
+
+template <typename Features, typename Labels, statistics::AverageType AverageType,
+          typename Scaler>
+template <class Archive>
+void RandomForestClassifier<Features, Labels, AverageType, Scaler>::serialize(
+    Archive &archive) {
+    archive(CEREAL_NVP(m_rf), CEREAL_NVP(m_scaler), CEREAL_NVP(m_num_classes),
+            CEREAL_NVP(m_num_trees), CEREAL_NVP(m_min_leaf_size),
+            CEREAL_NVP(m_min_gain_split), CEREAL_NVP(m_max_depth),
+            CEREAL_NVP(m_use_scaling));
 }

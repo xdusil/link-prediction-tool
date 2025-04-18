@@ -148,13 +148,7 @@ private:
      * @param archive The cereal archive.
      */
     template <class Archive>
-    void serialize(Archive &archive) {
-        // First serialize the base class
-        archive(cereal::base_class<Base>(this));
-
-        // Then serialize our members
-        archive(CEREAL_NVP(m_binary_threshold));
-    }
+    void serialize(Archive &archive);
 
     // Allow cereal access to private members
     friend class cereal::access;
