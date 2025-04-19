@@ -290,6 +290,7 @@ void tag_invoke(json::value_from_tag, json::value &jv, const Config &config) {
     obj["USE_GRID_SEARCH"] = json::value_from(config.USE_GRID_SEARCH);
     obj["USE_THRESHOLD_CALIBRATION"] = json::value_from(config.USE_THRESHOLD_CALIBRATION);
     obj["CLASSIFIER_THRESHOLD"] = json::value_from(config.CLASSIFIER_THRESHOLD);
+    obj["METRIC_TO_OPTIMISE"] = json::value_from(config.METRIC_TO_OPTIMISE);
 
     // Add nested objects
     obj["RF_PARAMS"] = json::value_from(config.RF_PARAMS);
