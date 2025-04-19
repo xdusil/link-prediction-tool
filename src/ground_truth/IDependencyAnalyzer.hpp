@@ -6,7 +6,7 @@
 namespace ground_truth {
 
 /**
- * @brief Interface for dependency analysis.
+ * @brief Interface for dependency analyzis.
  *
  * This interface defines the methods for calculating and loading dependencies between
  * IP addresses.
@@ -14,9 +14,9 @@ namespace ground_truth {
  * @tparam DependencySet The type of the set of dependencies.
  */
 template <typename DependencySet>
-class IDependencyAnalyser {
+class IDependencyAnalyzer {
 public:
-    virtual ~IDependencyAnalyser() = default;
+    virtual ~IDependencyAnalyzer() = default;
 
     /**
      * @brief Calculate all dependencies between IP addresses.

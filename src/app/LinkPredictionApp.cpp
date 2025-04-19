@@ -74,7 +74,7 @@ void LinkPredictionApp::common_startup(std::optional<std::string> blocked_ips_pa
         std::make_unique<AllowedIPChecker>(std::nullopt, blocked_ips_path);
     m_internal_ip_checker = std::make_unique<BoostIPHandler>(internal_ips_path);
 
-    m_dependency_analyser = std::make_unique<ground_truth::DependencyAnalyser>(
+    m_dependency_analyzer = std::make_unique<ground_truth::DependencyAnalyzer>(
         m_config.N_OCCURRENCES, m_config.EPSILON, *m_allowed_ip_checker);
 }
 
@@ -102,10 +102,10 @@ void LinkPredictionApp::run_ground_truth_mode(
     // Initialize components
     common_startup(blocked_ips_path, std::nullopt);
 
-    if (!m_dependency_analyser)
+    if (!m_dependency_analyzer)
         throw ComponentNotInitializedException("Dependency analyzer not initialized.");
 
-    m_dependency_analyser->calculate_dependencies(data_path, ground_truth_output_path);
+    m_dependency_analyzer->calculate_dependencies(data_path, ground_truth_output_path);
     std::cout << "Ground truth calculation completed successfully." << std::endl;
 }
 
@@ -122,21 +122,21 @@ void LinkPredictionApp::run_training_mode(
     // Initialize components
     common_training_or_prediction(data_path, blocked_ips_path, internal_ips_path);
 
-    if (!m_dependency_analyser)
+    if (!m_dependency_analyzer)
         throw ComponentNotInitializedException("Dependency analyzer not initialized.");
     if (!m_graph_manager)
         throw ComponentNotInitializedException("Graph manager not initialized.");
 
     if (ground_truth_input_path) {
         // Load ground truth
-        m_dependency_analyser->load_dependencies(*ground_truth_input_path);
+        m_dependency_analyzer->load_dependencies(*ground_truth_input_path);
     } else {
         // Calculate ground truth
-        m_dependency_analyser->calculate_dependencies(data_path,
+        m_dependency_analyzer->calculate_dependencies(data_path,
                                                       ground_truth_output_path);
     }
 
-    const auto &all_deps = m_dependency_analyser->get_dependencies();
+    const auto &all_deps = m_dependency_analyzer->get_dependencies();
 
     BoostGraphAnalytics analytics{*m_graph_manager};
     FeatureGenerator<NetworkGraphManager::Base, decltype(m_model->get_embeddings()),
@@ -205,12 +205,12 @@ void LinkPredictionApp::generate_predictions(
         throw ComponentNotInitializedException("Graph manager not initialized.");
     if (!m_model)
         throw ComponentNotInitializedException("Model not initialized.");
-    if (!m_dependency_analyser)
+    if (!m_dependency_analyzer)
         throw ComponentNotInitializedException("Dependency analyzer not initialized.");
 
     BoostGraphAnalytics analytics{*m_graph_manager};
     FeatureGenerator<NetworkGraphManager::Base, decltype(m_model->get_embeddings()),
-                     decltype(m_dependency_analyser->get_dependencies())>
+                     decltype(m_dependency_analyzer->get_dependencies())>
         feature_generator{analytics, m_model->get_embeddings(),
                           m_config.FEATURE_CONFIG};
 
@@ -219,11 +219,11 @@ void LinkPredictionApp::generate_predictions(
     std::optional<arma::Row<size_t>> labels = std::nullopt;
 
     if (ground_truth_path) {
-        m_dependency_analyser->load_dependencies(*ground_truth_path);
+        m_dependency_analyzer->load_dependencies(*ground_truth_path);
         auto [combined_val, labels_val, vertex_pairs_val] =
             feature_generator.generate_labeled_features_with_pairs(
                 m_graph_manager->get_ip_to_vertex(),
-                m_dependency_analyser->get_dependencies());
+                m_dependency_analyzer->get_dependencies());
 
         combined = std::move(combined_val);
         labels = std::move(labels_val);

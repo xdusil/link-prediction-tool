@@ -8,7 +8,7 @@
 #include "graph/boost/BoostGraphTraits.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
 #include "graph/network/INetworkGraphManager.hpp"
-#include "ground_truth/DependencyAnalyser.hpp"
+#include "ground_truth/DependencyAnalyzer.hpp"
 #include "model/SkipGramModel.hpp"
 #include "model/trainer/ITrainer.hpp"
 #include "statistics/metrics.hpp"
@@ -211,8 +211,8 @@ private:
         m_classifier;
 
     // Ground Truth
-    std::unique_ptr<ground_truth::IDependencyAnalyser<ground_truth::DependencySet>>
-        m_dependency_analyser;
+    std::unique_ptr<ground_truth::IDependencyAnalyzer<ground_truth::DependencySet>>
+        m_dependency_analyzer;
 
     // Random seed
     unsigned int m_seed = 42;

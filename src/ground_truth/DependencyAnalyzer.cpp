@@ -1,5 +1,5 @@
 
-#include "DependencyAnalyser.hpp"
+#include "DependencyAnalyzer.hpp"
 #include "../json/JsonHelper.hpp"
 #include "io/FileReader.hpp"
 #include "io/FileWriter.hpp"
@@ -19,12 +19,12 @@
 
 namespace ground_truth {
 
-DependencyAnalyser::DependencyAnalyser(int n_occurrences, int epsilon,
+DependencyAnalyzer::DependencyAnalyzer(int n_occurrences, int epsilon,
                                        IIPChecker &allowed_ips_checker)
     : m_n_occurrences(n_occurrences), m_epsilon(epsilon),
       m_allowed_ips_checker(allowed_ips_checker) {}
 
-void DependencyAnalyser::parse_flow_data(const std::string &filename) {
+void DependencyAnalyzer::parse_flow_data(const std::string &filename) {
     FileReader reader(filename);
 
     std::string line;
@@ -72,11 +72,11 @@ void DependencyAnalyser::parse_flow_data(const std::string &filename) {
     }
 }
 
-const DependencySet &DependencyAnalyser::get_dependencies() const {
+const DependencySet &DependencyAnalyzer::get_dependencies() const {
     return m_all_dependencies;
 }
 
-const DependencySet &DependencyAnalyser::calculate_dependencies(
+const DependencySet &DependencyAnalyzer::calculate_dependencies(
     const std::string &filename,
     const std::optional<std::string> output_filename /*= std::nullopt*/) {
     reset();
@@ -105,7 +105,7 @@ const DependencySet &DependencyAnalyser::calculate_dependencies(
     return m_all_dependencies;
 }
 
-const DependencySet &DependencyAnalyser::load_dependencies(const std::string &filename) {
+const DependencySet &DependencyAnalyzer::load_dependencies(const std::string &filename) {
     reset();
     FileReader reader(filename);
 
@@ -150,12 +150,12 @@ const DependencySet &DependencyAnalyser::load_dependencies(const std::string &fi
     return m_all_dependencies;
 }
 
-void DependencyAnalyser::reset() {
+void DependencyAnalyzer::reset() {
     m_ip_dict.clear();
     m_oss.str("");
     m_all_dependencies.clear();
 }
-int DependencyAnalyser::count_appearances_of_LR_dependency(
+int DependencyAnalyzer::count_appearances_of_LR_dependency(
     Timestamp start_forward, Timestamp end_forward, Timestamp start_reverse,
     Timestamp end_reverse, const std::vector<EdgeProperties> &edge_properties) const {
     int count = 0;
@@ -168,7 +168,7 @@ int DependencyAnalyser::count_appearances_of_LR_dependency(
     return count;
 }
 
-int DependencyAnalyser::count_appearances_of_RR_dependency(
+int DependencyAnalyzer::count_appearances_of_RR_dependency(
     Timestamp start_forward, Timestamp start_reverse, Timestamp end_reverse,
     const std::vector<EdgeProperties> &edge_properties) const {
     int count = 0;
@@ -182,7 +182,7 @@ int DependencyAnalyser::count_appearances_of_RR_dependency(
     return count;
 }
 
-DependencyList DependencyAnalyser::determine_direct_dependencies() {
+DependencyList DependencyAnalyzer::determine_direct_dependencies() {
     DependencyList dependencies;
 
     for (const auto &[src_ip, target_map] : m_ip_dict) {
@@ -198,7 +198,7 @@ DependencyList DependencyAnalyser::determine_direct_dependencies() {
     return dependencies;
 }
 
-TD2DependencyMap DependencyAnalyser::determine_TD2_dependencies(
+TD2DependencyMap DependencyAnalyzer::determine_TD2_dependencies(
     const DependencyList &direct_dependencies) {
     TD2DependencyMap dependencies;
 
@@ -240,7 +240,7 @@ TD2DependencyMap DependencyAnalyser::determine_TD2_dependencies(
     return dependencies;
 }
 
-RR2DependencyMap DependencyAnalyser::determine_RR2_dependencies(
+RR2DependencyMap DependencyAnalyzer::determine_RR2_dependencies(
     const DependencyList &direct_dependencies) {
     RR2DependencyMap dependencies;
 
@@ -287,7 +287,7 @@ RR2DependencyMap DependencyAnalyser::determine_RR2_dependencies(
 }
 
 TD3DependencyMap
-DependencyAnalyser::determine_TD3_dependencies(const DependencyList &direct_dependencies,
+DependencyAnalyzer::determine_TD3_dependencies(const DependencyList &direct_dependencies,
                                                const TD2DependencyMap &td2_dependencies) {
     TD3DependencyMap dependencies;
 
@@ -346,7 +346,7 @@ DependencyAnalyser::determine_TD3_dependencies(const DependencyList &direct_depe
 }
 
 RR3DependencyMap
-DependencyAnalyser::determine_RR3_dependencies(const DependencyList &direct_dependencies,
+DependencyAnalyzer::determine_RR3_dependencies(const DependencyList &direct_dependencies,
                                                const RR2DependencyMap &rr2_dependencies) {
     RR3DependencyMap dependencies;
 
@@ -397,7 +397,7 @@ DependencyAnalyser::determine_RR3_dependencies(const DependencyList &direct_depe
     return dependencies;
 }
 
-void DependencyAnalyser::print_dependency_stats(
+void DependencyAnalyzer::print_dependency_stats(
     const DependencyList& direct_dependencies,
     const TD2DependencyMap& td2_dependencies,
     const RR2DependencyMap& rr2_dependencies,
