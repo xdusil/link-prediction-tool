@@ -26,7 +26,7 @@ struct Config {
     double LEARNING_RATE = 0.01;
     std::optional<int> NUM_THREADS;
     std::optional<double> CLASSIFIER_THRESHOLD;
-    std::string METRIC_TO_OPTIMISE = "f1";
+    std::string METRIC_TO_OPTIMIZE = "f1";
 
     bool USE_WEIGHTS = false;
     bool USE_SCALING = true;

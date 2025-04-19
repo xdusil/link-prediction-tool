@@ -448,7 +448,7 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
 
     // Train classifier
     if (m_config.USE_THRESHOLD_CALIBRATION) {
-        m_classifier->train_with_calibration(features, labels, m_config.USE_WEIGHTS, m_config.METRIC_TO_OPTIMISE);
+        m_classifier->train_with_calibration(features, labels, m_config.USE_WEIGHTS, m_config.METRIC_TO_OPTIMIZE);
     } else {
         m_classifier->train(features, labels, m_config.USE_WEIGHTS);
     }
@@ -496,7 +496,7 @@ RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
         RandomForestClassifier<decltype(features), decltype(labels)>::
             grid_search(
                 features, labels, 2, grid_params, m_config.USE_SCALING, m_config.USE_WEIGHTS,
-                m_config.METRIC_TO_OPTIMISE);
+                m_config.METRIC_TO_OPTIMIZE);
 
     std::cout << "Grid search complete." << std::endl;
     std::cout << "Best parameters:" << std::endl;

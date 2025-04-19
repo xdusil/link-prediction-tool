@@ -242,7 +242,7 @@ Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
 
     // String parameters
     set_validated<std::string>(
-        obj, "METRIC_TO_OPTIMISE", config.METRIC_TO_OPTIMISE, [](const std::string &val) {
+        obj, "METRIC_TO_OPTIMIZE", config.METRIC_TO_OPTIMIZE, [](const std::string &val) {
             return std::pair{val == "accuracy" || val == "f1" || val == "precision" ||
                                  val == "recall",
                              "Invalid metric: " + val +
@@ -290,7 +290,7 @@ void tag_invoke(json::value_from_tag, json::value &jv, const Config &config) {
     obj["USE_GRID_SEARCH"] = json::value_from(config.USE_GRID_SEARCH);
     obj["USE_THRESHOLD_CALIBRATION"] = json::value_from(config.USE_THRESHOLD_CALIBRATION);
     obj["CLASSIFIER_THRESHOLD"] = json::value_from(config.CLASSIFIER_THRESHOLD);
-    obj["METRIC_TO_OPTIMISE"] = json::value_from(config.METRIC_TO_OPTIMISE);
+    obj["METRIC_TO_OPTIMIZE"] = json::value_from(config.METRIC_TO_OPTIMIZE);
 
     // Add nested objects
     obj["RF_PARAMS"] = json::value_from(config.RF_PARAMS);
