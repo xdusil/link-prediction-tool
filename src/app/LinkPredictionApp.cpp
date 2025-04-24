@@ -279,58 +279,33 @@ void LinkPredictionApp::generate_predictions(
 }
 
 // Evaluate a classifier using a train/test split.
-template <typename Features, typename Labels>
-void evaluate_model_train_test_split(const RandomForestParams &params,
-                                     const Features &features, const Labels &labels,
-                                     double test_size = 0.25, bool use_scaling = true,
+template <typename Classifier, typename Features, typename Labels>
+void evaluate_model_train_test_split(Classifier &rf, const Features &features,
+                                     const Labels &labels, double test_size = 0.25,
                                      bool use_weights = false) {
-    arma::mat features_d = arma::conv_to<arma::mat>::from(features);
-
-    BinaryRandomForestClassifier<arma::mat, Labels> rf(params, use_scaling);
+    std::cout << "Evaluating model with train/test split (test size: " << test_size
+              << ")\n";
 
     // Containers for the split data.
-    arma::mat train_features, test_features;
+    Features train_features, test_features;
     Labels train_labels, test_labels;
 
     // Split the data. (test_size indicates the fraction of columns for testing.)
     // mlpack::data::StratifiedSplit(features_d, labels, train_features, test_features,
     //                               train_labels, test_labels, test_size);
 
-    mlpack::data::Split(features_d, labels, train_features, test_features, train_labels,
+    mlpack::data::Split(features, labels, train_features, test_features, train_labels,
                         test_labels, test_size);
-
-    std::cout << "Train test split evaluation results with test size = " << test_size
-              << ":\n";
-
-    std::cout << "Train labels: \n";
-    std::cout << "---> Positive labels: " << arma::accu(train_labels) << std::endl;
-    std::cout << "---> Negative labels: "
-              << train_labels.size() - arma::accu(train_labels) << std::endl;
-
-    std::cout << "\n\n";
-    std::cout << "Test labels: \n";
-    std::cout << "---> Positive labels: " << arma::accu(test_labels) << std::endl;
-    std::cout << "---> Negative labels: " << test_labels.size() - arma::accu(test_labels)
-              << std::endl;
-    std::cout << "\n\n";
 
     rf.train(train_features, train_labels, use_weights);
     Labels y_predicted = rf.predict(test_features);
-
-    std::cout << "Predicted labels: \n";
-    std::cout << "---> Positive labels: " << arma::accu(y_predicted) << std::endl;
-    std::cout << "---> Negative labels: " << y_predicted.size() - arma::accu(y_predicted)
-              << std::endl;
-    std::cout << "\n\n";
-
     auto metrics = rf.evaluate(test_features, test_labels);
-    std::cout << "Accuracy: " << metrics.accuracy << std::endl;
-    std::cout << "Precision: " << metrics.precision << std::endl;
-    std::cout << "Recall: " << metrics.recall << std::endl;
-    std::cout << "F1 Score: " << metrics.f1_score << std::endl;
-    if (metrics.roc_auc.has_value()) {
-        std::cout << "ROC AUC: " << metrics.roc_auc.value() << std::endl;
-    }
+    std::cout << "Train test split evaluation results:\n"
+              << "Train(+" << arma::accu(train_labels) << "/-" << train_labels.size() - arma::accu(train_labels) << ") "
+              << "Test(+" << arma::accu(test_labels) << "/-" << test_labels.size() - arma::accu(test_labels) << ") "
+              << "Predicted(+" << arma::accu(y_predicted) << "/-" << y_predicted.size() - arma::accu(y_predicted) << ")\n";
+    utils::print_classifier_metrics(metrics);
+    std::cout << "Train test split evaluation complete.\n";
 }
 
 void LinkPredictionApp::process_data(const std::string &data_path) {
@@ -467,12 +442,9 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     }
 
     ///////////
-    // auto params = m_config.RF_PARAMS;
-    // evaluate_model_train_test_split(params, features, labels, 0.25, m_config.USE_SCALING,
-    // m_config.USE_WEIGHTS);
-    // evaluate_model_train_test_split(params, features, labels,
-    // 0.5, m_config.USE_SCALING, m_config.USE_WEIGHTS); evaluate_model_train_test_split(params, features,
-    // labels, 0.75, m_config.USE_SCALING, m_config.USE_WEIGHTS);
+    BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>> rf(m_config.RF_PARAMS, m_config.USE_SCALING);
+    evaluate_model_train_test_split(rf, features, labels,
+        0.25, m_config.USE_WEIGHTS);
     ///////////
 }
 
