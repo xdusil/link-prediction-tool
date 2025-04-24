@@ -135,6 +135,18 @@ template <typename T>
 std::string to_string(const T& obj);
 
 /**
+ * @brief Print classifier metrics.
+ *
+ * @tparam Metrics The type of the metrics.
+ * @param metrics The metrics to print.
+ *
+ * This function prints the accuracy, precision, recall, F1 score, and ROC AUC (if
+ * available) of the classifier.
+ */
+template <typename Metrics>
+void print_classifier_metrics(const Metrics &metrics);
+
+/**
  * @brief Set the number of threads for global operations.
  *
  * This function sets the number of threads for both Torch and OpenMP.

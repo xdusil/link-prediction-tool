@@ -140,4 +140,16 @@ std::string to_string(const T &obj) {
     return boost::json::serialize(jv);
 }
 
+template <typename Metrics>
+void print_classifier_metrics(const Metrics &metrics) {
+    std::cout << "Classifier metrics:\n"
+              << "  Accuracy: " << metrics.accuracy << "\n"
+              << "  Precision: " << metrics.precision << "\n"
+              << "  Recall: " << metrics.recall << "\n"
+              << "  F1 Score: " << metrics.f1_score << "\n";
+    if (metrics.roc_auc.has_value()) {
+        std::cout << "  ROC AUC: " << metrics.roc_auc.value() << "\n";
+    }
+}
+
 } // namespace utils
