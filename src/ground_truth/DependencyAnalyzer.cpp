@@ -50,14 +50,20 @@ void DependencyAnalyzer::parse_flow_data(const std::string &filename) {
             data.contains("flowEndMilliseconds")
                 ? JsonHelper::extract_value<int64_t>(data, "flowEndMilliseconds")
                 : JsonHelper::extract_value<int64_t>(data, "biFlowEndMilliseconds");
-        auto start_reverse =
-            data.contains("flowStartMilliseconds_Rev")
+
+        auto start_reverse = 
+            data.contains("flowStartMilliseconds_Rev") 
                 ? JsonHelper::extract_value<int64_t>(data, "flowStartMilliseconds_Rev")
-                : JsonHelper::extract_value<int64_t>(data, "biFlowStartMilliseconds_Rev");
-        auto end_reverse =
+                : (data.contains("biFlowStartMilliseconds_Rev")
+                    ? JsonHelper::extract_value<int64_t>(data, "biFlowStartMilliseconds_Rev")
+                    : start_forward);  // Fallback to forward timestamp
+
+        auto end_reverse = 
             data.contains("flowEndMilliseconds_Rev")
                 ? JsonHelper::extract_value<int64_t>(data, "flowEndMilliseconds_Rev")
-                : JsonHelper::extract_value<int64_t>(data, "biFlowEndMilliseconds_Rev");
+                : (data.contains("biFlowEndMilliseconds_Rev")
+                    ? JsonHelper::extract_value<int64_t>(data, "biFlowEndMilliseconds_Rev")
+                    : end_forward);  // Fallback to forward timestamp
 
         if (!src_ip || !dst_ip || !start_forward || !end_forward || !start_reverse ||
             !end_reverse) {
