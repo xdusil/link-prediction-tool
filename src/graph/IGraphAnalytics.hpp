@@ -32,7 +32,7 @@ public:
      * @param v Second vertex
      * @return The Adamic-Adar score
      */
-    virtual double adamic_adar(const Vertex &u, const Vertex &v) const = 0;
+    virtual double adamic_adar_index(const Vertex &u, const Vertex &v) const = 0;
 
     /**
      * @brief Calculate Jaccard coefficient between two vertices.
@@ -92,7 +92,7 @@ public:
      * @param v Second vertex
      * @return The resource allocation score
      */
-    virtual double resource_allocation(const Vertex &u, const Vertex &v) const = 0;
+    virtual double resource_allocation_index(const Vertex &u, const Vertex &v) const = 0;
 
     // ---------- Node-centric Metrics ----------
 

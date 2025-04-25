@@ -8,7 +8,7 @@
 #include <limits>
 
 template <typename Graph>
-double BoostGraphAnalytics<Graph>::adamic_adar(const Vertex &u, const Vertex &v) const {
+double BoostGraphAnalytics<Graph>::adamic_adar_index(const Vertex &u, const Vertex &v) const {
     double score = 0.0;
     auto common_neighbors = m_graph_manager.get_common_neighbors(u, v);
     
@@ -66,7 +66,7 @@ double BoostGraphAnalytics<Graph>::preferential_attachment(const Vertex &u, cons
 }
 
 template <typename Graph>
-double BoostGraphAnalytics<Graph>::resource_allocation(const Vertex &u, const Vertex &v) const {
+double BoostGraphAnalytics<Graph>::resource_allocation_index(const Vertex &u, const Vertex &v) const {
     double score = 0.0;
     auto common_neighbors = m_graph_manager.get_common_neighbors(u, v);
     

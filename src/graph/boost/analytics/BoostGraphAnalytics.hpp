@@ -35,7 +35,7 @@ public:
      * @param v Second vertex
      * @return The Adamic-Adar score
      */
-    double adamic_adar(const Vertex &u, const Vertex &v) const override;
+    double adamic_adar_index(const Vertex &u, const Vertex &v) const override;
 
     /**
      * @brief Calculate Jaccard coefficient between two vertices.
@@ -94,7 +94,7 @@ public:
      * @param v Second vertex
      * @return The resource allocation score
      */
-    double resource_allocation(const Vertex &u, const Vertex &v) const override;
+    double resource_allocation_index(const Vertex &u, const Vertex &v) const override;
 
     /**
      * @brief Get the degree of a vertex.
