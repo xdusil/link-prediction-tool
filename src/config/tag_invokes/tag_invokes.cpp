@@ -165,26 +165,26 @@ FeatureConfig tag_invoke(json::value_to_tag<FeatureConfig>, const json::value &j
     // Process all boolean feature flags
     set_validated<bool>(obj, "cosine_similarity", config.cosine_similarity,
                         always_true{});
-    set_validated<bool>(obj, "euclidean_distance", config.euclidean_distance,
+    set_validated<bool>(obj, "l2_distance", config.l2_distance,
                         always_true{});
     set_validated<bool>(obj, "dot_product", config.dot_product, always_true{});
-    set_validated<bool>(obj, "hadamard_sum", config.hadamard_sum, always_true{});
-    set_validated<bool>(obj, "hadamard_mean", config.hadamard_mean, always_true{});
+    set_validated<bool>(obj, "hadamard_product_sum", config.hadamard_product_sum, always_true{});
+    set_validated<bool>(obj, "hadamard_product_mean", config.hadamard_product_mean, always_true{});
     set_validated<bool>(obj, "l1_distance", config.l1_distance, always_true{});
-    set_validated<bool>(obj, "common_neighbors", config.common_neighbors, always_true{});
+    set_validated<bool>(obj, "common_neighbors_count", config.common_neighbors_count, always_true{});
     set_validated<bool>(obj, "jaccard_coefficient", config.jaccard_coefficient,
                         always_true{});
     set_validated<bool>(obj, "node_degree", config.node_degree, always_true{});
-    set_validated<bool>(obj, "embed_std", config.embed_std, always_true{});
-    set_validated<bool>(obj, "adamic_adar", config.adamic_adar, always_true{});
+    set_validated<bool>(obj, "embedding_std", config.embedding_std, always_true{});
+    set_validated<bool>(obj, "adamic_adar_index", config.adamic_adar_index, always_true{});
     set_validated<bool>(obj, "preferential_attachment", config.preferential_attachment,
                         always_true{});
-    set_validated<bool>(obj, "resource_allocation", config.resource_allocation,
+    set_validated<bool>(obj, "resource_allocation_index", config.resource_allocation_index,
                         always_true{});
-    set_validated<bool>(obj, "embedding_ratio", config.embedding_ratio, always_true{});
+    set_validated<bool>(obj, "embedding_norm_ratio", config.embedding_norm_ratio, always_true{});
     set_validated<bool>(obj, "embedding_abs_mean", config.embedding_abs_mean,
                         always_true{});
-    set_validated<bool>(obj, "element_wise_product", config.element_wise_product,
+    set_validated<bool>(obj, "hadamard_product_components", config.hadamard_product_components,
                         always_true{});
 
     return config;
@@ -194,21 +194,21 @@ void tag_invoke(json::value_from_tag, json::value &jv, const FeatureConfig &conf
     json::object obj;
 
     obj["cosine_similarity"] = json::value_from(config.cosine_similarity);
-    obj["euclidean_distance"] = json::value_from(config.euclidean_distance);
+    obj["l2_distance"] = json::value_from(config.l2_distance);
     obj["dot_product"] = json::value_from(config.dot_product);
-    obj["hadamard_sum"] = json::value_from(config.hadamard_sum);
-    obj["hadamard_mean"] = json::value_from(config.hadamard_mean);
+    obj["hadamard_product_sum"] = json::value_from(config.hadamard_product_sum);
+    obj["hadamard_product_mean"] = json::value_from(config.hadamard_product_mean);
     obj["l1_distance"] = json::value_from(config.l1_distance);
-    obj["common_neighbors"] = json::value_from(config.common_neighbors);
+    obj["common_neighbors_count"] = json::value_from(config.common_neighbors_count);
     obj["jaccard_coefficient"] = json::value_from(config.jaccard_coefficient);
     obj["node_degree"] = json::value_from(config.node_degree);
-    obj["embed_std"] = json::value_from(config.embed_std);
-    obj["adamic_adar"] = json::value_from(config.adamic_adar);
+    obj["embedding_std"] = json::value_from(config.embedding_std);
+    obj["adamic_adar_index"] = json::value_from(config.adamic_adar_index);
     obj["preferential_attachment"] = json::value_from(config.preferential_attachment);
-    obj["resource_allocation"] = json::value_from(config.resource_allocation);
-    obj["embedding_ratio"] = json::value_from(config.embedding_ratio);
+    obj["resource_allocation_index"] = json::value_from(config.resource_allocation_index);
+    obj["embedding_norm_ratio"] = json::value_from(config.embedding_norm_ratio);
     obj["embedding_abs_mean"] = json::value_from(config.embedding_abs_mean);
-    obj["element_wise_product"] = json::value_from(config.element_wise_product);
+    obj["hadamard_product_components"] = json::value_from(config.hadamard_product_components);
 
     jv = std::move(obj);
 }
