@@ -37,7 +37,6 @@ LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_pa
     utils::VerboseTimer::set_verbose(verbose);
     log_verbose("Verbose mode enabled");
     log_verbose("Configuration path: ", config_path ? *config_path : "using defaults");
-    log_verbose("Loaded configuration: \n", "  - ", utils::to_string(m_config));
 
     // Load configuration
     if (config_path) {
@@ -45,6 +44,8 @@ LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_pa
     } else {
         m_config = config::Config();
     }
+
+    log_verbose("Loaded configuration: \n", "  - ", utils::to_string(m_config));
 
     // Initialize components
     m_internal_counter =
