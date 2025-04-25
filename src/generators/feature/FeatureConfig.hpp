@@ -14,22 +14,31 @@
  */
 class FeatureConfig {
 public:
+    // Embedding similarity features
     bool cosine_similarity = true;
-    bool euclidean_distance = true;
     bool dot_product = true;
-    bool hadamard_sum = true;
-    bool hadamard_mean = true;
-    bool l1_distance = true;
-    bool common_neighbors = true;
-    bool jaccard_coefficient = true;
-    bool node_degree = true; // For both nodes v1 and v2
-    bool embed_std = true;   // For both nodes v1 and v2
-    bool adamic_adar = true;
-    bool preferential_attachment = true;
-    bool resource_allocation = true;
-    bool embedding_ratio = true;
+    bool l1_distance = true; //  Manhattan distance
+    bool l2_distance = true; //  Euclidean distance
+
+    // Embedding statistical features
+    bool embedding_std = true;   // For both nodes v1 and v2
     bool embedding_abs_mean = true; // For both nodes v1 and v2
-    bool element_wise_product = true;
+    bool embedding_norm_ratio = true;
+
+    // Hadamard product derived features
+    bool hadamard_product_sum = true;
+    bool hadamard_product_mean = true;
+    bool hadamard_product_components = true;
+
+    // Network structure features
+    bool common_neighbors_count = true;
+    bool jaccard_coefficient = true;
+    bool adamic_adar_index = true;
+    bool preferential_attachment = true;
+    bool resource_allocation_index = true;
+    
+    // Node-level features with min/max pairs
+    bool node_degree = true; // For both nodes v1 and v2
 
     FeatureConfig() = default;
 
@@ -42,22 +51,22 @@ public:
     std::size_t get_dimension(std::size_t embedding_dim) const {
         std::size_t dim = 0;
         dim += cosine_similarity ? 1 : 0;
-        dim += euclidean_distance ? 1 : 0;
+        dim += l2_distance ? 1 : 0;
         dim += dot_product ? 1 : 0;
-        dim += hadamard_sum ? 1 : 0;
-        dim += hadamard_mean ? 1 : 0;
+        dim += hadamard_product_sum ? 1 : 0;
+        dim += hadamard_product_mean ? 1 : 0;
         dim += l1_distance ? 1 : 0;
-        dim += common_neighbors ? 1 : 0;
+        dim += common_neighbors_count ? 1 : 0;
         dim += jaccard_coefficient ? 1 : 0;
         dim += node_degree ? 2 : 0; // Two features: degree(v1), degree(v2)
-        dim += embed_std ? 2 : 0;   // Two features: std(v1_emb), std(v2_emb)
-        dim += adamic_adar ? 1 : 0;
+        dim += embedding_std ? 2 : 0;   // Two features: std(v1_emb), std(v2_emb)
+        dim += adamic_adar_index ? 1 : 0;
         dim += preferential_attachment ? 1 : 0;
-        dim += resource_allocation ? 1 : 0;
-        dim += embedding_ratio ? 1 : 0;
+        dim += resource_allocation_index ? 1 : 0;
+        dim += embedding_norm_ratio ? 1 : 0;
         dim += embedding_abs_mean ? 2
                                   : 0; // Two features: abs_mean(v1_emb), abs_mean(v2_emb)
-        dim += element_wise_product ? embedding_dim : 0;
+        dim += hadamard_product_components ? embedding_dim : 0;
         return dim;
     }
 
@@ -69,47 +78,58 @@ public:
      */
     std::vector<std::string> get_feature_names(std::size_t embedding_dim) const {
         std::vector<std::string> names;
+        
+        // Embedding similarity features
         if (cosine_similarity)
             names.push_back("cosine_similarity");
-        if (euclidean_distance)
-            names.push_back("euclidean_distance");
         if (dot_product)
             names.push_back("dot_product");
-        if (hadamard_sum)
-            names.push_back("hadamard_sum");
-        if (hadamard_mean)
-            names.push_back("hadamard_mean");
         if (l1_distance)
             names.push_back("l1_distance");
-        if (common_neighbors)
-            names.push_back("common_neighbors");
-        if (jaccard_coefficient)
-            names.push_back("jaccard_coefficient");
-        if (node_degree) {
-            names.push_back("min(degree_v1, degree_v2)");
-            names.push_back("max(degree_v1, degree_v2)");
+        if (l2_distance)
+            names.push_back("l2_distance");
+        
+        // Embedding statistical features
+        if (embedding_std) {
+            names.push_back("embedding_std_min");
+            names.push_back("embedding_std_max");
         }
-        if (embed_std) {
-            names.push_back("min(embed_std_v1, embed_std_v2)");
-            names.push_back("max(embed_std_v1, embed_std_v2)");
-        }
-        if (adamic_adar)
-            names.push_back("adamic_adar");
-        if (preferential_attachment)
-            names.push_back("preferential_attachment");
-        if (resource_allocation)
-            names.push_back("resource_allocation");
-        if (embedding_ratio)
-            names.push_back("embedding_ratio");
         if (embedding_abs_mean) {
-            names.push_back("min(embed_abs_mean_v1, embed_abs_mean_v2)");
-            names.push_back("max(embed_abs_mean_v1, embed_abs_mean_v2)");
+            names.push_back("embedding_abs_mean_min");
+            names.push_back("embedding_abs_mean_max");
         }
-        if (element_wise_product) {
+        if (embedding_norm_ratio)
+            names.push_back("embedding_norm_ratio");
+        
+        // Hadamard product derived features
+        if (hadamard_product_sum)
+            names.push_back("hadamard_product_sum");
+        if (hadamard_product_mean)
+            names.push_back("hadamard_product_mean");
+        if (hadamard_product_components) {
             for (std::size_t i = 0; i < embedding_dim; ++i) {
-                names.push_back("element_wise_product_" + std::to_string(i));
+                names.push_back("hadamard_product_component_" + std::to_string(i));
             }
         }
+
+        // Network structure features
+        if (common_neighbors_count)
+            names.push_back("common_neighbors_count");
+        if (jaccard_coefficient)
+            names.push_back("jaccard_coefficient");
+        if (adamic_adar_index)
+            names.push_back("adamic_adar_index");
+        if (preferential_attachment)
+            names.push_back("preferential_attachment");
+        if (resource_allocation_index)
+            names.push_back("resource_allocation_index");
+
+        // Node-level features with min/max pairs
+        if (node_degree) {
+            names.push_back("node_degree_min");
+            names.push_back("node_degree_max");
+        }
+
         return names;
     }
 };

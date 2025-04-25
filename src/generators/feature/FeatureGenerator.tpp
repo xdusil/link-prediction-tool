@@ -138,68 +138,32 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     if (m_feature_config.cosine_similarity) {
         features_accessor[row_index][j++] = cosine_similarity<T>(v1_emb, v2_emb);
     }
-    if (m_feature_config.euclidean_distance) {
-        features_accessor[row_index][j++] = euclidean_distance<T>(v1_emb, v2_emb);
-    }
     if (m_feature_config.dot_product) {
         features_accessor[row_index][j++] = dot_product<T>(v1_emb, v2_emb);
     }
-
-    // Element-wise operations (Hadamard product)
-    auto hadamard = v1_emb * v2_emb;
-    if (m_feature_config.hadamard_sum) {
-        features_accessor[row_index][j++] = hadamard.sum().item<T>();
-    }
-    if (m_feature_config.hadamard_mean) {
-        features_accessor[row_index][j++] = hadamard.mean().item<T>();
-    }
-
-    // L1 distance
     if (m_feature_config.l1_distance) {
         features_accessor[row_index][j++] = (v1_emb - v2_emb).abs().sum().item<T>();
     }
-
-    // Network structure features
-    if (m_feature_config.common_neighbors) {
-        features_accessor[row_index][j++] =
-            m_graph_analytics.normalized_common_neighbors_count(v1, v2);
+    if (m_feature_config.l2_distance) {
+        features_accessor[row_index][j++] = euclidean_distance<T>(v1_emb, v2_emb);
     }
-    if (m_feature_config.jaccard_coefficient) {
-        features_accessor[row_index][j++] = m_graph_analytics.jaccard_coefficient(v1, v2);
-    }
-
-    // Node-level features
-    if (m_feature_config.node_degree) {
-        T deg1 = m_graph_analytics.degree(v1) / get_set_avg_degree<T>();
-        T deg2 = m_graph_analytics.degree(v2) / get_set_avg_degree<T>();
-
-        features_accessor[row_index][j++] = std::min(deg1, deg2);
-        features_accessor[row_index][j++] = std::max(deg1, deg2);
-    }
-
-    // Statistical features from embeddings
-    if (m_feature_config.embed_std) {
+    
+    // Embedding statistical features
+    if (m_feature_config.embedding_std) {
         T std1 = v1_emb.std().item<T>();
         T std2 = v2_emb.std().item<T>();
 
         features_accessor[row_index][j++] = std::min(std1, std2);
         features_accessor[row_index][j++] = std::max(std1, std2);
     }
+    if (m_feature_config.embedding_abs_mean) {
+        T mean1 = v1_emb.abs().mean().item<T>();
+        T mean2 = v2_emb.abs().mean().item<T>();
 
-    // Other features
-    if (m_feature_config.adamic_adar) {
-        features_accessor[row_index][j++] = m_graph_analytics.adamic_adar(v1, v2);
+        features_accessor[row_index][j++] = std::min(mean1, mean2);
+        features_accessor[row_index][j++] = std::max(mean1, mean2);
     }
-    if (m_feature_config.preferential_attachment) {
-        features_accessor[row_index][j++] =
-            m_graph_analytics.preferential_attachment(v1, v2);
-    }
-    if (m_feature_config.resource_allocation) {
-        features_accessor[row_index][j++] = m_graph_analytics.resource_allocation(v1, v2);
-    }
-
-    // Embedding ratio features
-    if (m_feature_config.embedding_ratio) {
+    if (m_feature_config.embedding_norm_ratio) {
         T v1_norm = v1_emb.norm().item<T>();
         T v2_norm = v2_emb.norm().item<T>();
 
@@ -211,20 +175,46 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
         }
     }
 
-    // Embedding absolute mean features
-    if (m_feature_config.embedding_abs_mean) {
-        T mean1 = v1_emb.abs().mean().item<T>();
-        T mean2 = v2_emb.abs().mean().item<T>();
-
-        features_accessor[row_index][j++] = std::min(mean1, mean2);
-        features_accessor[row_index][j++] = std::max(mean1, mean2);
+    // Hadamard product derived features
+    auto hadamard = v1_emb * v2_emb;
+    if (m_feature_config.hadamard_product_sum) {
+        features_accessor[row_index][j++] = hadamard.sum().item<T>();
+    }
+    if (m_feature_config.hadamard_product_mean) {
+        features_accessor[row_index][j++] = hadamard.mean().item<T>();
+    }
+    if (m_feature_config.hadamard_product_components) {
+        for (std::size_t i = 0; i < hadamard.size(0); ++i) {
+            features_accessor[row_index][j++] = hadamard[i].item<T>();
+        }
     }
 
-    // Element-wise product of embeddings
-    if (m_feature_config.element_wise_product) {
-        for (int i = 0; i < v1_emb.size(0); i++) {
-            features_accessor[row_index][j++] = v1_emb[i].item<T>() * v2_emb[i].item<T>();
-        }
+    // Network structure features
+    if (m_feature_config.common_neighbors_count) {
+        features_accessor[row_index][j++] =
+            m_graph_analytics.normalized_common_neighbors_count(v1, v2);
+    }
+    if (m_feature_config.jaccard_coefficient) {
+        features_accessor[row_index][j++] = m_graph_analytics.jaccard_coefficient(v1, v2);
+    }
+    if (m_feature_config.adamic_adar_index) {
+        features_accessor[row_index][j++] = m_graph_analytics.adamic_adar_index(v1, v2);
+    }
+    if (m_feature_config.preferential_attachment) {
+        features_accessor[row_index][j++] =
+            m_graph_analytics.preferential_attachment(v1, v2);
+    }
+    if (m_feature_config.resource_allocation_index) {
+        features_accessor[row_index][j++] = m_graph_analytics.resource_allocation_index(v1, v2);
+    }
+
+    // Node-level features with min/max pairs
+    if (m_feature_config.node_degree) {
+        T deg1 = m_graph_analytics.degree(v1) / get_set_avg_degree<T>();
+        T deg2 = m_graph_analytics.degree(v2) / get_set_avg_degree<T>();
+
+        features_accessor[row_index][j++] = std::min(deg1, deg2);
+        features_accessor[row_index][j++] = std::max(deg1, deg2);
     }
 }
 
