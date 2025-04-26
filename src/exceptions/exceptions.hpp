@@ -99,3 +99,12 @@ class NotSupportedException : public ApplicationException {
 class JSONException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
+
+/**
+ * @brief Feature generator exception class
+ *
+ * Exception will be thrown when an error occurs during feature generation
+ */
+class FeatureGeneratorException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};
