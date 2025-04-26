@@ -267,15 +267,7 @@ void LinkPredictionApp::generate_predictions(
     // Evaluate against ground truth if available
     if (labels.has_value()) {
         auto metrics = m_classifier->evaluate(arma_features, *labels);
-        std::cout << "Classifier evaluation metrics:\n"
-                  << "  Accuracy: " << metrics.accuracy << "\n"
-                  << "  Precision: " << metrics.precision << "\n"
-                  << "  Recall: " << metrics.recall << "\n"
-                  << "  F1 Score: " << metrics.f1_score
-                  << (metrics.roc_auc.has_value()
-                          ? "\n  ROC AUC: " + std::to_string(metrics.roc_auc.value())
-                          : "")
-                  << std::endl;
+        utils::print_classifier_metrics(metrics);
     }
 }
 
@@ -431,19 +423,11 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     
 
     // Evaluate classifier
-    statistics::Metrics metrics = m_classifier->evaluate(features, labels);
-    std::cout << "Classifier training complete." << std::endl;
-    std::cout << "Training metrics:" << std::endl;
-    std::cout << "  Accuracy: " << metrics.accuracy << std::endl;
-    std::cout << "  Precision: " << metrics.precision << std::endl;
-    std::cout << "  Recall: " << metrics.recall << std::endl;
-    std::cout << "  F1 Score: " << metrics.f1_score << std::endl;
-    if (metrics.roc_auc.has_value()) {
-        std::cout << "  ROC-AUC: " << metrics.roc_auc.value() << std::endl;
-    }
+    auto metrics = m_classifier->evaluate(features, labels);
+    utils::print_classifier_metrics(metrics);
 
     ///////////
-    BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>> rf(m_config.RF_PARAMS, m_config.USE_SCALING);
+    auto rf = dynamic_cast<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>> &>(*m_classifier);
     evaluate_model_train_test_split(rf, features, labels,
         0.25, m_config.USE_WEIGHTS);
     ///////////
