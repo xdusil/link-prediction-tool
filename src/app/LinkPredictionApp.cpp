@@ -275,7 +275,7 @@ void LinkPredictionApp::generate_predictions(
 template <typename Classifier, typename Features, typename Labels>
 void evaluate_model_train_test_split(Classifier &rf, const Features &features,
                                      const Labels &labels, double test_size = 0.25,
-                                     bool use_weights = false) {
+                                     bool use_weights = false, bool use_threshold_calibration = false) {
     std::cout << "Evaluating model with train/test split (test size: " << test_size
               << ")\n";
 
@@ -290,7 +290,11 @@ void evaluate_model_train_test_split(Classifier &rf, const Features &features,
     mlpack::data::Split(features, labels, train_features, test_features, train_labels,
                         test_labels, test_size);
 
-    rf.train(train_features, train_labels, use_weights);
+    if (use_threshold_calibration) {
+        rf.train_with_calibration(train_features, train_labels, use_weights);
+    } else {
+        rf.train(train_features, train_labels, use_weights);
+    }
     Labels y_predicted = rf.predict(test_features);
     auto metrics = rf.evaluate(test_features, test_labels);
     std::cout << "Train test split evaluation results:\n"
@@ -427,9 +431,12 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     utils::print_classifier_metrics(metrics);
 
     ///////////
-    auto rf = dynamic_cast<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>> &>(*m_classifier);
-    evaluate_model_train_test_split(rf, features, labels,
-        0.25, m_config.USE_WEIGHTS);
+    auto rf1 = dynamic_cast<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>> &>(*m_classifier);
+    auto rf2 = dynamic_cast<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>> &>(*m_classifier);
+    evaluate_model_train_test_split(rf1, features, labels,
+        0.25, m_config.USE_WEIGHTS, m_config.USE_THRESHOLD_CALIBRATION);
+    evaluate_model_train_test_split(rf2, features, labels,
+        0.25, m_config.USE_WEIGHTS, m_config.USE_THRESHOLD_CALIBRATION);
     ///////////
 }
 
