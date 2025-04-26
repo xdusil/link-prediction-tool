@@ -246,17 +246,17 @@ void LinkPredictionApp::generate_predictions(
 
     // Write predictions to file
     FileWriter writer(output_path);
-    writer.write_line("src_ip,dst_ip");
+    writer.write_line("ip1,ip2");
     int positive_count = 0;
     for (size_t i = 0; i < predictions.size(); ++i) {
         const auto &pair = vertex_pairs[i];
-        const auto &src_ip = pair.first;
-        const auto &dst_ip = pair.second;
+        const auto &ip1 = pair.first;
+        const auto &ip2 = pair.second;
         const auto &prediction = predictions[i];
 
         if (prediction == 1) {
             ++positive_count;
-            writer.write_line(src_ip + "," + dst_ip);
+            writer.write_line(ip1 + "," + ip2);
         }
     }
 
