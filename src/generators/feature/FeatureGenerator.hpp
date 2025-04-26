@@ -35,8 +35,10 @@ public:
      * @param vertex_to_index The map of vertex to index.
      * @param ground_truth_dependencies The ground truth dependencies.
      * @return The tuple of the features and labels.
-     *        - features: tensor of shape [vertices x (vertices - 1), feature_dim]
+     *        - features: tensor of shape [num_pairs, feature_dim] where num_pairs = n*(n-1)/2
      *        - labels: row vector of size num_pairs (1=dependency, 0=no dependency)
+     *
+     * @note Since features are symmetric, each pair is processed once (avoiding duplicates).
      */
     std::tuple<torch::Tensor, arma::Row<size_t>> generate_labeled_features(
         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
@@ -48,9 +50,11 @@ public:
      * @param vertex_to_index The map of vertex to index.
      * @param ground_truth_dependencies The ground truth dependencies.
      * @return The tuple of features, labels, and vertex pairs.
-     *        - features: tensor of shape [vertices x (vertices - 1), feature_dim]
+     *        - features: tensor of shape [num_pairs, feature_dim] where num_pairs = n*(n-1)/2
      *        - labels: row vector of size num_pairs (1=dependency, 0=no dependency)
      *        - vertex_pairs: vector of IP address pairs corresponding to each feature
+     *
+     * @note Since features are symmetric, each pair is processed once (avoiding duplicates).
      */
     std::tuple<torch::Tensor, arma::Row<size_t>,
                std::vector<std::pair<IPAddress, IPAddress>>>
@@ -63,8 +67,10 @@ public:
      *
      * @param vertex_to_index The map of vertex to index.
      * @return The tuple of features and vertex pairs.
-     *        - features: tensor of shape [vertices x (vertices - 1), feature_dim]
+     *        - features: tensor of shape [num_pairs, feature_dim] where num_pairs = n*(n-1)/2
      *        - vertex_pairs: vector of IP address pairs corresponding to each feature
+     *
+     * @note Since features are symmetric, each pair is processed once (avoiding duplicates).
      */
     std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
     generate_unlabeled_features_with_pairs(
@@ -84,9 +90,14 @@ private:
      * @param vertex_to_index The map of vertex to index.
      * @param ground_truth_dependencies The ground truth dependencies.
      * @return The tuple of features, labels, and vertex pairs.
-     *        - features: tensor of shape [vertices x (vertices - 1), feature_dim]
+     *        - features: tensor of shape [num_pairs, feature_dim] where num_pairs = n*(n-1)/2
      *        - labels: row vector of size num_pairs (1=dependency, 0=no dependency)
      *        - vertex_pairs: vector of IP address pairs corresponding to each feature
+     * 
+     * @note Since all features are commutative (f(v1,v2) = f(v2,v1)), each pair is 
+     * processed only once. The implementation avoids duplicates by only processing 
+     * pairs where idx1 < idx2. However, when checking for dependencies, both (ip1,ip2) 
+     * and (ip2,ip1) are considered because dependencies can be stored in either direction.
      */
     template <bool WithLabels = true, bool WithVertexPairs = false>
     std::tuple<torch::Tensor, arma::Row<size_t>,

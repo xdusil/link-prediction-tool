@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FeatureGenerator.hpp"
+#include "exceptions/exceptions.hpp"
 #include <c10/core/TensorOptions.h>
 #include <cstddef>
 
@@ -57,10 +58,14 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
         const GroundTruthDependencies &ground_truth_dependencies) {
 
     const std::size_t num_vertices = vertex_to_index.size();
-    const std::size_t num_pairs =
-        num_vertices * (num_vertices - 1); // avoid self-connections
+    // Avoid self-loops and duplicate pairs
+    const std::size_t num_pairs = num_vertices * (num_vertices - 1) / 2;
     const std::size_t feature_dim = m_feature_config.get_dimension(
         m_embedding_module->options.embedding_dim());
+
+    if (num_pairs == 0) {
+        throw FeatureGeneratorException("No vertex pairs to process.");
+    }
 
     // Prepare result containers
     torch::TensorOptions opts = torch::TensorOptions().dtype(torch::kFloat32);
@@ -70,13 +75,26 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     std::vector<std::pair<IPAddress, IPAddress>> vertex_pairs(
         (WithVertexPairs) ? num_pairs : 1);
 
-    std::size_t i = 0;
-    for (const auto &[ip1, v1] : vertex_to_index) {
-        for (const auto &[ip2, v2] : vertex_to_index) {
-            // Skip self-connections
-            if (v1 == v2)
-                continue;
+    // Create a vector of vertex IPs for consistent ordering
+    std::vector<IPAddress> vertex_ips;
+    vertex_ips.reserve(vertex_to_index.size());
+    for (const auto& [ip, _] : vertex_to_index) {
+        vertex_ips.push_back(ip);
+    }
+    
+    // Sort to ensure consistent iteration order
+    std::sort(vertex_ips.begin(), vertex_ips.end());
 
+    std::size_t i = 0;
+    // Only process each pair once with idx1 < idx2 to avoid duplicates
+    for (size_t idx1 = 0; idx1 < vertex_ips.size(); ++idx1) {
+        const auto& ip1 = vertex_ips[idx1];
+        const auto v1 = vertex_to_index.at(ip1);
+        
+        for (size_t idx2 = idx1 + 1; idx2 < vertex_ips.size(); ++idx2) {
+            const auto& ip2 = vertex_ips[idx2];
+            const auto v2 = vertex_to_index.at(ip2);
+            
             // Get embeddings
             torch::Tensor v1_emb =
                 m_embedding_module->forward(torch::tensor({static_cast<int64_t>(v1)}))
