@@ -271,38 +271,45 @@ void LinkPredictionApp::generate_predictions(
     }
 }
 
-// Evaluate a classifier using a train/test split.
-template <typename Classifier, typename Features, typename Labels>
-void evaluate_model_train_test_split(Classifier &rf, const Features &features,
-                                     const Labels &labels, double test_size = 0.25,
-                                     bool use_weights = false, bool use_threshold_calibration = false) {
-    std::cout << "Evaluating model with train/test split (test size: " << test_size
-              << ")\n";
+void LinkPredictionApp::evaluate_model_train_test_split(const auto &features,
+                                     const auto &labels, double test_size) const {
+    std::cout << "\nEvaluating model with train-test split ["
+              << "test_size: " << test_size << "]...\n";
 
     // Containers for the split data.
-    Features train_features, test_features;
-    Labels train_labels, test_labels;
-
-    // Split the data. (test_size indicates the fraction of columns for testing.)
-    // mlpack::data::StratifiedSplit(features_d, labels, train_features, test_features,
-    //                               train_labels, test_labels, test_size);
+    arma::fmat train_features, test_features;
+    arma::Row<size_t> train_labels, test_labels;
 
     mlpack::data::Split(features, labels, train_features, test_features, train_labels,
                         test_labels, test_size);
+    
 
-    if (use_threshold_calibration) {
-        rf.train_with_calibration(train_features, train_labels, use_weights);
-    } else {
-        rf.train(train_features, train_labels, use_weights);
+    RandomForestParams params = m_config.RF_PARAMS;
+    if (m_config.USE_GRID_SEARCH) {
+        params = perform_grid_search(train_features, train_labels);
     }
-    Labels y_predicted = rf.predict(test_features);
+
+    BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>> rf(params, m_config.USE_SCALING);
+    
+    if (m_config.CLASSIFIER_THRESHOLD) {
+        rf.set_threshold(*m_config.CLASSIFIER_THRESHOLD);
+    }
+    if (m_config.USE_THRESHOLD_CALIBRATION) {
+        rf.train_with_calibration(train_features, train_labels, m_config.USE_WEIGHTS,
+                                  m_config.METRIC_TO_OPTIMIZE);
+    } else {
+        rf.train(train_features, train_labels, m_config.USE_WEIGHTS);
+    }
+
+    auto y_predicted = rf.predict(test_features);
     auto metrics = rf.evaluate(test_features, test_labels);
-    std::cout << "Train test split evaluation results:\n"
+    std::cout << "\nTrain test split evaluation results (test size: " << test_size
+              << "):\n"
               << "Train(+" << arma::accu(train_labels) << "/-" << train_labels.size() - arma::accu(train_labels) << ") "
               << "Test(+" << arma::accu(test_labels) << "/-" << test_labels.size() - arma::accu(test_labels) << ") "
               << "Predicted(+" << arma::accu(y_predicted) << "/-" << y_predicted.size() - arma::accu(y_predicted) << ")\n";
     utils::print_classifier_metrics(metrics);
-    std::cout << "Train test split evaluation complete.\n";
+    std::cout << "Train test split evaluation complete.\n\n";
 }
 
 void LinkPredictionApp::process_data(const std::string &data_path) {
@@ -406,8 +413,7 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
         RandomForestParams best_params = perform_grid_search(features, labels);
         m_classifier =
             std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>(
-                best_params.num_trees, best_params.min_leaf_size,
-                best_params.min_gain_split, best_params.max_depth, m_config.USE_SCALING);
+                best_params, m_config.USE_SCALING);
     } else {
         // Create classifier
         m_classifier =
@@ -431,17 +437,13 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     utils::print_classifier_metrics(metrics);
 
     ///////////
-    auto rf1 = dynamic_cast<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>> &>(*m_classifier);
-    auto rf2 = dynamic_cast<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>> &>(*m_classifier);
-    evaluate_model_train_test_split(rf1, features, labels,
-        0.25, m_config.USE_WEIGHTS, m_config.USE_THRESHOLD_CALIBRATION);
-    evaluate_model_train_test_split(rf2, features, labels,
-        0.25, m_config.USE_WEIGHTS, m_config.USE_THRESHOLD_CALIBRATION);
+    evaluate_model_train_test_split(features, labels, 0.25);
+    evaluate_model_train_test_split(features, labels, 0.5);
     ///////////
 }
 
 RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
-                                                          const auto &labels) {
+                                                          const auto &labels) const {
 
     std::cout << "Performing grid search for hyperparameters...\n";
 

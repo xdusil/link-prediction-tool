@@ -6,8 +6,8 @@
 #include "constrained_collections/counters/IEvictingCounter.hpp"
 #include "constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
 #include "graph/boost/BoostGraphTraits.hpp"
-#include "graph/network/NetworkGraphDefinition.hpp"
 #include "graph/network/INetworkGraphManager.hpp"
+#include "graph/network/NetworkGraphDefinition.hpp"
 #include "ground_truth/DependencyAnalyzer.hpp"
 #include "model/SkipGramModel.hpp"
 #include "model/trainer/ITrainer.hpp"
@@ -149,7 +149,8 @@ private:
      * @param labels The labels
      * @return The best Random Forest parameters
      */
-    RandomForestParams perform_grid_search(const auto &features, const auto &labels);
+    RandomForestParams perform_grid_search(const auto &features,
+                                           const auto &labels) const;
 
     /**
      * @brief Generate predictions
@@ -162,6 +163,16 @@ private:
 
     void generate_predictions(const std::string &output_path,
                               const std::optional<std::string> &ground_truth_path);
+
+    /**
+     * @brief Evaluate the model using train-test split
+     *
+     * @param features The features
+     * @param labels The labels
+     * @param test_size The size of the test set
+     */
+    void evaluate_model_train_test_split(const auto &features, const auto &labels,
+                                         double test_size) const;
 
     /**
      * @brief Helper function to log messages when verbose mode is enabled
