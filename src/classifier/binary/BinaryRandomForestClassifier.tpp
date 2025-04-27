@@ -97,7 +97,7 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::set_threshold(
     }
 
     m_binary_threshold = threshold;
-    std::cout << "Binary threshold manually set to: " << threshold << std::endl;
+    std::cout << "Binary threshold set to: " << threshold << std::endl;
 }
 
 template <typename Features, typename Labels, typename Scaler>
@@ -161,17 +161,13 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::find_optimal_thresh
     // Save the best threshold
     m_binary_threshold = best_threshold;
 
-    std::cout << "\n=== Binary Classifier Threshold Calibration ===" << std::endl;
-    std::cout << "---Calibrated threshold: " << best_threshold << " (" << metric << "="
-              << best_value << ")" << std::endl;
-    std::cout << "---Accuracy: " << best.accuracy << std::endl;
-    std::cout << "---Precision: " << best.precision << std::endl;
-    std::cout << "---Recall: " << best.recall << std::endl;
-    std::cout << "---F1 score: " << best.f1_score << std::endl;
-    if (best.roc_auc.has_value()) {
-        std::cout << "---ROC-AUC: " << best.roc_auc.value() << std::endl;
-    }
-    std::cout << "================================================\n" << std::endl;
+    // std::cout << "Binary Classifier Threshold Calibration for metric: " << metric
+    //           << "\n  Calibrated threshold: " << best_threshold
+    //           << " (Accuracy: " << best.accuracy
+    //           << ", Precision: " << best.precision
+    //           << ", Recall: " << best.recall
+    //           << ", F1: " << best.f1_score << ")\n";
+
 }
 
 template <typename Features, typename Labels, typename Scaler>
