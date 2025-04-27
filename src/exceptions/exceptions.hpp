@@ -108,3 +108,12 @@ class JSONException : public ApplicationException {
 class FeatureGeneratorException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
+
+/**
+ * @brief Flow processor exception class
+ *
+ * Exception will be thrown when an error occurs during flow processing
+ */
+class FlowProcessorException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};

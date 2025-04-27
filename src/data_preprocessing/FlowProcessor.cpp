@@ -1,5 +1,7 @@
 #include "FlowProcessor.hpp"
+#include "exceptions/exceptions.hpp"
 #include "utils/ip/IIPChecker.hpp"
+#include <exception>
 
 FlowProcessor::FlowProcessor(IEvictingCounter<IPAddress> &internal_counter,
                              IEvictingCounter<IPAddress> &external_counter,
@@ -39,7 +41,8 @@ void FlowProcessor::process_flow_file(const std::string &filename) {
             m_total_flows++;
 
         } catch (const std::exception &) {
-            continue;
+            std::throw_with_nested(FlowProcessorException(
+                "Error processing flow data from file: " + filename));
         }
     }
 }
@@ -71,7 +74,8 @@ void FlowProcessor::process_filtered_flows(const std::string &filename) {
             }
 
         } catch (const std::exception &) {
-            continue;
+            std::throw_with_nested(FlowProcessorException(
+                "Error processing filtered flow data from file: " + filename));
         }
     }
 }

@@ -26,7 +26,11 @@ public:
             json::value jv = json::parse(json_str);
             return jv.as_object();
         } catch (const boost::system::system_error &e) {
-            throw JSONException("JSON parse error: " + std::string(e.what()));
+            const std::string error_msg = "JSON parse error";
+            if (e.code() == boost::json::error::syntax) {
+                throw JSONException(error_msg + ": " + "syntax error");
+            }
+            throw JSONException(error_msg);
         }
     }
 

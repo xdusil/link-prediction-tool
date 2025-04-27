@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         }
 
     } catch (const std::exception &e) {
-        utils::print_exception(e);
+        utils::print_exception(e, 0, "Error");
         return EXIT_FAILURE;
     }
 
