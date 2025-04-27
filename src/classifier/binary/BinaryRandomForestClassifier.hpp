@@ -2,6 +2,7 @@
 
 #include "../generic/RandomForestClassifier.hpp"
 #include "IBinaryRandomForestClassifier.hpp"
+#include "statistics/metrics.hpp"
 
 /**
  * @brief Specialized Random Forest classifier optimized for binary classification.
@@ -110,21 +111,6 @@ public:
                              const std::string &metric = "f1") override;
 
     /**
-     * @brief Find the optimal threshold in a specified range.
-     *
-     * @param val_features Validation features
-     * @param val_labels Validation labels
-     * @param metric Metric to optimize
-     * @param min_threshold Minimum threshold value to try
-     * @param max_threshold Maximum threshold value to try
-     * @param step Step size between thresholds
-     */
-    void find_optimal_threshold(const Features &val_features, const Labels &val_labels,
-                                const std::string &metric = "f1",
-                                double min_threshold = 0.01, double max_threshold = 0.99,
-                                double step = 0.01) override;
-
-    /**
      * @brief Save the model with binary-specific parameters.
      *
      * @param path File path to save to.
@@ -149,6 +135,22 @@ private:
      */
     template <class Archive>
     void serialize(Archive &archive);
+
+    /**
+     * @brief Find the optimal threshold in a specified range.
+     *
+     * @param val_features Validation features
+     * @param val_labels Validation labels
+     * @param metric Metric to optimize
+     * @param min_threshold Minimum threshold value to try
+     * @param max_threshold Maximum threshold value to try
+     * @param step Step size between thresholds
+     * @return A tuple containing the optimal threshold and the corresponding metrics.
+     */
+    std::tuple<double, statistics::Metrics>
+    find_optimal_threshold(const Features &val_features, const Labels &val_labels,
+                           const std::string &metric = "f1", double min_threshold = 0.01,
+                           double max_threshold = 0.99, double step = 0.01);
 
     // Allow cereal access to private members
     friend class cereal::access;

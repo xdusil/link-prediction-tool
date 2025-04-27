@@ -40,10 +40,7 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::train_with_calibrat
               << std::endl;
 
     // After training, calibrate the threshold
-    find_optimal_threshold(test_features, test_labels, metric, 0.01, 0.99, 0.02);
-
-    std::cout << "Binary classifier: Calibration complete with threshold = "
-              << m_binary_threshold << std::endl;
+    calibrate_threshold(test_features, test_labels, metric);
 }
 
 template <typename Features, typename Labels, typename Scaler>
@@ -59,7 +56,7 @@ Labels BinaryRandomForestClassifier<Features, Labels, Scaler>::predict(
         predictions[i] = (probabilities(1, i) > m_binary_threshold) ? 1 : 0;
     }
 
-    std::cout << "==>Using optimized binary threshold: " << m_binary_threshold
+    std::cout << "Binary classifier: Using optimized binary threshold: " << m_binary_threshold
               << std::endl;
     return predictions;
 }
@@ -97,7 +94,7 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::set_threshold(
     }
 
     m_binary_threshold = threshold;
-    std::cout << "Binary threshold set to: " << threshold << std::endl;
+    std::cout << "Binary classifier: Binary threshold manually set to: " << threshold << std::endl;
 }
 
 template <typename Features, typename Labels, typename Scaler>
@@ -105,12 +102,20 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::calibrate_threshold
     const Features &val_features, const Labels &val_labels,
     const std::string &metric /*= f1*/) {
 
-    // Default calibration range with 0.05 steps
-    find_optimal_threshold(val_features, val_labels, metric, 0.05, 0.95, 0.05);
+    // Default calibration range with 0.02 steps
+    auto [threshold, metrics] =
+        find_optimal_threshold(val_features, val_labels, metric, 0.01, 0.99, 0.02);
+    m_binary_threshold = threshold;
+    
+    std::cout << "Binary classifier: Calibration complete with threshold = "
+            << m_binary_threshold << " (Accuracy = " << metrics.accuracy
+            << ", Precision = " << metrics.precision
+            << ", Recall = " << metrics.recall
+            << ", F1 = " << metrics.f1_score << ")" << std::endl;
 }
 
 template <typename Features, typename Labels, typename Scaler>
-void BinaryRandomForestClassifier<Features, Labels, Scaler>::find_optimal_threshold(
+std::tuple<double, statistics::Metrics> BinaryRandomForestClassifier<Features, Labels, Scaler>::find_optimal_threshold(
     const Features &val_features, const Labels &val_labels, const std::string &metric,
     double min_threshold /*= 0.01 */, double max_threshold /*= 0.99 */,
     double step /*= 0.01*/) {
@@ -158,16 +163,7 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::find_optimal_thresh
         }
     }
 
-    // Save the best threshold
-    m_binary_threshold = best_threshold;
-
-    // std::cout << "Binary Classifier Threshold Calibration for metric: " << metric
-    //           << "\n  Calibrated threshold: " << best_threshold
-    //           << " (Accuracy: " << best.accuracy
-    //           << ", Precision: " << best.precision
-    //           << ", Recall: " << best.recall
-    //           << ", F1: " << best.f1_score << ")\n";
-
+    return std::make_tuple(best_threshold, best);
 }
 
 template <typename Features, typename Labels, typename Scaler>

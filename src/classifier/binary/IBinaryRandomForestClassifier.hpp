@@ -56,19 +56,4 @@ public:
     virtual void calibrate_threshold(const Features &val_features,
                                      const Labels &val_labels,
                                      const std::string &metric = "f1") = 0;
-
-    /**
-     * @brief Find the best threshold within a specific range.
-     *
-     * @param val_features Validation features
-     * @param val_labels Validation labels
-     * @param metric Metric to optimize
-     * @param min_threshold Minimum threshold to try
-     * @param max_threshold Maximum threshold to try
-     * @param step Step size between threshold values
-     */
-    virtual void
-    find_optimal_threshold(const Features &val_features, const Labels &val_labels,
-                           const std::string &metric = "f1", double min_threshold = 0.01,
-                           double max_threshold = 0.99, double step = 0.01) = 0;
 };
