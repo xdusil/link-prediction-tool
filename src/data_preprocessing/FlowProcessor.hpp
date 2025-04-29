@@ -7,6 +7,7 @@
 #include "io/FileReader.hpp"
 #include "utils/ip/IIPChecker.hpp"
 #include "json/JsonHelper.hpp"
+#include <cstddef>
 #include <string>
 #include <unordered_set>
 
@@ -129,6 +130,7 @@ private:
      * @brief Logs a message for missing keys in a JSON object.
      *
      * @param line The JSON object as a string.
+     * @param line_no The line number in the file (optional).
      */
-    void log_missing_keys(const std::string &line) const;
+    void log_missing_keys(const std::string &line, std::size_t line_no = 0) const;
 };

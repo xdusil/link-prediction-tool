@@ -38,7 +38,7 @@ void FlowProcessor::process_flow_file(const std::string &filename) {
                 update_counters(*dst_ip);
             }
 
-            m_total_flows++;
+            ++m_total_flows;
 
         } catch (const std::exception &) {
             std::throw_with_nested(FlowProcessorException(
@@ -50,6 +50,7 @@ void FlowProcessor::process_flow_file(const std::string &filename) {
 void FlowProcessor::process_filtered_flows(const std::string &filename) {
     FileReader reader(filename);
     std::string line;
+    std::size_t line_no = 0;
 
     while (reader.get_next_line(line)) {
         try {
@@ -59,8 +60,8 @@ void FlowProcessor::process_filtered_flows(const std::string &filename) {
             auto dst_ip =
                 JsonHelper::extract_value<std::string>(data, "destinationIPv4Address");
 
+            ++line_no;
             if (!src_ip || !dst_ip) {
-                log_missing_keys(line);
                 continue;
             }
 
@@ -69,8 +70,13 @@ void FlowProcessor::process_filtered_flows(const std::string &filename) {
                  m_external_counter.contains(*src_ip)) &&
                 (m_internal_counter.contains(*dst_ip) ||
                  m_external_counter.contains(*dst_ip))) {
-                IPEdge edge = parse_flow_from_json(data);
-                add_edge_to_reservoir(*src_ip, *dst_ip, edge);
+                try {
+                    IPEdge edge = parse_flow_from_json(data);
+                    add_edge_to_reservoir(*src_ip, *dst_ip, edge);
+                } catch (const std::exception &) {
+                    log_missing_keys(line, line_no);
+                    continue;
+                }
             }
 
         } catch (const std::exception &) {
@@ -117,8 +123,11 @@ void FlowProcessor::add_edge_to_reservoir(const std::string &src_ip,
     m_reservoir.add(dst_ip, edge);
 }
 
-void FlowProcessor::log_missing_keys(const std::string &line) const {
-    std::cerr << "Missing keys in JSON object: " << line << std::endl;
+void FlowProcessor::log_missing_keys(const std::string &line,
+                                     std::size_t line_no /*= 0*/) const {
+    std::cerr << "Missing keys in JSON data"
+              << (line_no > 0 ? " at line " + std::to_string(line_no) : "")
+              << "\nData: " << line << std::endl;
 }
 
 std::size_t FlowProcessor::get_internal_addresses_count() const {
