@@ -1,9 +1,9 @@
 #pragma once
 
-#include "constrained_collections/counters/IEvictingCounter.hpp"
-#include "constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
 #include "IFlowProcessor.hpp"
 #include "Types.hpp"
+#include "constrained_collections/counters/IEvictingCounter.hpp"
+#include "constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
 #include "io/FileReader.hpp"
 #include "utils/ip/IIPChecker.hpp"
 #include "json/JsonHelper.hpp"
@@ -111,7 +111,15 @@ private:
      * @param data The JSON object containing flow data.
      * @return The parsed flow data as an IPEdge object.
      */
-    IPEdge parse_flow_from_json(const boost::json::object &data) const;
+    static IPEdge parse_flow_from_json(const boost::json::object &data);
+
+    /**
+     * @brief Parses reverse flow data from a JSON object.
+     *
+     * @param data The JSON object containing reverse flow data.
+     * @return The parsed reverse flow data as an IPEdge object.
+     */
+    static IPEdge parse_rev_flow_from_json(const boost::json::object &data);
 
     /**
      * @brief Adds an edge to the reservoir.
@@ -124,7 +132,17 @@ private:
      * @param edge The edge to add to the reservoir.
      */
     void add_edge_to_reservoir(const std::string &src_ip, const std::string &dst_ip,
-                               IPEdge &edge);
+                               const IPEdge &edge);
+
+    /**
+     * @brief Checks if the JSON data contains reverse flow information.
+     *
+     * This method checks if the JSON object contains fields needed for reverse flow.
+     *
+     * @param data The JSON object to check.
+     * @return true if reverse flow data exists, false otherwise.
+     */
+    static bool has_reverse_flow_data(const boost::json::object &data);
 
     /**
      * @brief Logs a message for missing keys in a JSON object.
@@ -132,5 +150,5 @@ private:
      * @param line The JSON object as a string.
      * @param line_no The line number in the file (optional).
      */
-    void log_missing_keys(const std::string &line, std::size_t line_no = 0) const;
+    static void log_missing_keys(const std::string &line, std::size_t line_no = 0);
 };

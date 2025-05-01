@@ -73,6 +73,11 @@ void FlowProcessor::process_filtered_flows(const std::string &filename) {
                 try {
                     IPEdge edge = parse_flow_from_json(data);
                     add_edge_to_reservoir(*src_ip, *dst_ip, edge);
+                        // Only add reverse edge if reverse flow data exists
+                    if (has_reverse_flow_data(data)) {
+                        IPEdge rev_edge = parse_rev_flow_from_json(data);
+                        add_edge_to_reservoir(*dst_ip, *src_ip, rev_edge);
+                    }
                 } catch (const std::exception &) {
                     log_missing_keys(line, line_no);
                     continue;
@@ -94,7 +99,7 @@ inline void FlowProcessor::update_counters(const std::string &ip) {
     }
 }
 
-IPEdge FlowProcessor::parse_flow_from_json(const boost::json::object &data) const {
+IPEdge FlowProcessor::parse_flow_from_json(const boost::json::object &data) {
     return {
         data.at("sourceIPv4Address").as_string().c_str(),
         data.at("destinationIPv4Address").as_string().c_str(),
@@ -115,16 +120,51 @@ IPEdge FlowProcessor::parse_flow_from_json(const boost::json::object &data) cons
                                       : data.at("biFlowEndMilliseconds").as_int64()}};
 }
 
+IPEdge FlowProcessor::parse_rev_flow_from_json(const boost::json::object &data) {
+    return {
+        data.at("destinationIPv4Address").as_string().c_str(),
+        data.at("sourceIPv4Address").as_string().c_str(),
+        data.contains("destinationTransportPort")
+            ? std::optional<int>{static_cast<int>(
+                  data.at("destinationTransportPort").as_int64())}
+            : std::nullopt,
+        data.contains("sourceTransportPort")
+            ? std::optional<int>{static_cast<int>(
+                  data.at("sourceTransportPort").as_int64())}
+            : std::nullopt,
+        static_cast<int>(data.at("protocolIdentifier").as_int64()),
+        std::chrono::milliseconds{data.contains("flowStartMilliseconds_Rev")
+                                      ? data.at("flowStartMilliseconds_Rev").as_int64()
+                                      : data.at("biFlowStartMilliseconds").as_int64()},
+        std::chrono::milliseconds{data.contains("flowEndMilliseconds_Rev")
+                                      ? data.at("flowEndMilliseconds_Rev").as_int64()
+                                      : data.at("biFlowEndMilliseconds").as_int64()}};
+}
+
 void FlowProcessor::add_edge_to_reservoir(const std::string &src_ip,
-                                          const std::string &dst_ip, IPEdge &edge) {
+                                          const std::string &dst_ip, const IPEdge &edge) {
     m_reservoir.add(src_ip, edge);
-    std::swap(edge.src_ip, edge.dst_ip);
-    std::swap(edge.src_port, edge.dst_port);
-    m_reservoir.add(dst_ip, edge);
+}
+
+bool FlowProcessor::has_reverse_flow_data(const boost::json::object &data) {
+    // Check for dedicated reverse flow fields
+    if (data.contains("flowStartMilliseconds_Rev") || 
+        data.contains("flowEndMilliseconds_Rev")) {
+        return true;
+    }
+    
+    // Check for bidirectional flow indicator fields
+    if (data.contains("biFlowStartMilliseconds") || 
+        data.contains("biFlowEndMilliseconds")) {
+        return true;
+    }
+    
+    // No reverse flow data available
+    return false;
 }
 
 void FlowProcessor::log_missing_keys(const std::string &line,
-                                     std::size_t line_no /*= 0*/) const {
+                                     std::size_t line_no /*= 0*/) {
     std::cerr << "Missing keys in JSON data"
               << (line_no > 0 ? " at line " + std::to_string(line_no) : "")
               << "\nData: " << line << std::endl;
