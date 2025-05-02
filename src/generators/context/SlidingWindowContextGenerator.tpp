@@ -12,17 +12,22 @@ std::vector<std::vector<T>> SlidingWindowContextGenerator<T>::generate_contexts(
     const std::vector<std::vector<T>> &sequences) {
 
     std::vector<std::vector<T>> contexts;
-    contexts.reserve(sequences.size()); // TODO calculate the size of the contexts vector
+    contexts.reserve(sequences.size());
 
     for (const auto &sequence : sequences) {
-        if (sequence.size() < context_size) {
-            continue;
+        if (sequence.empty()) {
+            continue;  // Skip empty sequences
         }
 
-        // Slide the window over the sequence
-        for (size_t i = 0; i <= sequence.size() - context_size; ++i) {
-            contexts.emplace_back(sequence.begin() + i,
-                                  sequence.begin() + i + context_size);
+        if (sequence.size() < context_size) {
+            // For sequences shorter than context_size, include them as-is
+            contexts.push_back(sequence);
+        } else {
+            // Slide the window over the sequence
+            for (size_t i = 0; i <= sequence.size() - context_size; ++i) {
+                contexts.emplace_back(sequence.begin() + i,
+                                    sequence.begin() + i + context_size);
+            }
         }
     }
 
