@@ -1,7 +1,6 @@
 #pragma once
 
 #include "CandidateDependencyGenerator.hpp"
-#include <c10/core/TensorImpl.h>
 #include <iostream>
 
 // Constructor
@@ -54,9 +53,16 @@ CandidateDependencyGenerator<T>::generate_dependencies(
 
     std::vector<torch::Tensor> negatives_tensor;
     negatives_tensor.reserve(negatives.size());
+
+    auto options = torch::TensorOptions()
+                       .dtype(torch::kInt64)
+                       .device(torch::kCPU)
+                       .memory_format(torch::MemoryFormat::Contiguous);
+
     for (const auto &neg : negatives) {
-        negatives_tensor.push_back(torch::tensor(neg));
+        negatives_tensor.push_back(torch::tensor(neg, options));
     }
 
-    return {torch::tensor(contexts), torch::tensor(positives), negatives_tensor};
+    return {torch::tensor(contexts, options), torch::tensor(positives, options),
+            negatives_tensor};
 }
