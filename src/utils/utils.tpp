@@ -1,7 +1,8 @@
 #pragma once
 
 #include "boost/json/serialize.hpp"
-#include "config/tag_invokes/tag_invokes.hpp" 
+#include "config/tag_invokes/tag_invokes.hpp"
+#include "exceptions/exceptions.hpp"
 #include "utils.hpp"
 
 namespace utils {
@@ -87,9 +88,19 @@ bool is_vertex_pair_in_sequence_opposite(const std::vector<Vertex> &sequence, Ve
 }
 
 template <typename T>
-TensorMatrixView<T> conv_2d_tensor_to_arma(const torch::Tensor &tensor, bool copy_mem, bool transpose) {
-    // First ensure tensor is detached, on CPU, and contiguous
-    auto safe_tensor = tensor.detach().cpu().contiguous();
+TensorMatrixView<T> conv_2d_tensor_to_arma(const torch::Tensor &tensor, bool copy_mem,
+                                           bool transpose) {
+    if (!tensor.defined()) {
+        throw ApplicationException("Tensor is not defined");
+    }
+
+    auto options = torch::TensorOptions()
+                       .dtype(tensor.dtype())
+                       .device(torch::kCPU)
+                       .layout(tensor.layout())
+                       .memory_format(torch::MemoryFormat::Contiguous);
+
+    auto safe_tensor = tensor.detach().to(options);
 
     // Type checking
     if constexpr (std::is_same_v<T, float>) {
@@ -114,7 +125,7 @@ TensorMatrixView<T> conv_2d_tensor_to_arma(const torch::Tensor &tensor, bool cop
     }
 
     arma::Mat<T> result_matrix(data_ptr, dim_0, dim_1, copy_mem);
-    
+
     // Return both the matrix and the tensor (if not copying)
     return {
         result_matrix,
@@ -123,7 +134,7 @@ TensorMatrixView<T> conv_2d_tensor_to_arma(const torch::Tensor &tensor, bool cop
 }
 
 template <typename Cont>
-std::string join(const Cont& strings, const std::string& delimiter) {
+std::string join(const Cont &strings, const std::string &delimiter) {
     std::ostringstream oss;
     for (size_t i = 0; i < strings.size(); ++i) {
         oss << strings[i];
