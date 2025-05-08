@@ -285,6 +285,13 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
     add_hadamard_features(const torch::Tensor &v1_emb, const torch::Tensor &v2_emb,
                           torch::TensorAccessor<T, 2> &accessor, std::size_t row,
                           std::size_t col) {
+
+    if (!m_feature_config.hadamard_product_sum &&
+        !m_feature_config.hadamard_product_mean &&
+        !m_feature_config.hadamard_product_components) {
+        return col;
+    }
+    
     auto hadamard = v1_emb * v2_emb;
     if (m_feature_config.hadamard_product_sum) {
         accessor[row][col++] = hadamard.sum().item<T>();
