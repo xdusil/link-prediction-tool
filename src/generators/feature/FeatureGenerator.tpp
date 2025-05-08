@@ -77,10 +77,6 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     torch::TensorOptions opts = torch::TensorOptions()
                                     .dtype(torch::kFloat32)
                                     .memory_format(torch::MemoryFormat::Contiguous);
-    torch::TensorOptions idx_opts = torch::TensorOptions()
-                                        .dtype(torch::kInt64)
-                                        .device(torch::kCPU)
-                                        .memory_format(torch::MemoryFormat::Contiguous);
 
     torch::Tensor all_features = torch::empty(
         {static_cast<int64_t>(num_pairs), static_cast<int64_t>(feature_dim)}, opts);
@@ -91,9 +87,18 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     // Extract and sort vertices for consistent ordering
     auto [vertex_ips, all_indices] = extract_sorted_vertices(vertex_to_index);
 
-    // Get all embeddings in a single forward pass
-    torch::Tensor all_indices_tensor = torch::tensor(all_indices, idx_opts);
-    torch::Tensor all_embeddings = m_embedding_module->forward(all_indices_tensor);
+    // Only calculate embeddings if any embedding features are enabled
+    torch::Tensor all_embeddings;
+    if (m_feature_config.are_embedding_features_enabled()) {
+        torch::TensorOptions idx_opts =
+            torch::TensorOptions()
+                .dtype(torch::kInt64)
+                .device(torch::kCPU)
+                .memory_format(torch::MemoryFormat::Contiguous);
+        // Get all embeddings in a single forward pass
+        torch::Tensor all_indices_tensor = torch::tensor(all_indices, idx_opts);
+        all_embeddings = m_embedding_module->forward(all_indices_tensor);
+    }
 
     // Generate features for all vertex pairs
     process_vertex_pairs<WithLabels, WithVertexPairs>(
@@ -148,17 +153,23 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
                          std::vector<std::pair<IPAddress, IPAddress>> &vertex_pairs) {
 
     std::size_t pair_index = 0;
+    const bool use_embeddings = m_feature_config.are_embedding_features_enabled();
+
+    // Initialize empty tensors for embeddings if not using them
+    const torch::Tensor empty_tensor;
 
     // Process each pair once (with idx1 < idx2 to avoid duplicates)
     for (size_t idx1 = 0; idx1 < vertex_ips.size(); ++idx1) {
         const auto &ip1 = vertex_ips[idx1];
         const auto v1 = vertex_to_index.at(ip1);
-        const torch::Tensor &v1_emb = all_embeddings[idx1];
+        const torch::Tensor &v1_emb =
+            use_embeddings ? all_embeddings[idx1] : empty_tensor;
 
         for (size_t idx2 = idx1 + 1; idx2 < vertex_ips.size(); ++idx2) {
             const auto &ip2 = vertex_ips[idx2];
             const auto v2 = vertex_to_index.at(ip2);
-            const torch::Tensor &v2_emb = all_embeddings[idx2];
+            const torch::Tensor &v2_emb =
+                use_embeddings ? all_embeddings[idx2] : empty_tensor;
 
             // Create features
             create_features_and_set_to_tensor<float>(v1, v2, v1_emb, v2_emb, all_features,
