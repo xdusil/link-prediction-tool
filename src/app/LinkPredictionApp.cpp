@@ -90,8 +90,14 @@ void LinkPredictionApp::common_training_or_prediction(
     process_data(data_path);
     build_graph();
 
-    // Generate embeddings
-    generate_embeddings();
+    // Only generate embeddings if any embedding features are enabled
+    if (m_config.FEATURE_CONFIG.are_embedding_features_enabled()) {
+        generate_embeddings();
+    } else {
+        std::cout << "Skipping embedding generation (no embedding features enabled)" << std::endl;
+        // Create a minimal model with 1 dimension to satisfy interface requirements
+        m_model = std::make_unique<SkipGramModel>(m_graph_manager->get_vertex_count(), 1);
+    }
 }
 
 void LinkPredictionApp::run_ground_truth_mode(
@@ -127,6 +133,8 @@ void LinkPredictionApp::run_training_mode(
         throw ComponentNotInitializedException("Dependency analyzer not initialized.");
     if (!m_graph_manager)
         throw ComponentNotInitializedException("Graph manager not initialized.");
+    if (!m_model)
+        throw ComponentNotInitializedException("Model not initialized.");
 
     if (ground_truth_input_path) {
         // Load ground truth
@@ -260,7 +268,7 @@ void LinkPredictionApp::generate_predictions(
         }
     }
 
-    std::cout << "Predictions written to " << output_path << "\n";
+    std::cout << "Positive predictions written to " << output_path << "\n";
     std::cout << "Positive predictions: " << positive_count << "\n";
     std::cout << "Total predictions: " << predictions.size() << std::endl;
 
