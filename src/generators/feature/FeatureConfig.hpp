@@ -43,6 +43,38 @@ public:
     FeatureConfig() = default;
 
     /**
+     * @brief Check if any embedding features are enabled.
+     *
+     * @return True if any embedding features are enabled, false otherwise.
+     */
+    bool are_embedding_features_enabled() const {
+        return cosine_similarity || dot_product || l1_distance || l2_distance ||
+               embedding_std || embedding_abs_mean || embedding_norm_ratio ||
+               hadamard_product_sum || hadamard_product_mean ||
+               hadamard_product_components;
+    }
+
+    /**
+     * @brief Check if any network features are enabled.
+     *
+     * @return True if any network features are enabled, false otherwise.
+     */
+    bool are_network_features_enabled() const {
+        return common_neighbors_count || jaccard_coefficient ||
+               adamic_adar_index || preferential_attachment ||
+               resource_allocation_index || node_degree;
+    }
+
+    /**
+     * @brief Check if any features are enabled.
+     *
+     * @return True if any features are enabled, false otherwise.
+     */
+    bool is_any_feature_enabled() const {
+        return are_embedding_features_enabled() || are_network_features_enabled();
+    }
+
+    /**
      * @brief Get the dimension of the feature vector based on the enabled features.
      *
      * @param embedding_dim The dimension of the embedding.
