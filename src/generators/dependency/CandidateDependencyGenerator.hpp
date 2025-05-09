@@ -33,10 +33,10 @@ public:
      *
      * @param context_list A vector of contexts, where each context is a vector of
      * elements of type T.
-     * @return A tuple containing the context, positive target, and negative target
-     * tensors.
+     * @return A tuple containing the context, positive target, and 2D tensor of negative
+     * samples.
      */
-    std::tuple<torch::Tensor, torch::Tensor, std::vector<torch::Tensor>>
+    std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>
     generate_dependencies(const std::vector<std::vector<T>> &contexts) override;
 
 private:

@@ -3,7 +3,6 @@
 #include "CandidateDependencyGenerator.hpp"
 #include <iostream>
 
-// Constructor
 template <typename T>
 CandidateDependencyGenerator<T>::CandidateDependencyGenerator(
     std::function<T(const std::vector<T> &)> initial_selector, std::size_t total_vertices,
@@ -12,57 +11,78 @@ CandidateDependencyGenerator<T>::CandidateDependencyGenerator(
       to_long(std::move(to_long)), num_negative_samples(num_negative_samples),
       rng(std::random_device{}()) {}
 
-// Generate dependencies from a list of contexts.
+
 template <typename T>
-std::tuple<torch::Tensor, torch::Tensor, std::vector<torch::Tensor>>
+std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>
 CandidateDependencyGenerator<T>::generate_dependencies(
     const std::vector<std::vector<T>> &context_list) {
-    std::vector<long> contexts;
-    std::vector<long> positives;
-    std::vector<std::vector<long>> negatives;
-
-    std::uniform_int_distribution<long> dist(0, static_cast<long>(total_vertices) - 1);
-
+    // First pass to count the number of elements
+    size_t num_pairs = 0;
     for (const auto &context : context_list) {
-        if (context.empty()) {
-            continue;
-        }
-
-        // Use the provided initial selector to determine the "target" element
+        if (context.empty()) continue;
+        
         T target = initial_selector(context);
-
-        for (size_t i = 0; i < context.size(); ++i) {
-            // Avoid self-dependency
-            if (context[i] != target) {
-                contexts.push_back(to_long(context[i]));
-                positives.push_back(to_long(target));
-
-                negatives.push_back({});
-                negatives.back().reserve(num_negative_samples);
-
-                // Generate negative samples - naive approach
-                for (int j = 0; j < num_negative_samples; ++j) {
-                    long negative = dist(rng);
-                    if (negative != to_long(target) && negative != to_long(context[i])) {
-                        negatives.back().push_back(negative);
-                    }
-                }
-            }
+        for (const auto &item : context) {
+            if (item != target) num_pairs++;
         }
     }
-
-    std::vector<torch::Tensor> negatives_tensor;
-    negatives_tensor.reserve(negatives.size());
-
+    
+    // Create tensors directly with the right size
     auto options = torch::TensorOptions()
                        .dtype(torch::kInt64)
                        .device(torch::kCPU)
                        .memory_format(torch::MemoryFormat::Contiguous);
-
-    for (const auto &neg : negatives) {
-        negatives_tensor.push_back(torch::tensor(neg, options));
+    
+    auto contexts_tensor = torch::empty({static_cast<long>(num_pairs)}, options);
+    auto positives_tensor = torch::empty({static_cast<long>(num_pairs)}, options);
+    auto negatives_tensor = torch::empty({static_cast<long>(num_pairs), 
+                                          static_cast<long>(num_negative_samples)}, options);
+    
+    // Create accessors for direct indexing
+    auto contexts_accessor = contexts_tensor.accessor<int64_t, 1>();
+    auto positives_accessor = positives_tensor.accessor<int64_t, 1>();
+    auto negatives_accessor = negatives_tensor.accessor<int64_t, 2>();
+    
+    std::uniform_int_distribution<long> dist(0, static_cast<long>(total_vertices) - 1);
+    
+    // Second pass to fill the tensors
+    size_t idx = 0;
+    for (const auto &context : context_list) {
+        if (context.empty()) continue;
+        
+        T target = initial_selector(context);
+        long target_id = to_long(target);
+        
+        for (size_t i = 0; i < context.size(); ++i) {
+            if (context[i] == target) continue;
+           
+            long context_id = to_long(context[i]);
+            
+            contexts_accessor[idx] = context_id;
+            positives_accessor[idx] = target_id;
+            
+            // Generate negative samples
+            for (int j = 0; j < num_negative_samples; ++j) {
+                long negative;
+                int attempts = 0;
+                const int max_attempts = 10;
+                
+                do {
+                    negative = dist(rng);
+                    attempts++;
+                    if (attempts >= max_attempts) {
+                        // Fallback
+                        negative = (target_id + j + 1) % total_vertices;
+                        break;
+                    }
+                } while (negative == target_id || negative == context_id);
+                
+                negatives_accessor[idx][j] = negative;
+            }
+            
+            idx++;
+        }
     }
-
-    return {torch::tensor(contexts, options), torch::tensor(positives, options),
-            negatives_tensor};
+    
+    return {contexts_tensor, positives_tensor, negatives_tensor};
 }
