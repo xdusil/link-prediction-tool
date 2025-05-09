@@ -11,7 +11,7 @@ DataLoader<T>::DataLoader(IRandomWalkManager<T> &rw_manager,
 
 // Generate the next batch of data
 template <typename T>
-std::tuple<torch::Tensor, torch::Tensor, std::vector<torch::Tensor>> DataLoader<T>::next_batch() {
+std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> DataLoader<T>::next_batch() {
     // Step 1: Generate new random walks
     auto walks = m_rw_manager.generate_random_walks();
 

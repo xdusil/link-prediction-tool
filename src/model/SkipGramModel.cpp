@@ -5,61 +5,33 @@ SkipGramModel::SkipGramModel(int64_t vocab_size, int64_t embedding_dim)
       m_embeddings(register_module("embeddings",
                                    torch::nn::Embedding(vocab_size, embedding_dim))) {}
 
-// Forward method: Processes input data and produces predictions.
 torch::Tensor SkipGramModel::forward(const SkipGramInput &input) {
-    // Get context word embeddings
-    auto context_embeds = m_embeddings(input.context);
+    // context, positive  :  [B]
+    // negatives          :  [B, k]
 
-    // Get positive word embeddings
-    auto positive_embeds = m_embeddings(input.positive);
+    auto ctx = m_embeddings(input.context);   // [B, E]
+    auto pos = m_embeddings(input.positive);  // [B, E]
+    auto neg = m_embeddings(input.negatives); // [B, k, E]
 
-    // Compute dot product between context and positive embeddings
-    auto positive_scores =
-        torch::matmul(context_embeds, positive_embeds.transpose(-2, -1));
+    // positive dot products  → [B,1]
+    auto pos_scores = (ctx * pos).sum(/*dim=*/-1, /*keepdim=*/true);
 
-    // Compute dot product between context and negative embeddings
-    std::vector<torch::Tensor> negative_scores_list;
-    for (const auto &neg : input.negatives) {
-        auto negative_embeds = m_embeddings(neg);
-        auto negative_scores =
-            torch::matmul(context_embeds, negative_embeds.transpose(-2, -1));
-        negative_scores_list.push_back(negative_scores);
-    }
+    // negative dot products  → [B,k]
+    auto neg_scores = (neg * ctx.unsqueeze(1)) // broadcast ctx
+                          .sum(/*dim=*/-1);
 
-    // Concatenate positive and negative scores
-    if (negative_scores_list.empty()) {
-        return positive_scores;
-    }
-    auto negative_scores = torch::cat(negative_scores_list, -1);
-    return torch::cat({positive_scores, negative_scores}, -1);
+    return torch::cat({pos_scores, neg_scores}, -1); // [B, 1+k]
 }
 
-// Computes the loss for SkipGram
-torch::Tensor SkipGramModel::loss(const torch::Tensor &predictions,
-                                  const SkipGramInput &input) {
-    // Determine the split point for positive and negative scores
-    auto positive_size = input.positive.size(0);
-    auto total_size = predictions.size(-1);
-    auto negative_size = total_size - positive_size;
+torch::Tensor SkipGramModel::loss(const torch::Tensor &scores,
+                                  const SkipGramInput & /*input*/) {
+    auto pos_scores = scores.slice(/*dim=*/-1, 0, 1); // [B,1]
+    auto neg_scores = scores.slice(/*dim=*/-1, 1);    // [B,k]
 
-    // Split predictions into positive and negative scores
-    auto positive_scores =
-        predictions.slice(/*dim=*/-1, /*start=*/0, /*end=*/positive_size);
-    auto negative_scores =
-        predictions.slice(/*dim=*/-1, /*start=*/positive_size, /*end=*/total_size);
+    auto pos_loss = torch::log_sigmoid(pos_scores).neg();  // -log σ
+    auto neg_loss = torch::log_sigmoid(-neg_scores).neg(); // -log σ(-·)
 
-    // Compute positive loss
-    auto positive_loss = torch::binary_cross_entropy_with_logits(
-        positive_scores, torch::ones_like(positive_scores), torch::Tensor(),
-        torch::Tensor(), torch::Reduction::Mean);
-
-    // Compute negative loss
-    auto negative_loss = torch::binary_cross_entropy_with_logits(
-        negative_scores, torch::zeros_like(negative_scores), torch::Tensor(),
-        torch::Tensor(), torch::Reduction::Mean);
-
-    // Return total loss
-    return positive_loss + negative_loss;
+    return (pos_loss + neg_loss).mean();
 }
 
 // Returns the model's embeddings
@@ -67,7 +39,7 @@ torch::nn::Embedding &SkipGramModel::get_embeddings() { return m_embeddings; }
 
 // Returns the model's parameters
 std::vector<torch::Tensor> SkipGramModel::get_parameters() {
-    return {m_embeddings->parameters()};
+    return m_embeddings->parameters();
 }
 
 // Saves the model to a file

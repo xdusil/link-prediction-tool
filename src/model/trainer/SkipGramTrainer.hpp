@@ -37,6 +37,6 @@ private:
 };
 
 template class SkipGramTrainer<
-    std::tuple<torch::Tensor, torch::Tensor, std::vector<torch::Tensor>>>;
+    std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>>;
 
 #include "SkipGramTrainer.tpp"

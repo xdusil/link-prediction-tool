@@ -6,9 +6,9 @@
  * @brief Input type for SkipGram model
  */
 struct SkipGramInput {
-    torch::Tensor context;                // Context tensor
-    torch::Tensor positive;               // Positive tensor
-    std::vector<torch::Tensor> negatives; // List of negative tensors
+    torch::Tensor context;   // Context tensor
+    torch::Tensor positive;  // Positive tensor
+    torch::Tensor negatives; // 2D tensor of negative samples
 };
 
 /**
@@ -39,11 +39,15 @@ public:
     torch::Tensor forward(const SkipGramInput &input) override;
 
     /**
-     * @brief Computes the loss for SkipGram
+     * @brief Computes the negative sampling loss for Skip-Gram model
      *
-     * @param predictions The model's predictions.
-     * @param input The input data.
-     * @return The loss value.
+     * Implements the Word2Vec negative sampling objective:
+     * - For positive pairs: minimize -log(σ(score))
+     * - For negative pairs: minimize -log(σ(-score))
+     *
+     * @param predictions Concatenated tensor of positive [B,1] and negative [B,k] scores
+     * @param input Not used in this implementation
+     * @return Mean loss across batch samples
      */
     torch::Tensor loss(const torch::Tensor &predictions,
                        const SkipGramInput &input) override;

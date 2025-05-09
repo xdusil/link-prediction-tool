@@ -18,8 +18,7 @@
  */
 template <typename T>
 class DataLoader
-    : public IDataLoader<
-          std::tuple<torch::Tensor, torch::Tensor, std::vector<torch::Tensor>>> {
+    : public IDataLoader<std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>> {
 public:
     /**
      * @brief Constructs a new DataLoader object.
@@ -35,9 +34,12 @@ public:
      * @brief Get the next batch of data.
      *
      * @return The next batch of data.
+     *         A tuple containing:
+     *         - Context tensor
+     *         - Positive target tensor
+     *         - 2D tensor of negative samples
      */
-    std::tuple<torch::Tensor, torch::Tensor, std::vector<torch::Tensor>>
-    next_batch() override;
+    std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> next_batch() override;
 
 private:
     IRandomWalkManager<T> &m_rw_manager;       // RWManager used to generate random walks
