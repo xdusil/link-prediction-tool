@@ -47,3 +47,9 @@ bool AllowedIPChecker::check_ip(const std::string &ip) const {
     // If no lists are provided, allow all IPs
     return true;
 }
+
+bool AllowedIPChecker::is_valid_ipv4(const std::string &ip) {
+    boost::system::error_code ec;
+    boost::asio::ip::make_address_v4(ip, ec);
+    return !ec;
+}

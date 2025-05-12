@@ -46,6 +46,14 @@ public:
      */
     bool check_ip(const std::string &ip) const override;
 
+    /**
+     * @brief Check if the given string is a valid IPv4 address.
+     *
+     * @param ip The string to check.
+     * @return True if the string is a valid IPv4 address, false otherwise.
+     */
+    static bool is_valid_ipv4(const std::string &ip);
+
 private:
     std::optional<BoostIPHandler> m_allowed_ips_and_ranges; // Allowed IPs and ranges
     std::optional<BoostIPHandler> m_blocked_ips_and_ranges; // Blocked IPs and ranges
