@@ -3,6 +3,7 @@
 #include "../json/JsonHelper.hpp"
 #include "io/FileReader.hpp"
 #include "io/FileWriter.hpp"
+#include "utils/ip/AllowedIPChecker.hpp"
 #include "utils/ip/IIPChecker.hpp"
 #include <chrono>
 #include <fstream>
@@ -51,19 +52,21 @@ void DependencyAnalyzer::parse_flow_data(const std::string &filename) {
                 ? JsonHelper::extract_value<int64_t>(data, "flowEndMilliseconds")
                 : JsonHelper::extract_value<int64_t>(data, "biFlowEndMilliseconds");
 
-        auto start_reverse = 
-            data.contains("flowStartMilliseconds_Rev") 
+        auto start_reverse =
+            data.contains("flowStartMilliseconds_Rev")
                 ? JsonHelper::extract_value<int64_t>(data, "flowStartMilliseconds_Rev")
                 : (data.contains("biFlowStartMilliseconds_Rev")
-                    ? JsonHelper::extract_value<int64_t>(data, "biFlowStartMilliseconds_Rev")
-                    : start_forward);  // Fallback to forward timestamp
+                       ? JsonHelper::extract_value<int64_t>(data,
+                                                            "biFlowStartMilliseconds_Rev")
+                       : start_forward); // Fallback to forward timestamp
 
-        auto end_reverse = 
+        auto end_reverse =
             data.contains("flowEndMilliseconds_Rev")
                 ? JsonHelper::extract_value<int64_t>(data, "flowEndMilliseconds_Rev")
                 : (data.contains("biFlowEndMilliseconds_Rev")
-                    ? JsonHelper::extract_value<int64_t>(data, "biFlowEndMilliseconds_Rev")
-                    : end_forward);  // Fallback to forward timestamp
+                       ? JsonHelper::extract_value<int64_t>(data,
+                                                            "biFlowEndMilliseconds_Rev")
+                       : end_forward); // Fallback to forward timestamp
 
         if (!src_ip || !dst_ip || !start_forward || !end_forward || !start_reverse ||
             !end_reverse) {
@@ -100,6 +103,11 @@ const DependencySet &DependencyAnalyzer::calculate_dependencies(
 
     if (output_filename.has_value()) {
         FileWriter writer(output_filename.value());
+
+        // Add CSV header
+        writer.write_line("src_ip,dst_ip,dependency_type");
+
+        // Write dependencies to file
         writer.write(m_oss.str());
         std::cout << "Ground truth dependencies written to " << output_filename.value()
                   << std::endl;
@@ -114,46 +122,86 @@ const DependencySet &DependencyAnalyzer::calculate_dependencies(
 const DependencySet &DependencyAnalyzer::load_dependencies(const std::string &filename) {
     reset();
     FileReader reader(filename);
+    std::cout << "Loading dependencies from " << filename << std::endl;
 
     std::string line;
+    size_t line_number = 0;
+    size_t invalid_lines = 0;
+
+    // Skip header line
+    if (reader.get_next_line(line)) {
+        line_number++;
+        // Check if it looks like a header
+        if (line.find("source_ip") != std::string::npos ||
+            line.find("src_ip") != std::string::npos) {
+            // It's a header, continue to next line
+        } else {
+            // Process this line as it's not a header
+            if (!process_dependency_line(line)) {
+                std::cerr << "Warning: Line " << line_number
+                          << " has invalid format: " << line << std::endl;
+                invalid_lines++;
+            }
+        }
+    }
+
+    // Process remaining lines
     while (reader.get_next_line(line)) {
+        line_number++;
         // Skip empty lines
         if (line.empty())
             continue;
 
-        // Find the opening and closing parentheses
-        size_t open_paren = line.find('(');
-        size_t close_paren = line.find(')');
-
-        if (open_paren == std::string::npos || close_paren == std::string::npos) {
-            continue; // Skip malformed lines
+        // Try to process in CSV format
+        if (!process_dependency_line(line)) {
+            std::cerr << "Warning: Line " << line_number
+                      << " has invalid format: " << line << std::endl;
+            invalid_lines++;
         }
+    }
 
-        // Extract the content between parentheses
-        std::string content = line.substr(open_paren + 1, close_paren - open_paren - 1);
-
-        // Find the comma separating IPs
-        size_t comma_pos = content.find(',');
-        if (comma_pos == std::string::npos) {
-            continue; // Skip malformed lines
-        }
-
-        // Extract source and destination IPs
-        std::string src_ip = content.substr(0, comma_pos);
-        std::string dst_ip = content.substr(comma_pos + 1);
-
-        // Trim whitespace
-        src_ip.erase(0, src_ip.find_first_not_of(" \t"));
-        src_ip.erase(src_ip.find_last_not_of(" \t") + 1);
-        dst_ip.erase(0, dst_ip.find_first_not_of(" \t"));
-        dst_ip.erase(dst_ip.find_last_not_of(" \t") + 1);
-
-        m_all_dependencies.insert({src_ip, dst_ip});
+    if (invalid_lines > 0) {
+        std::cerr << "Warning: " << invalid_lines
+                  << " lines had invalid format and were skipped." << std::endl;
     }
 
     std::cout << "Loaded " << m_all_dependencies.size() << " dependencies from "
               << filename << std::endl;
     return m_all_dependencies;
+}
+
+bool DependencyAnalyzer::process_dependency_line(const std::string &line) {
+    std::string src_ip, dst_ip;
+
+    // Find the first comma
+    size_t first_comma = line.find(',');
+    if (first_comma == std::string::npos) {
+        return false; // Invalid line
+    }
+
+    // Find the second comma
+    size_t second_comma = line.find(',', first_comma + 1);
+    if (second_comma == std::string::npos) {
+        return false; // Invalid line
+    }
+
+    src_ip = line.substr(0, first_comma);
+    dst_ip = line.substr(first_comma + 1, second_comma - first_comma - 1);
+
+    // Trim whitespace
+    src_ip.erase(0, src_ip.find_first_not_of(" \t"));
+    src_ip.erase(src_ip.find_last_not_of(" \t") + 1);
+    dst_ip.erase(0, dst_ip.find_first_not_of(" \t"));
+    dst_ip.erase(dst_ip.find_last_not_of(" \t") + 1);
+
+    // Validate IP addresses
+    if (!AllowedIPChecker::is_valid_ipv4(src_ip) ||
+        !AllowedIPChecker::is_valid_ipv4(dst_ip)) {
+        return false; // Invalid IP address
+    }
+
+    m_all_dependencies.insert({src_ip, dst_ip});
+    return true;
 }
 
 void DependencyAnalyzer::reset() {
@@ -196,8 +244,7 @@ DependencyList DependencyAnalyzer::determine_direct_dependencies() {
             if (edge_properties.size() > m_n_occurrences) {
                 dependencies.emplace_back(src_ip, target_ip);
                 m_all_dependencies.insert({src_ip, target_ip});
-                m_oss << "DD: (" << src_ip << ", " << target_ip << ")"
-                      << "\n";
+                m_oss << src_ip << "," << target_ip << ",DD\n";
             }
         }
     }
@@ -236,8 +283,7 @@ TD2DependencyMap DependencyAnalyzer::determine_TD2_dependencies(
                 if (count_appereances > m_n_occurrences) {
                     dependencies[src_ip].push_back({dst_ip, mid_ip});
                     m_all_dependencies.insert({src_ip, dst_ip});
-                    m_oss << "TD2: (" << src_ip << ", " << dst_ip << ")"
-                          << "\n";
+                    m_oss << src_ip << "," << dst_ip << ",TD2\n";
                     break;
                 }
             }
@@ -281,8 +327,7 @@ RR2DependencyMap DependencyAnalyzer::determine_RR2_dependencies(
                 if (count_appearances > m_n_occurrences) {
                     dependencies[dst_ip].push_back({mid_ip, src_ip});
                     m_all_dependencies.insert({dst_ip, mid_ip});
-                    m_oss << "RR2: (" << dst_ip << ", " << mid_ip << ")"
-                          << "\n";
+                    m_oss << dst_ip << "," << mid_ip << ",RR2\n";
                     break;
                 }
             }
@@ -339,8 +384,7 @@ DependencyAnalyzer::determine_TD3_dependencies(const DependencyList &direct_depe
                     if (count_appearances_inner > m_n_occurrences) {
                         dependencies[src_ip].push_back({dst_ip, mid_ip, mid_ip2});
                         m_all_dependencies.insert({src_ip, dst_ip});
-                        m_oss << "TD3: (" << src_ip << ", " << dst_ip << ")"
-                              << "\n";
+                        m_oss << src_ip << "," << dst_ip << ",TD3\n";
                         break;
                     }
                 }
@@ -391,8 +435,7 @@ DependencyAnalyzer::determine_RR3_dependencies(const DependencyList &direct_depe
                     if (count_appearances > m_n_occurrences) {
                         dependencies[dst_ip].push_back({mid_ip, src_ip, mid_ip2});
                         m_all_dependencies.insert({dst_ip, mid_ip});
-                        m_oss << "RR3: (" << dst_ip << ", " << mid_ip << ")"
-                              << "\n";
+                        m_oss << dst_ip << "," << mid_ip << ",RR3\n";
                         break;
                     }
                 }
@@ -404,35 +447,33 @@ DependencyAnalyzer::determine_RR3_dependencies(const DependencyList &direct_depe
 }
 
 void DependencyAnalyzer::print_dependency_stats(
-    const DependencyList& direct_dependencies,
-    const TD2DependencyMap& td2_dependencies,
-    const RR2DependencyMap& rr2_dependencies,
-    const TD3DependencyMap& td3_dependencies,
-    const RR3DependencyMap& rr3_dependencies) const {
-    
+    const DependencyList &direct_dependencies, const TD2DependencyMap &td2_dependencies,
+    const RR2DependencyMap &rr2_dependencies, const TD3DependencyMap &td3_dependencies,
+    const RR3DependencyMap &rr3_dependencies) const {
+
     size_t dd_count = direct_dependencies.size();
-    
+
     size_t td2_count = 0;
     size_t rr2_count = 0;
     size_t td3_count = 0;
     size_t rr3_count = 0;
-    
-    for (const auto& [_, dsts] : td2_dependencies) {
+
+    for (const auto &[_, dsts] : td2_dependencies) {
         td2_count += dsts.size();
     }
-    
-    for (const auto& [_, dsts] : rr2_dependencies) {
+
+    for (const auto &[_, dsts] : rr2_dependencies) {
         rr2_count += dsts.size();
     }
-    
-    for (const auto& [_, dsts] : td3_dependencies) {
+
+    for (const auto &[_, dsts] : td3_dependencies) {
         td3_count += dsts.size();
     }
-    
-    for (const auto& [_, dsts] : rr3_dependencies) {
+
+    for (const auto &[_, dsts] : rr3_dependencies) {
         rr3_count += dsts.size();
     }
-    
+
     std::cout << "Dependency statistics:\n"
               << "---------------------------\n"
               << "Direct dependencies (DD): " << dd_count << "\n"
@@ -441,7 +482,8 @@ void DependencyAnalyzer::print_dependency_stats(
               << "TD3 dependencies: " << td3_count << "\n"
               << "RR3 dependencies: " << rr3_count << "\n"
               << "---------------------------\n"
-              << "Total dependencies: " << (dd_count + td2_count + rr2_count + td3_count + rr3_count) << "\n"
+              << "Total dependencies: "
+              << (dd_count + td2_count + rr2_count + td3_count + rr3_count) << "\n"
               << "Unique dependencies: " << m_all_dependencies.size() << std::endl;
 }
 } // namespace GroundTruth

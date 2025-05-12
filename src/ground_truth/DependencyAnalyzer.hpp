@@ -77,8 +77,7 @@ using RR3DependencyMap = std::unordered_map<IPAddress, std::vector<RR3Dependency
 using DependencySet = std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>;
 
 // Main class for analyzing dependencies in network flows
-class DependencyAnalyzer :
-    public IDependencyAnalyzer<DependencySet> {
+class DependencyAnalyzer : public IDependencyAnalyzer<DependencySet> {
 public:
     /**
      * @brief Constructor to initialize the dependency zer.
@@ -97,9 +96,9 @@ public:
      * @param output_filename The name of the file to write the dependencies to.
      * @return A set of all dependencies.
      */
-    const DependencySet &
-    calculate_dependencies(const std::string &filename,
-                               std::optional<std::string> output_filename = std::nullopt) override;
+    const DependencySet &calculate_dependencies(
+        const std::string &filename,
+        std::optional<std::string> output_filename = std::nullopt) override;
 
     /**
      * @brief Load dependencies from a file.
@@ -114,7 +113,7 @@ public:
      *
      * @return A set of all dependencies.
      */
-    const DependencySet& get_dependencies() const override;
+    const DependencySet &get_dependencies() const override;
 
 private:
     /**
@@ -196,7 +195,7 @@ private:
      * @brief Reset the dependency analyzer.
      */
     void reset();
-    
+
     /**
      * @brief Print dependency statistics.
      *
@@ -211,6 +210,14 @@ private:
                                 const RR2DependencyMap &rr2_dependencies,
                                 const TD3DependencyMap &td3_dependencies,
                                 const RR3DependencyMap &rr3_dependencies) const;
+
+    /**
+     * @brief Parse a CSV line and process the dependency.
+     *
+     * @param line The line to process.
+     * @return True if the line was processed successfully, false otherwise.
+     */
+    bool process_dependency_line(const std::string &line);
 
     const int
         m_n_occurrences; // Minimum number of occurrences required to confirm a dependency
