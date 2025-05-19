@@ -16,7 +16,9 @@ LinkPredictionApp is a high‑performance C++ application for detecting dependen
 - [Features](#features)  
 - [Dependencies](#dependencies)  
   - [Required](#required)  
+  - [Tested Versions](#tested-versions)  
   - [Directory/Path Variables](#directorypath-variables)  
+  - [Environment Variables](#environment-variables)  
 - [Installation](#installation)  
 - [Usage](#usage)  
   - [Command‑Line Interface](#command-line-interface)  
@@ -44,6 +46,19 @@ LinkPredictionApp is a high‑performance C++ application for detecting dependen
   *Used internally by mlpack; the required version depends on your mlpack version.*
 - **[cereal](https://uscilab.github.io/cereal/)** (>= 1.3)  
   *Used internally by mlpack; the required version depends on your mlpack version.*
+
+### Tested Versions
+The application was tested using the following versions:
+- CMake 3.18.3
+- GCC 13.1.0
+- Boost 1.86.0
+- LibTorch 2.5.1 (CPU)
+- Armadillo 14.2.1
+- mlpack 4.5.1
+- ensmallen 2.22.0
+- cereal 1.3.2
+
+While other versions may work, these configurations have been verified for compatibility.
 
 ### Directory/Path Variables
 - `MLPACK_INCLUDE_DIR` — Path to the mlpack include directory (must contain `mlpack/core.hpp`)
@@ -93,8 +108,6 @@ The application supports three main modes:
   -t, --training       Training mode: build & train a classifier
   -p, --prediction     Prediction mode: use an existing classifier
   -x, --extract        Ground truth extraction mode
-  -c, --config PATH    JSON configuration file
-  -v, --verbose        Enable detailed output & timing
 ```
 
 For a full list of options, run:
@@ -172,21 +185,21 @@ The application can be configured via a JSON file passed with `--config`. This c
     "COUNT_INTERNAL": 50,
     "MAX_EDGES": 500,
     "N_OCCURRENCES": 10,
-    "EPSILON": 1000,
     "N_APPEARANCES": 10,
+    "EPSILON": 1000,
     "EPSILON_REV": 1000,
     "EMBEDDING_DIM": 64,
     "WALK_LENGTH": 5,
     "CONTEXT_SIZE": 4,
     "NUM_NEGATIVE_SAMPLES": 1,
     "EPOCHS": 15,
-    "NUM_THREADS": 30,
     "LEARNING_RATE": 0.01,
-    "CLASSIFIER_THRESHOLD": 0.5,
-    "USE_WEIGHTS": false,
+    "USE_WEIGHTS": true,
     "USE_SCALING": true,
     "USE_GRID_SEARCH": false,
     "USE_THRESHOLD_CALIBRATION": false,
+    "CLASSIFIER_THRESHOLD": 0.5,
+    "METRIC_TO_OPTIMIZE": "f1",
     "RF_PARAMS": {
         "num_trees": 50,
         "min_leaf_size": 1,
@@ -195,10 +208,9 @@ The application can be configured via a JSON file passed with `--config`. This c
     },
     "GRID_PARAMS": {
         "num_trees": [
-            10,
-            20,
+            40,
             50,
-            100
+            70
         ],
         "min_leaf_size": [
             1,
@@ -206,35 +218,34 @@ The application can be configured via a JSON file passed with `--config`. This c
             5
         ],
         "min_gain_split": [
-            0.0,
-            1e-7,
-            1e-5
+            0E0,
+            1E-7,
+            1E-5
         ],
         "max_depth": [
             0,
-            10,
-            20,
-            30
+            30,
+            45
         ],
-        "validation_size": 0.25
+        "validation_size": 2.5E-1
     },
     "FEATURE_CONFIG": {
-        "cosine_similarity": false,
-        "euclidean_distance": false,
+        "cosine_similarity": true,
         "dot_product": false,
-        "hadamard_sum": false,
-        "hadamard_mean": false,
         "l1_distance": false,
-        "common_neighbors": false,
-        "jaccard_coefficient": false,
-        "node_degree": false,
-        "embed_std": false,
-        "adamic_adar": false,
-        "preferential_attachment": false,
-        "resource_allocation": false,
-        "embedding_ratio": false,
+        "l2_distance": true,
+        "embedding_std": false,
         "embedding_abs_mean": false,
-        "element_wise_product": true
+        "embedding_norm_ratio": true,
+        "hadamard_product_sum": true,
+        "hadamard_product_mean": false,
+        "hadamard_product_components": false,
+        "common_neighbors_count": true,
+        "jaccard_coefficient": true,
+        "adamic_adar_index": true,
+        "preferential_attachment": true,
+        "resource_allocation_index": false,
+        "node_degree": true
     }
 }
 ```
@@ -253,10 +264,11 @@ The application can be configured via a JSON file passed with `--config`. This c
 ```
 
 ## Input/Output File Formats
-- **Input Flow Data**: JSON array of flow records  
+- **Input Flow Data**: JSON file of flow records  
 - **Blocked IPs**: Plain‑text, one IP or CIDR per line (TXT) 
 - **Internal IPs**: Plain‑text, one IP or CIDR per line (TXT) 
-- **Ground Truth & Predictions**: CSV with columns `src_ip,dst_ip,type`
+- **Ground Truth**: CSV file with columns `src_ip`, `dst_ip`, `dependency_type`
+- **Predictions**: CSV with columns `ip1`, `ip2`, that contains the predicted dependencies between IP addresses.
 
 ## Performance Considerations
 - If `NUM_THREADS` is not set, the application will use all available CPU cores
