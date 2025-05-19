@@ -373,6 +373,10 @@ void LinkPredictionApp::build_graph() {
     std::cout << "Graph construction complete.\n";
     std::cout << "Vertices: " << m_graph_manager->get_vertex_count() << "\n";
     std::cout << "Edges: " << m_graph_manager->get_edge_count() << std::endl;
+
+    if (m_graph_manager->get_vertex_count() == 0) {
+        throw GraphEmptyException("Graph is empty.");
+    }
 }
 
 void LinkPredictionApp::generate_embeddings() {
