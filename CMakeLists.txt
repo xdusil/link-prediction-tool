@@ -23,7 +23,7 @@ find_package(Torch 2.5 REQUIRED)
 find_package(Armadillo 14.2 REQUIRED)
 
 # Find OpenMP
-find_package(OpenMP REQUIRED)
+find_package(OpenMP)
 if(OpenMP_FOUND)
     # Add OpenMP flags to compiler options
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
