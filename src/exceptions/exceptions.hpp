@@ -117,3 +117,12 @@ class FeatureGeneratorException : public ApplicationException {
 class FlowProcessorException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
+
+/**
+ * @brief Graph empty exception class
+ *
+ * Exception will be thrown when the graph is empty
+ */
+class GraphEmptyException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};
