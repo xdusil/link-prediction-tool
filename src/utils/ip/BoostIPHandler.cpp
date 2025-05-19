@@ -102,7 +102,8 @@ void BoostIPHandler::parse_file(const std::string &filename) {
     while (reader.get_next_line(line)) {
         auto parsed = parse_ip_or_range(line);
         if (!parsed) {
-            std::cerr << "Invalid IP or range: " << line << std::endl;
+            std::cerr << "While parsing file: " << filename
+                      << " - Invalid IP or range: " << line << std::endl;
             continue;
         }
 
