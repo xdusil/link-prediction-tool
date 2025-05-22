@@ -16,10 +16,14 @@ LinkPredictionApp is a high‑performance C++ application for detecting dependen
 - [Features](#features)  
 - [Dependencies](#dependencies)  
   - [Required](#required)  
+  - [Platform Support](#platform-support)
   - [Tested Versions](#tested-versions)  
-  - [Directory/Path Variables](#directorypath-variables)  
-  - [Environment Variables](#environment-variables)  
-- [Installation](#installation)  
+  - [CMake Configuration Variables](#cmake-configuration-variables)  
+    - [Required Variables](#required-variables)  
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Build steps](#build-steps)
+  - [Troubleshooting](#troubleshooting)
 - [Usage](#usage)  
   - [Command‑Line Interface](#command-line-interface)  
   - [Training Mode](#training-mode)  
@@ -76,28 +80,9 @@ The software has been successfully tested on the following computing environment
 - [Aisa](https://www.fi.muni.cz/tech/unix/aisa.html.cs) (Faculty of Informatics, Masaryk University)
 - [Nymfe01](https://www.fi.muni.cz/tech/unix/nymfe.html.cs) (Faculty of Informatics, Masaryk University)
 
-### Directory/Path Variables
-- `MLPACK_INCLUDE_DIR` — Path to the mlpack include directory (must contain `mlpack/core.hpp`)
-- `ENSMALLEN_INCLUDE_DIR` — Path to the ensmallen include directory (must contain `ensmallen.hpp`)
-- `CEREAL_INCLUDE_DIR` — Path to the cereal include directory (must contain `cereal/cereal.hpp`)
+### CMake Configuration Variables
+All dependency paths must be provided as command-line arguments to CMake using `-D` flags:
 
-### Environment Variables
-- `CMAKE_PREFIX_PATH` — Required by CMake to find Boost, Torch, and Armadillo.
-
-## Installation
-
-1. **Clone the Repository**  
-   ```bash
-   git clone https://gitlab.fi.muni.cz/xdusil/link-prediction.git
-   cd link-prediction
-   ```
-2. **Create a Build Directory and Enter It**  
-   ```bash
-   mkdir build
-   cd build
-   ```
-3. **Run CMake**
-You must specify paths to libraries via -D flags and also set the CMake prefix path for dependencies like Boost, Torch, and Armadillo. For example:
 ```bash
 cmake .. \
   -DCMAKE_PREFIX_PATH="/path/to/boost;/path/to/libtorch/share/cmake/Torch;/path/to/armadillo" \
@@ -105,15 +90,70 @@ cmake .. \
   -DENSMALLEN_INCLUDE_DIR="/path/to/ensmallen/include" \
   -DCEREAL_INCLUDE_DIR="/path/to/cereal/include"
 ```
-- Adjust the paths accordingly:
-   - Replace /path/to/... with the correct locations on your system.
-- Make sure to include all the required libraries in your CMAKE_PREFIX_PATH.
+
+#### Required Variables
+- `CMAKE_PREFIX_PATH` — Path list where CMake searches for Boost, Torch, and Armadillo packages (semicolon-separated)
+- `MLPACK_INCLUDE_DIR` — Path to the mlpack include directory (must contain `mlpack/core.hpp`)
+- `ENSMALLEN_INCLUDE_DIR` — Path to the ensmallen include directory (must contain `ensmallen.hpp`)
+- `CEREAL_INCLUDE_DIR` — Path to the cereal include directory (must contain `cereal/cereal.hpp`)
+
+## Installation
+
+### Prerequisites
+Ensure all [dependencies](#dependencies) are installed on your system before proceeding.
+
+### Build steps
+
+1. **Clone the Repository**  
+   ```bash
+   # If you already have the repository, skip this step
+   # Otherwise, clone it using:
+   git clone https://gitlab.fi.muni.cz/xdusil/link-prediction.git
+   cd link-prediction
+   ```
+   
+2. **Create a Build Directory and Enter It**  
+   ```bash
+   mkdir build
+   cd build
+   ```
+
+3. **Run CMake**
+
+   You must specify paths to libraries via -D flags and also set the CMake prefix path for dependencies like Boost, Torch, and Armadillo. See the [CMake Configuration Variables](#cmake-configuration-variables) section for details.
+
+   For example:
+    ```bash
+    cmake .. \
+    -DCMAKE_PREFIX_PATH="/path/to/boost;/path/to/libtorch/share/cmake/Torch;/path/to/armadillo" \
+    -DMLPACK_INCLUDE_DIR="/path/to/mlpack/include" \
+    -DENSMALLEN_INCLUDE_DIR="/path/to/ensmallen/include" \
+    -DCEREAL_INCLUDE_DIR="/path/to/cereal/include"
+    ```
+  - Adjust the paths accordingly:
+     - Replace /path/to/... with the correct locations on your system.
+  - Make sure to include all the required libraries in your `CMAKE_PREFIX_PATH`.
 
 4. **Build the Project**
-If the configuration step completes successfully, you can build:
-```bash
-make -j$(nproc)
-```
+
+    If the configuration step completes successfully, you can build:
+    ```bash
+    make -j$(nproc)
+    ```
+
+5. **Verify the Build**
+   
+   After the build completes, you should see an executable named `LinkPredictionApp` in the `build` directory. Try running it:
+    ```bash
+    ./LinkPredictionApp --help
+    ```
+   This should display the help message with available options.
+
+### Troubleshooting
+- **CMake can't find a package**:  
+  If CMake fails to find a package, ensure that the paths provided in `CMAKE_PREFIX_PATH` are correct and that the required libraries are installed at those locations.
+- **Missing header files**:
+  If you encounter issues with missing header files, check the include directory paths provided in `MLPACK_INCLUDE_DIR`, `ENSMALLEN_INCLUDE_DIR`, and `CEREAL_INCLUDE_DIR` are correct and ensure  that they contain the expected header files.
 
 # Usage
 
