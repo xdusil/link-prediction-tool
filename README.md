@@ -27,10 +27,19 @@ LinkPredictionApp is a high‑performance C++ application for detecting dependen
   - [Ground Truth Extraction Mode](#ground-truth-extraction-mode)  
 - [Configuration](#configuration)  
   - [Example Configuration File](#example-configuration-file)  
-  - [Example Blocked or Internal IPs File](#example-blocked-or-internal-ips-file)
+- [Input/Output File Formats](#inputoutput-file-formats) 
+  - [Flow Data Fields](#flow-data-fields)
   - [Example Flow Data File](#example-flow-data-file)
-- [Input/Output File Formats](#inputoutput-file-formats)  
+  - [Example Blocked or Internal IPs File](#example-blocked-or-internal-ips-file)
+  - [Example Ground Truth File](#example-ground-truth-file)
 - [Performance Considerations](#performance-considerations)
+- [Documentation](#documentation)  
+  - [Generating Documentation](#generating-documentation)
+  - [For ZIP Submission Reviewers](#for-zip-submission-reviewers)
+- [Academic Research](#academic-research)
+- [License](#license)
+- [Contact](#contact)
+
 
 ## Dependencies
 
@@ -47,6 +56,9 @@ LinkPredictionApp is a high‑performance C++ application for detecting dependen
 - **[cereal](https://uscilab.github.io/cereal/)** (>= 1.3)  
   *Used internally by mlpack; the required version depends on your mlpack version.*
 
+### Platform Support
+This application is primarily designed for Linux/Unix-like systems.
+
 ### Tested Versions
 The application was tested using the following versions:
 - CMake 3.18.3
@@ -59,6 +71,10 @@ The application was tested using the following versions:
 - cereal 1.3.2
 
 While other versions may work, these configurations have been verified for compatibility.
+
+The software has been successfully tested on the following computing environments:
+- [Aisa](https://www.fi.muni.cz/tech/unix/aisa.html.cs) (Faculty of Informatics, Masaryk University)
+- [Nymfe01](https://www.fi.muni.cz/tech/unix/nymfe.html.cs) (Faculty of Informatics, Masaryk University)
 
 ### Directory/Path Variables
 - `MLPACK_INCLUDE_DIR` — Path to the mlpack include directory (must contain `mlpack/core.hpp`)
@@ -176,7 +192,9 @@ Extract ground truth dependencies without training.
 - Optional: `--blocked-ips`, `--config`, `--verbose`  
 
 ## Configuration
-The application can be configured via a JSON file passed with `--config`. This controls pipeline behavior, embedding generation, and classifier settings.
+The application can be configured via a JSON file passed with `--config`. This controls pipeline behavior, embedding generation, classifier settings and feature selection.
+
+For detailed information about configuration parameters, explanations of their functionality, and how they affect the system's behavior, please refer to the thesis mentioned in the [Academic Research](#academic-research) section.
 
 ### Example Configuration File
 ```json
@@ -250,19 +268,6 @@ The application can be configured via a JSON file passed with `--config`. This c
 }
 ```
 
-### Example blocked or internal IPs file
-```text
-4.122.55.21/32
-10.1.4.46
-10.1.4.47
-```
-
-### Example flow data file
-```json
-{"biFlowEndMilliseconds":1553069758864,"biFlowStartMilliseconds":1553069758864,"destinationIPv4Address":"9.66.11.12","destinationTransportPort":1914,"flowEndMilliseconds":1553069758864,"flowStartMilliseconds":1553069758864,"protocolIdentifier":6,"sourceIPv4Address":"4.122.55.221","sourceTransportPort":49581, "timestamp":1553069758864}
-{"biFlowEndMilliseconds":1553069758864,"biFlowStartMilliseconds":1553069758864,"destinationIPv4Address":"9.66.11.12","destinationTransportPort":801,"flowEndMilliseconds":1553069758864,"flowStartMilliseconds":1553069758864,"protocolIdentifier":6,"sourceIPv4Address":"4.122.55.221","sourceTransportPort":49581,"timestamp":1553069758864}
-```
-
 ## Input/Output File Formats
 - **Input Flow Data**: JSON file of flow records  
 - **Blocked IPs**: Plain‑text, one IP or CIDR per line (TXT) 
@@ -270,7 +275,108 @@ The application can be configured via a JSON file passed with `--config`. This c
 - **Ground Truth**: CSV file with columns `src_ip`, `dst_ip`, `dependency_type`
 - **Predictions**: CSV with columns `ip1`, `ip2`, that contains the predicted dependencies between IP addresses.
 
+### Flow Data Fields
+The application processes network flow records with the following fields:
+
+- **IP Addresses** (required):
+  - `sourceIPv4Address`: Source IP address
+  - `destinationIPv4Address`: Destination IP address
+
+- **Transport Ports** (optional):
+  - `sourceTransportPort`: Source port
+  - `destinationTransportPort`: Destination port
+  
+- **Protocol** (required):
+  - `protocolIdentifier`: Protocol number (e.g., 6 for TCP, 17 for UDP)
+
+- **Timing Information** (at least one pair required):
+  - Forward flow: `flowStartMilliseconds` and `flowEndMilliseconds`
+  - Bidirectional flow: `biFlowStartMilliseconds` and `biFlowEndMilliseconds`
+  - Reverse flow: `flowStartMilliseconds_Rev` and `flowEndMilliseconds_Rev`
+  - Reverse bidirectional flow: `biFlowStartMilliseconds_Rev` and `biFlowEndMilliseconds_Rev`
+
+The application handles different flow types as follows:
+
+- For training and prediction, it processes unidirectional flows normally, and only considers reverse flows when reverse data is explicitly available
+- For ground truth extraction, all flows are treated as bidirectional - if dedicated reverse fields aren't present, it falls back to using bidirectional fields, and if those aren't available, it uses forward flow timestamps as a last resort to ensure complete dependency analysis
+
+### Example flow data file
+```json
+{"biFlowEndMilliseconds":1553069758864,"biFlowStartMilliseconds":1553069758864,"destinationIPv4Address":"9.66.11.12","destinationTransportPort":1914,"flowEndMilliseconds":1553069758864,"flowStartMilliseconds":1553069758864,"protocolIdentifier":6,"sourceIPv4Address":"4.122.55.221","sourceTransportPort":49581, "timestamp":1553069758864}
+{"biFlowEndMilliseconds":1553069758864,"biFlowStartMilliseconds":1553069758864,"destinationIPv4Address":"9.66.11.12","destinationTransportPort":801,"flowEndMilliseconds":1553069758864,"flowStartMilliseconds":1553069758864,"protocolIdentifier":6,"sourceIPv4Address":"4.122.55.221","sourceTransportPort":49581,"timestamp":1553069758864}
+```
+
+### Example blocked or internal IPs file
+```text
+4.122.55.21/32
+10.1.4.46
+10.1.4.47
+```
+
+### Example ground truth file
+```csv
+src_ip,dst_ip,dependency_type
+77.51.161.30,9.66.11.14,DD
+77.51.161.30,9.66.11.12,DD
+```
+
 ## Performance Considerations
 - If `NUM_THREADS` is not set, the application will use all available CPU cores
 - It is recommended to use OpenMP for multi-threading - ensure it is installed on your system.
 - Use `--verbose` to monitor processing times and identify bottlenecks.
+
+## Documentation
+
+This project includes comprehensive API documentation generated with Doxygen.
+
+### Generating Documentation
+
+To generate the documentation:
+
+1. **Install Doxygen and Graphviz**:
+   ```bash
+   # For Ubuntu/Debian-based systems
+   sudo apt-get install doxygen graphviz
+    ```
+2. **Run Doxygen** from the project root directory:
+   ```bash
+   doxygen
+   ```
+   This will create a `docs/html` directory containing the generated documentation.
+3. **View the Documentation**:
+   Open `docs/html/index.html` in your web browser to view the documentation.
+
+The generated documentation includes:
+- Class and function descriptions
+- Namespace descriptions
+- Diagrams (class hierarchy, collaboration)
+- Detailed descriptions of API functions and parameters
+
+### For ZIP Submission Reviewers
+If you're reviewing a ZIP submission, the complete documentation is included in the `docs` directory. You can view it by opening `docs/html/index.html` in your web browser.
+
+## Academic Research
+
+This software was developed as part of a Bachelor's thesis:
+
+**"Automatic Identification of Dependencies in Computer Network"**  
+Author: Jakub Dusil  
+Institution: Masaryk University, Faculty of Informatics  
+Available from: https://is.muni.cz/th/t0dn4/
+
+The thesis provides comprehensive documentation about:
+- Theoretical foundations of network dependency detection
+- Description of the algorithm and its implementation
+- Detailed explanation of all configuration parameters and their effects
+- Experimental evaluation and performance analysis
+
+Users seeking a deeper understanding of the algorithm and parameter tuning are encouraged to consult the thesis for detailed explanations.
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contact
+For questions, suggestions, or contributions:
+
+**Jakub Dusil**
+- Email: 536566@mail.muni.cz
