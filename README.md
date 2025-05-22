@@ -108,8 +108,8 @@ Ensure all [dependencies](#dependencies) are installed on your system before pro
    ```bash
    # If you already have the repository, skip this step
    # Otherwise, clone it using:
-   git clone https://gitlab.fi.muni.cz/xdusil/link-prediction.git
-   cd link-prediction
+   git clone https://github.com/xdusil/link-prediction-tool.git
+   cd link-prediction-tool
    ```
    
 2. **Create a Build Directory and Enter It**  
@@ -420,3 +420,4 @@ For questions, suggestions, or contributions:
 
 **Jakub Dusil**
 - Email: 536566@mail.muni.cz
+- GitHub: [xdusil](https://github.com/xdusil)
