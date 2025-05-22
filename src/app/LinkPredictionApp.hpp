@@ -165,16 +165,6 @@ private:
                               const std::optional<std::string> &ground_truth_path);
 
     /**
-     * @brief Evaluate the model using train-test split
-     *
-     * @param features The features
-     * @param labels The labels
-     * @param test_size The size of the test set
-     */
-    void evaluate_model_train_test_split(const auto &features, const auto &labels,
-                                         double test_size) const;
-
-    /**
      * @brief Helper function to log messages when verbose mode is enabled
      *
      * @tparam Args The types of the arguments

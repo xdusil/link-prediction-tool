@@ -279,47 +279,6 @@ void LinkPredictionApp::generate_predictions(
     }
 }
 
-void LinkPredictionApp::evaluate_model_train_test_split(const auto &features,
-                                     const auto &labels, double test_size) const {
-    std::cout << "\nEvaluating model with train-test split ["
-              << "test_size: " << test_size << "]...\n";
-
-    // Containers for the split data.
-    arma::fmat train_features, test_features;
-    arma::Row<size_t> train_labels, test_labels;
-
-    mlpack::data::Split(features, labels, train_features, test_features, train_labels,
-                        test_labels, test_size);
-    
-
-    RandomForestParams params = m_config.RF_PARAMS;
-    if (m_config.USE_GRID_SEARCH) {
-        params = perform_grid_search(train_features, train_labels);
-    }
-
-    BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>> rf(params, m_config.USE_SCALING);
-    
-    if (m_config.CLASSIFIER_THRESHOLD) {
-        rf.set_threshold(*m_config.CLASSIFIER_THRESHOLD);
-    }
-    if (m_config.USE_THRESHOLD_CALIBRATION) {
-        rf.train_with_calibration(train_features, train_labels, m_config.USE_WEIGHTS,
-                                  m_config.METRIC_TO_OPTIMIZE);
-    } else {
-        rf.train(train_features, train_labels, m_config.USE_WEIGHTS);
-    }
-
-    auto y_predicted = rf.predict(test_features);
-    auto metrics = rf.evaluate(test_features, test_labels);
-    std::cout << "\nTrain test split evaluation results (test size: " << test_size
-              << "):\n"
-              << "Train(+" << arma::accu(train_labels) << "/-" << train_labels.size() - arma::accu(train_labels) << ") "
-              << "Test(+" << arma::accu(test_labels) << "/-" << test_labels.size() - arma::accu(test_labels) << ") "
-              << "Predicted(+" << arma::accu(y_predicted) << "/-" << y_predicted.size() - arma::accu(y_predicted) << ")\n";
-    utils::print_classifier_metrics(metrics);
-    std::cout << "Train test split evaluation complete.\n\n";
-}
-
 void LinkPredictionApp::process_data(const std::string &data_path) {
     std::cout << "Processing data from " << data_path << std::endl;
 
@@ -447,11 +406,6 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     // Evaluate classifier
     auto metrics = m_classifier->evaluate(features, labels);
     utils::print_classifier_metrics(metrics);
-
-    ///////////
-    evaluate_model_train_test_split(features, labels, 0.25);
-    evaluate_model_train_test_split(features, labels, 0.5);
-    ///////////
 }
 
 RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
