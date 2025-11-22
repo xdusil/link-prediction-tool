@@ -121,7 +121,8 @@ void LinkPredictionApp::run_training_mode(
     const std::optional<std::string> &ground_truth_input_path /*= std::nullopt*/,
     const std::optional<std::string> &ground_truth_output_path /*= std::nullopt*/,
     const std::optional<std::string> &blocked_ips_path /*= std::nullopt*/,
-    const std::optional<std::string> &internal_ips_path /*= std::nullopt*/) {
+    const std::optional<std::string> &internal_ips_path /*= std::nullopt*/,
+    bool feature_importance /*= false*/) {
 
     std::cout << "Starting training mode..." << std::endl;
     utils::VerboseTimer timer("Training mode");
@@ -148,9 +149,9 @@ void LinkPredictionApp::run_training_mode(
     const auto &all_deps = m_dependency_analyzer->get_dependencies();
 
     BoostGraphAnalytics analytics{*m_graph_manager};
-    FeatureGenerator<NetworkGraphManager::Base, decltype(m_model->get_embeddings()),
+    FeatureGenerator<BoostGraphTraits<Graph>, decltype(m_model->get_embeddings()),
                      decltype(all_deps)>
-        feature_generator{analytics, m_model->get_embeddings(),
+        feature_generator{analytics, *m_graph_manager, m_model->get_embeddings(),
             m_config.FEATURE_CONFIG};
 
     auto [combined, arma_labels] = feature_generator.generate_labeled_features(
@@ -168,7 +169,7 @@ void LinkPredictionApp::run_training_mode(
     log_verbose("  - ", utils::join(m_config.FEATURE_CONFIG.get_feature_names(m_config.EMBEDDING_DIM), ", "));
 
     // Train the classifier
-    train_classifier(arma_features, arma_labels, m_config.USE_GRID_SEARCH);
+    train_classifier(arma_features, arma_labels, m_config.USE_GRID_SEARCH, feature_importance);
 
     if (!m_classifier)
         throw ComponentNotInitializedException("Classifier not initialized.");
@@ -375,7 +376,7 @@ void LinkPredictionApp::generate_embeddings() {
 }
 
 void LinkPredictionApp::train_classifier(const auto &features, const auto &labels,
-                                         bool use_grid_search) {
+                                         bool use_grid_search, bool feature_importance) {
 
     std::cout << "Training classifier..." << std::endl;
 
@@ -406,6 +407,73 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     // Evaluate classifier
     auto metrics = m_classifier->evaluate(features, labels);
     utils::print_classifier_metrics(metrics);
+    
+    // Calculate feature importance
+    if (feature_importance) {
+        std::cout << "\n=== Feature Importance Analysis ===" << std::endl;
+        auto feature_names = m_config.FEATURE_CONFIG.get_feature_names(m_config.EMBEDDING_DIM);
+        auto importance = m_classifier->calculate_feature_importance(
+            features, labels, feature_names, m_config.METRIC_TO_OPTIMIZE, 5);
+        
+        std::cout << "\nTop 20 Most Important Features:" << std::endl;
+        for (size_t i = 0; i < std::min(size_t(20), importance.size()); ++i) {
+            std::cout << "  " << (i + 1) << ". " << importance[i].first 
+                     << ": " << importance[i].second << std::endl;
+        }
+        
+        // Group analysis
+        std::cout << "\nFeature Group Analysis:" << std::endl;
+        double emb_importance = 0.0, topo_importance = 0.0, temporal_importance = 0.0,
+               bidir_importance = 0.0, port_importance = 0.0;
+        int emb_count = 0, topo_count = 0, temporal_count = 0, bidir_count = 0, port_count = 0;
+        
+        for (const auto &[name, score] : importance) {
+            if (name.find("embedding") != std::string::npos || 
+                name.find("cosine") != std::string::npos ||
+                name.find("dot_product") != std::string::npos ||
+                name.find("l1_distance") != std::string::npos ||
+                name.find("l2_distance") != std::string::npos ||
+                name.find("hadamard") != std::string::npos ||
+                name.find("std") != std::string::npos ||
+                name.find("abs_mean") != std::string::npos ||
+                name.find("norm_ratio") != std::string::npos) {
+                emb_importance += score;
+                emb_count++;
+            } else if (name.find("common_neighbors") != std::string::npos ||
+                      name.find("jaccard") != std::string::npos ||
+                      name.find("adamic") != std::string::npos ||
+                      name.find("preferential") != std::string::npos ||
+                      name.find("resource") != std::string::npos ||
+                      name.find("degree") != std::string::npos) {
+                topo_importance += score;
+                topo_count++;
+            } else if (name.find("temporal") != std::string::npos) {
+                temporal_importance += score;
+                temporal_count++;
+            } else if (name.find("bidirectional") != std::string::npos) {
+                bidir_importance += score;
+                bidir_count++;
+            } else if (name.find("port") != std::string::npos) {
+                port_importance += score;
+                port_count++;
+            }
+        }
+        
+        auto calc_avg = [](double total, int count) { return count > 0 ? total / count : 0.0; };
+        
+        std::cout << "  Embedding features:      total=" << emb_importance 
+                 << " count=" << emb_count << " avg=" << calc_avg(emb_importance, emb_count) << std::endl;
+        std::cout << "  Topology features:       total=" << topo_importance 
+                 << " count=" << topo_count << " avg=" << calc_avg(topo_importance, topo_count) << std::endl;
+        std::cout << "  Temporal features:       total=" << temporal_importance 
+                 << " count=" << temporal_count << " avg=" << calc_avg(temporal_importance, temporal_count) << std::endl;
+        std::cout << "  Bidirectional features:  total=" << bidir_importance 
+                 << " count=" << bidir_count << " avg=" << calc_avg(bidir_importance, bidir_count) << std::endl;
+        std::cout << "  Port features:           total=" << port_importance 
+                 << " count=" << port_count << " avg=" << calc_avg(port_importance, port_count) << std::endl;
+        
+        std::cout << "\n=== End Feature Importance ===" << std::endl;
+    }
 }
 
 RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,

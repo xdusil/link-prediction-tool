@@ -36,6 +36,7 @@ void print_help() {
         << "    -G, --ground-truth-out PATH Save extracted ground truth\n"
         << "    -b, --blocked-ips PATH      Path to list of IPs to ignore\n"
         << "    -i, --internal-ips PATH     Path to list of internal network IPs\n"
+        << "    -F, --feature-importance    Calculate feature importance analysis\n"
         << "  Prediction mode:\n"
         << "    -g, --ground-truth-in PATH  Path to ground truth for evaluation\n"
         << "    -b, --blocked-ips PATH      Path to list of IPs to ignore\n"
@@ -62,6 +63,7 @@ static struct option long_options[] = {
     {"predictions-out", required_argument, nullptr, 'o'},
     {"training", no_argument, nullptr, 't'},
     {"verbose", no_argument, nullptr, 'v'},
+    {"feature-importance", no_argument, nullptr, 'F'},
     {0, 0, 0, 0}};
 
 void check_training_mode(const cmd_args &args) {
@@ -164,7 +166,7 @@ cmd_args parse_args(int argc, char *argv[]) {
     cmd_args args{}; // Initialize all fields
     int opt;
 
-    const char *short_opts = ":b:c:f:d:g:G:hi:po:txv";
+    const char *short_opts = ":b:c:f:d:g:G:hi:po:txvF";
 
     while ((opt = getopt_long(argc, argv, short_opts, long_options, nullptr)) != -1) {
         switch (opt) {
@@ -209,6 +211,9 @@ cmd_args parse_args(int argc, char *argv[]) {
             break;
         case 'v':
             args.verbose = true;
+            break;
+        case 'F':
+            args.feature_importance = true;
             break;
 
         // Error handling

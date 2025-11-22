@@ -52,13 +52,15 @@ public:
      * @param ground_truth_output_path Path to save the calculated ground truth (optional)
      * @param blocked_ips_path Path to the blocked IPs file (optional)
      * @param internal_ips_path Path to the internal IPs file (optional)
+     * @param feature_importance Calculate feature importance (default: false)
      */
     void run_training_mode(
         const std::string &classifier_path, const std::string &data_path,
         const std::optional<std::string> &ground_truth_path = std::nullopt,
         const std::optional<std::string> &ground_truth_output_path = std::nullopt,
         const std::optional<std::string> &blocked_ips_path = std::nullopt,
-        const std::optional<std::string> &internal_ips_path = std::nullopt);
+        const std::optional<std::string> &internal_ips_path = std::nullopt,
+        bool feature_importance = false);
 
     /**
      * @brief Run the prediction mode
@@ -139,8 +141,9 @@ private:
      * @param features The features
      * @param labels The labels
      * @param use_grid_search Whether to use grid search for hyperparameter tuning
+     * @param feature_importance Whether to calculate feature importance
      */
-    void train_classifier(const auto &features, const auto &labels, bool use_grid_search);
+    void train_classifier(const auto &features, const auto &labels, bool use_grid_search, bool feature_importance);
 
     /**
      * @brief Perform grid search to find the best Random Forest parameters

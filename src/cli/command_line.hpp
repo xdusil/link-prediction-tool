@@ -18,6 +18,7 @@ struct cmd_args {
     bool prediction_mode;
     bool ground_truth_mode;
     bool verbose;
+    bool feature_importance;
     bool help;
 
     // Paths

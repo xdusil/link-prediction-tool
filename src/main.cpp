@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
             app.run_training_mode(*args.classifier_path, *args.data_path,
                                   args.ground_truth_input_path,
                                   args.ground_truth_output_path, args.blocked_ips_path,
-                                  args.internal_ips_path);
+                                  args.internal_ips_path, args.feature_importance);
         } else if (args.prediction_mode) {
             app.run_prediction_mode(*args.classifier_path, *args.predictions_output_path,
                                     *args.data_path, args.ground_truth_input_path,

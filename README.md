@@ -183,7 +183,8 @@ Build and train a dependency prediction model.
   [--blocked-ips blocked.txt] \
   [--internal-ips internal.txt] \
   [--config config.json] \
-  [--verbose]
+  [--verbose] \
+  [--feature-importance]
 ```
 
 - `--data PATH` *(required)*: Input flow data (JSON)  
@@ -192,6 +193,7 @@ Build and train a dependency prediction model.
 - `--ground-truth-out PATH`: Save extracted ground truth  
 - `--blocked-ips PATH`: List of IPs to ignore (TXT)  
 - `--internal-ips PATH`: List of internal network IPs (TXT)  
+- `--feature-importance`: Calculate feature importance analysis  
 - `--config PATH`: JSON configuration file  
 - `--verbose`: Detailed output & timing information  
 
