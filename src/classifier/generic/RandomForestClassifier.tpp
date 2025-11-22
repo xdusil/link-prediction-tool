@@ -163,7 +163,7 @@ template <typename Features, typename Labels, statistics::AverageType AverageTyp
           typename Scaler>
 statistics::Metrics
 RandomForestClassifier<Features, Labels, AverageType, Scaler>::evaluate(
-    const Features &features, const Labels &labels) {
+    const Features &features, const Labels &labels) const {
 
     // Get predictions and probabilities
     auto [predictions, probabilities] = predict_proba(features);
@@ -229,6 +229,87 @@ void RandomForestClassifier<Features, Labels, AverageType, Scaler>::load(
               << "with " << m_num_trees << " trees, min leaf size " << m_min_leaf_size
               << ", min gain split " << m_min_gain_split << ", and max depth "
               << m_max_depth << ", with scaling: " << m_use_scaling << std::endl;
+}
+
+template <typename Features, typename Labels, statistics::AverageType AverageType,
+          typename Scaler>
+std::vector<std::pair<std::string, double>>
+RandomForestClassifier<Features, Labels, AverageType, Scaler>::calculate_feature_importance(
+    const Features &features, const Labels &labels,
+    const std::vector<std::string> &feature_names,
+    const std::string &metric /*= "f1"*/,
+    size_t n_repeats /*= 5*/) const {
+    
+    if (features.n_rows != feature_names.size()) {
+        throw RandomForestException("Number of features must match feature_names size");
+    }
+    
+    std::cout << "\nCalculating permutation feature importance...\n";
+    std::cout << "Features: " << features.n_rows << " x " << features.n_cols << "\n";
+    std::cout << "Repeats: " << n_repeats << ", Metric: " << metric << std::endl;
+    
+    // Calculate baseline performance
+    auto baseline_metrics = evaluate(features, labels);
+    double baseline_score;
+    
+    if (metric == "f1") baseline_score = baseline_metrics.f1_score;
+    else if (metric == "accuracy") baseline_score = baseline_metrics.accuracy;
+    else if (metric == "precision") baseline_score = baseline_metrics.precision;
+    else if (metric == "recall") baseline_score = baseline_metrics.recall;
+    else throw RandomForestException("Unknown metric: " + metric);
+    
+    std::cout << "Baseline " << metric << ": " << baseline_score << "\n";
+    
+    // Calculate importance for each feature
+    const size_t n_features = features.n_rows;
+    std::vector<double> importances(n_features, 0.0);
+    
+    for (size_t feat_idx = 0; feat_idx < n_features; ++feat_idx) {
+        std::cout << "\rProcessing feature " << (feat_idx + 1) << "/" << n_features << std::flush;
+        
+        double total_degradation = 0.0;
+        
+        for (size_t repeat = 0; repeat < n_repeats; ++repeat) {
+            // Copy features
+            Features shuffled_features = features;
+            
+            // Shuffle feature values
+            arma::Row<typename Features::elem_type> feature_row = shuffled_features.row(feat_idx);
+            feature_row = arma::shuffle(feature_row);
+            shuffled_features.row(feat_idx) = feature_row;
+            
+            // Evaluate with shuffled feature
+            auto shuffled_metrics = evaluate(shuffled_features, labels);
+            double shuffled_score;
+            
+            if (metric == "f1") shuffled_score = shuffled_metrics.f1_score;
+            else if (metric == "accuracy") shuffled_score = shuffled_metrics.accuracy;
+            else if (metric == "precision") shuffled_score = shuffled_metrics.precision;
+            else shuffled_score = shuffled_metrics.recall;
+            
+            // Accumulate performance degradation
+            total_degradation += (baseline_score - shuffled_score);
+        }
+        
+        // Average degradation across repeats
+        importances[feat_idx] = total_degradation / n_repeats;
+    }
+    
+    std::cout << "\nDone!" << std::endl;
+    
+    // Create result pairs and sort by importance
+    std::vector<std::pair<std::string, double>> results;
+    results.reserve(n_features);
+    
+    for (size_t i = 0; i < n_features; ++i) {
+        results.emplace_back(feature_names[i], importances[i]);
+    }
+    
+    // Sort by importance (descending)
+    std::sort(results.begin(), results.end(),
+              [](const auto &a, const auto &b) { return a.second > b.second; });
+    
+    return results;
 }
 
 template <typename Features, typename Labels, statistics::AverageType AverageType,

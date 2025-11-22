@@ -90,7 +90,7 @@ public:
      * @param labels The labels.
      * @return The metrics of the classifier.
      */
-    statistics::Metrics evaluate(const Features &features, const Labels &labels) override;
+    statistics::Metrics evaluate(const Features &features, const Labels &labels) const override;
 
     /**
      * @brief Save the classifier to a file.
@@ -105,6 +105,25 @@ public:
      * @param path The file path to load the classifier from.
      */
     void load(const std::string &path) override;
+
+    /**
+     * @brief Calculate permutation-based feature importance
+     * 
+     * Measures performance degradation when each feature is shuffled.
+     * High importance = feature is critical for accurate predictions.
+     * 
+     * @param features Validation/test features [F x N]
+     * @param labels Ground truth labels [N]
+     * @param feature_names Names of features (must match feature count)
+     * @param metric Metric to measure ("f1", "accuracy", "precision", "recall")
+     * @param n_repeats Number of shuffling repeats for stability (default 5)
+     * @return Vector of (feature_name, importance_score) pairs, sorted by importance
+     */
+    std::vector<std::pair<std::string, double>> calculate_feature_importance(
+        const Features &features, const Labels &labels,
+        const std::vector<std::string> &feature_names,
+        const std::string &metric = "f1",
+        size_t n_repeats = 5) const;
 
     /**
      * @brief Perform a grid search to find the best Random Forest parameters.

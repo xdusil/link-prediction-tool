@@ -71,7 +71,7 @@ public:
      * @param labels The labels.
      * @return The metrics of the classifier.
      */
-    virtual Metrics evaluate(const Features &features, const Labels &labels) = 0;
+    virtual Metrics evaluate(const Features &features, const Labels &labels) const = 0;
 
     /**
      * @brief Save the classifier to a file.
@@ -86,4 +86,20 @@ public:
      * @param path The file path to load the classifier from.
      */
     virtual void load(const std::string &path) = 0;
+
+    /**
+     * @brief Calculate permutation-based feature importance
+     * 
+     * @param features Validation/test features
+     * @param labels Ground truth labels
+     * @param feature_names Names of features
+     * @param metric Metric to measure ("f1", "accuracy", etc.)
+     * @param n_repeats Number of shuffling repeats
+     * @return Vector of (feature_name, importance_score) pairs
+     */
+    virtual std::vector<std::pair<std::string, double>> calculate_feature_importance(
+        const Features &features, const Labels &labels,
+        const std::vector<std::string> &feature_names,
+        const std::string &metric = "f1",
+        size_t n_repeats = 5) const = 0;
 };

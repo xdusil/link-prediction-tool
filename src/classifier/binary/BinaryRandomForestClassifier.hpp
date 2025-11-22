@@ -84,7 +84,7 @@ public:
      * @param labels The labels.
      * @return Model performance metrics.
      */
-    statistics::Metrics evaluate(const Features &features, const Labels &labels) override;
+    statistics::Metrics evaluate(const Features &features, const Labels &labels) const override;
 
     /**
      * @brief Get the current threshold.
