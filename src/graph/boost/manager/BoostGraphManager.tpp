@@ -115,3 +115,8 @@ std::size_t
 BoostGraphManager<Graph>::get_common_neighbors_count(const Vertex &u, const Vertex &v) const {
     return get_common_neighbors(u, v).size();
 }
+
+template <typename Graph>
+const Graph &BoostGraphManager<Graph>::get_graph() const {
+    return m_graph;
+}

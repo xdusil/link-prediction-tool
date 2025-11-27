@@ -161,7 +161,14 @@ public:
       * @return Number of common neighbors
       */
      virtual std::size_t get_common_neighbors_count(const Vertex &u, const Vertex &v) const override;
-private:
+
+    /**
+     * @brief Get the underlying graph object.
+     *
+     * @return The underlying graph.
+     */
+    virtual const Graph &get_graph() const override;
+protected:
     Graph m_graph; // The graph managed by this class
 };
 

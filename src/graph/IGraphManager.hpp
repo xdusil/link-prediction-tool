@@ -170,4 +170,11 @@ public:
       * @return Number of common neighbors
       */
      virtual std::size_t get_common_neighbors_count(const Vertex &u, const Vertex &v) const = 0;
+
+    /**
+     * @brief Get the underlying graph object.
+     *
+     * @return The underlying graph.
+     */
+     virtual const GraphType &get_graph() const = 0;
 };
