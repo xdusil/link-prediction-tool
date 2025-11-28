@@ -6,6 +6,10 @@
 #include <utility>
 #include <vector>
 
+// Forward declaration
+template <typename GraphTraits>
+class IGraphManager;
+
 /**
  * @brief Interface providing graph analytics and link prediction metrics.
  *
@@ -139,4 +143,11 @@ public:
      * @return The average degree
      */
     virtual double avg_degree() const = 0;
+
+    /**
+     * @brief Get access to the graph manager interface.
+     *
+     * @return Reference to the graph manager
+     */
+    virtual const IGraphManager<GraphTraits>& get_graph_manager() const = 0;
 };

@@ -138,6 +138,13 @@ public:
 
     double avg_degree() const override;
 
+    /**
+     * @brief Get access to the graph manager interface.
+     *
+     * @return Reference to the graph manager
+     */
+    const IGraphManager<GraphTraits>& get_graph_manager() const override;
+
 private:
     const IGraphManager<GraphTraits> &m_graph_manager; // Reference to the graph manager
 };

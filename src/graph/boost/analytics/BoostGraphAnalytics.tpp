@@ -135,3 +135,8 @@ double BoostGraphAnalytics<Graph>::avg_degree() const {
     }
     return avg / num_vertices;
 }
+
+template <typename Graph>
+const IGraphManager<BoostGraphTraits<Graph>>& BoostGraphAnalytics<Graph>::get_graph_manager() const {
+    return m_graph_manager;
+}
