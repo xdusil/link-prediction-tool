@@ -196,6 +196,29 @@ FeatureConfig tag_invoke(json::value_to_tag<FeatureConfig>, const json::value &j
                         config.resource_allocation_index, always_true{});
 
     set_validated<bool>(obj, "node_degree", config.node_degree, always_true{});
+    
+    // Temporal edge features
+    set_validated<bool>(obj, "temporal_avg_duration", config.temporal_avg_duration,
+                        always_true{});
+    set_validated<bool>(obj, "temporal_avg_inter_arrival", config.temporal_avg_inter_arrival,
+                        always_true{});
+    set_validated<bool>(obj, "temporal_var_inter_arrival", config.temporal_var_inter_arrival,
+                        always_true{});
+    set_validated<bool>(obj, "temporal_regularity", config.temporal_regularity,
+                        always_true{});
+    set_validated<bool>(obj, "temporal_concentration", config.temporal_concentration,
+                        always_true{});
+    
+    // Bidirectional flow features
+    set_validated<bool>(obj, "bidirectional_has_flows", config.bidirectional_has_flows,
+                        always_true{});
+    set_validated<bool>(obj, "bidirectional_response_time",
+                        config.bidirectional_response_time, always_true{});
+    set_validated<bool>(obj, "bidirectional_request_ratio",
+                        config.bidirectional_request_ratio, always_true{});
+    set_validated<bool>(obj, "bidirectional_asymmetry", config.bidirectional_asymmetry,
+                        always_true{});
+    
     return config;
 }
 
@@ -223,6 +246,19 @@ void tag_invoke(json::value_from_tag, json::value &jv, const FeatureConfig &conf
     obj["resource_allocation_index"] = json::value_from(config.resource_allocation_index);
 
     obj["node_degree"] = json::value_from(config.node_degree);
+
+    // Temporal edge features
+    obj["temporal_avg_duration"] = json::value_from(config.temporal_avg_duration);
+    obj["temporal_avg_inter_arrival"] = json::value_from(config.temporal_avg_inter_arrival);
+    obj["temporal_var_inter_arrival"] = json::value_from(config.temporal_var_inter_arrival);
+    obj["temporal_regularity"] = json::value_from(config.temporal_regularity);
+    obj["temporal_concentration"] = json::value_from(config.temporal_concentration);
+    
+    // Bidirectional flow features
+    obj["bidirectional_has_flows"] = json::value_from(config.bidirectional_has_flows);
+    obj["bidirectional_response_time"] = json::value_from(config.bidirectional_response_time);
+    obj["bidirectional_request_ratio"] = json::value_from(config.bidirectional_request_ratio);
+    obj["bidirectional_asymmetry"] = json::value_from(config.bidirectional_asymmetry);
 
     jv = std::move(obj);
 }
