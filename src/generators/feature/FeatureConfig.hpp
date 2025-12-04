@@ -21,7 +21,7 @@ public:
     bool l2_distance = true; //  Euclidean distance
 
     // Embedding statistical features
-    bool embedding_std = true;   // For both nodes v1 and v2
+    bool embedding_std = true;      // For both nodes v1 and v2
     bool embedding_abs_mean = true; // For both nodes v1 and v2
     bool embedding_norm_ratio = true;
 
@@ -36,9 +36,22 @@ public:
     bool adamic_adar_index = true;
     bool preferential_attachment = true;
     bool resource_allocation_index = true;
-    
+
     // Node-level features with min/max pairs
     bool node_degree = true; // For both nodes v1 and v2
+
+    // Temporal edge features
+    bool temporal_avg_duration = true;
+    bool temporal_avg_inter_arrival = true;
+    bool temporal_var_inter_arrival = true;
+    bool temporal_regularity = true;
+    bool temporal_concentration = true;
+
+    // Bidirectional flow features
+    bool bidirectional_has_flows = true;
+    bool bidirectional_response_time = true;
+    bool bidirectional_request_ratio = true;
+    bool bidirectional_asymmetry = true;
 
     FeatureConfig() = default;
 
@@ -60,9 +73,30 @@ public:
      * @return True if any network features are enabled, false otherwise.
      */
     bool are_network_features_enabled() const {
-        return common_neighbors_count || jaccard_coefficient ||
-               adamic_adar_index || preferential_attachment ||
-               resource_allocation_index || node_degree;
+        return common_neighbors_count || jaccard_coefficient || adamic_adar_index ||
+               preferential_attachment || resource_allocation_index || node_degree ||
+               are_temporal_features_enabled() || are_bidirectional_features_enabled();
+    }
+
+    /**
+     * @brief Check if any temporal features are enabled.
+     *
+     * @return True if any temporal features are enabled, false otherwise.
+     */
+    bool are_temporal_features_enabled() const {
+        return temporal_avg_duration || temporal_avg_inter_arrival ||
+               temporal_var_inter_arrival || temporal_regularity ||
+               temporal_concentration;
+    }
+
+    /**
+     * @brief Check if any bidirectional features are enabled.
+     *
+     * @return True if any bidirectional features are enabled, false otherwise.
+     */
+    bool are_bidirectional_features_enabled() const {
+        return bidirectional_has_flows || bidirectional_response_time ||
+               bidirectional_request_ratio || bidirectional_asymmetry;
     }
 
     /**
@@ -90,8 +124,8 @@ public:
         dim += l1_distance ? 1 : 0;
         dim += common_neighbors_count ? 1 : 0;
         dim += jaccard_coefficient ? 1 : 0;
-        dim += node_degree ? 2 : 0; // Two features: degree(v1), degree(v2)
-        dim += embedding_std ? 2 : 0;   // Two features: std(v1_emb), std(v2_emb)
+        dim += node_degree ? 2 : 0;   // Two features: degree(v1), degree(v2)
+        dim += embedding_std ? 2 : 0; // Two features: std(v1_emb), std(v2_emb)
         dim += adamic_adar_index ? 1 : 0;
         dim += preferential_attachment ? 1 : 0;
         dim += resource_allocation_index ? 1 : 0;
@@ -99,6 +133,20 @@ public:
         dim += embedding_abs_mean ? 2
                                   : 0; // Two features: abs_mean(v1_emb), abs_mean(v2_emb)
         dim += hadamard_product_components ? embedding_dim : 0;
+
+        // Temporal edge features (5 features)
+        dim += temporal_avg_duration ? 1 : 0;
+        dim += temporal_avg_inter_arrival ? 1 : 0;
+        dim += temporal_var_inter_arrival ? 1 : 0;
+        dim += temporal_regularity ? 1 : 0;
+        dim += temporal_concentration ? 1 : 0;
+
+        // Bidirectional flow features (4 features)
+        dim += bidirectional_has_flows ? 1 : 0;
+        dim += bidirectional_response_time ? 1 : 0;
+        dim += bidirectional_request_ratio ? 1 : 0;
+        dim += bidirectional_asymmetry ? 1 : 0;
+
         return dim;
     }
 
@@ -110,7 +158,7 @@ public:
      */
     std::vector<std::string> get_feature_names(std::size_t embedding_dim) const {
         std::vector<std::string> names;
-        
+
         // Embedding similarity features
         if (cosine_similarity)
             names.push_back("cosine_similarity");
@@ -120,7 +168,7 @@ public:
             names.push_back("l1_distance");
         if (l2_distance)
             names.push_back("l2_distance");
-        
+
         // Embedding statistical features
         if (embedding_std) {
             names.push_back("embedding_std_min");
@@ -132,7 +180,7 @@ public:
         }
         if (embedding_norm_ratio)
             names.push_back("embedding_norm_ratio");
-        
+
         // Hadamard product derived features
         if (hadamard_product_sum)
             names.push_back("hadamard_product_sum");
@@ -161,6 +209,28 @@ public:
             names.push_back("node_degree_min");
             names.push_back("node_degree_max");
         }
+
+        // Temporal edge features
+        if (temporal_avg_duration)
+            names.push_back("temporal_avg_duration");
+        if (temporal_avg_inter_arrival)
+            names.push_back("temporal_avg_inter_arrival");
+        if (temporal_var_inter_arrival)
+            names.push_back("temporal_var_inter_arrival");
+        if (temporal_regularity)
+            names.push_back("temporal_regularity");
+        if (temporal_concentration)
+            names.push_back("temporal_concentration");
+
+        // Bidirectional flow features
+        if (bidirectional_has_flows)
+            names.push_back("bidirectional_has_flows");
+        if (bidirectional_response_time)
+            names.push_back("bidirectional_response_time");
+        if (bidirectional_request_ratio)
+            names.push_back("bidirectional_request_ratio");
+        if (bidirectional_asymmetry)
+            names.push_back("bidirectional_asymmetry");
 
         return names;
     }

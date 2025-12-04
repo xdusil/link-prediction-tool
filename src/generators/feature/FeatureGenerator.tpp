@@ -2,6 +2,7 @@
 
 #include "FeatureGenerator.hpp"
 #include "exceptions/exceptions.hpp"
+#include "generators/feature/BidirectionalFeatureExtractor.hpp"
 #include <c10/core/TensorOptions.h>
 #include <cstddef>
 #include <functional>
@@ -222,7 +223,10 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     col_index =
         add_hadamard_features<T>(v1_emb, v2_emb, features_accessor, row_index, col_index);
     col_index = add_network_features<T>(v1, v2, features_accessor, row_index, col_index);
-    add_node_features<T>(v1, v2, features_accessor, row_index, col_index);
+    col_index = add_node_features<T>(v1, v2, features_accessor, row_index, col_index);
+    col_index = add_temporal_features<T>(v1, v2, features_accessor, row_index, col_index);
+    col_index =
+        add_bidirectional_features<T>(v1, v2, features_accessor, row_index, col_index);
 }
 
 template <typename GraphTraits, typename EmbeddingModule,
@@ -291,7 +295,7 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
         !m_feature_config.hadamard_product_components) {
         return col;
     }
-    
+
     auto hadamard = v1_emb * v2_emb;
     if (m_feature_config.hadamard_product_sum) {
         accessor[row][col++] = hadamard.sum().item<T>();
@@ -315,19 +319,23 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
                          std::size_t row, std::size_t col) {
     if (m_feature_config.common_neighbors_count) {
         accessor[row][col++] =
-            m_graph_analytics.normalized_common_neighbors_count(v1, v2);
+            static_cast<T>(m_graph_analytics.normalized_common_neighbors_count(v1, v2));
     }
     if (m_feature_config.jaccard_coefficient) {
-        accessor[row][col++] = m_graph_analytics.jaccard_coefficient(v1, v2);
+        accessor[row][col++] =
+            static_cast<T>(m_graph_analytics.jaccard_coefficient(v1, v2));
     }
     if (m_feature_config.adamic_adar_index) {
-        accessor[row][col++] = m_graph_analytics.adamic_adar_index(v1, v2);
+        accessor[row][col++] =
+            static_cast<T>(m_graph_analytics.adamic_adar_index(v1, v2));
     }
     if (m_feature_config.preferential_attachment) {
-        accessor[row][col++] = m_graph_analytics.preferential_attachment(v1, v2);
+        accessor[row][col++] =
+            static_cast<T>(m_graph_analytics.preferential_attachment(v1, v2));
     }
     if (m_feature_config.resource_allocation_index) {
-        accessor[row][col++] = m_graph_analytics.resource_allocation_index(v1, v2);
+        accessor[row][col++] =
+            static_cast<T>(m_graph_analytics.resource_allocation_index(v1, v2));
     }
     return col;
 }
@@ -340,8 +348,8 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
                       std::size_t row, std::size_t col) {
     if (m_feature_config.node_degree) {
         T avg_degree = get_set_avg_degree<T>();
-        T deg1 = m_graph_analytics.degree(v1) / avg_degree;
-        T deg2 = m_graph_analytics.degree(v2) / avg_degree;
+        T deg1 = static_cast<T>(m_graph_analytics.degree(v1)) / avg_degree;
+        T deg2 = static_cast<T>(m_graph_analytics.degree(v2)) / avg_degree;
 
         accessor[row][col++] = std::min(deg1, deg2);
         accessor[row][col++] = std::max(deg1, deg2);
@@ -396,4 +404,72 @@ T FeatureGenerator<GraphTraits, EmbeddingModule,
         m_avg_degree = m_graph_analytics.avg_degree();
     }
     return m_avg_degree.value();
+}
+
+template <typename GraphTraits, typename EmbeddingModule,
+          typename GroundTruthDependencies>
+template <typename T>
+std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
+    add_temporal_features(Vertex v1, Vertex v2, torch::TensorAccessor<T, 2> &accessor,
+                          std::size_t row, std::size_t col) {
+    if (!m_feature_config.are_temporal_features_enabled()) {
+        return col;
+    }
+
+    const TemporalFeatureExtractor::TemporalFeatures features =
+        TemporalFeatureExtractor::extract_all_features(
+            m_graph_analytics.get_graph_manager(), v1, v2, m_feature_config);
+
+    if (m_feature_config.temporal_avg_duration) {
+        accessor[row][col++] = static_cast<T>(features.avg_duration.value_or(0.0));
+    }
+    if (m_feature_config.temporal_avg_inter_arrival) {
+        accessor[row][col++] = static_cast<T>(features.avg_inter_arrival.value_or(0.0));
+    }
+    if (m_feature_config.temporal_var_inter_arrival) {
+        accessor[row][col++] = static_cast<T>(features.var_inter_arrival.value_or(0.0));
+    }
+    if (m_feature_config.temporal_regularity) {
+        accessor[row][col++] = static_cast<T>(features.regularity.value_or(0.0));
+    }
+    if (m_feature_config.temporal_concentration) {
+        accessor[row][col++] =
+            static_cast<T>(features.temporal_concentration.value_or(0.0));
+    }
+
+    return col;
+}
+
+template <typename GraphTraits, typename EmbeddingModule,
+          typename GroundTruthDependencies>
+template <typename T>
+std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
+    add_bidirectional_features(Vertex v1, Vertex v2,
+                               torch::TensorAccessor<T, 2> &accessor, std::size_t row,
+                               std::size_t col) {
+    if (!m_feature_config.are_bidirectional_features_enabled()) {
+        return col;
+    }
+
+    const BidirectionalFeatureExtractor::BidirectionalFeatures features =
+        BidirectionalFeatureExtractor::extract_all_features(
+            m_graph_analytics.get_graph_manager(), v1, v2, m_feature_config);
+
+    if (m_feature_config.bidirectional_has_flows) {
+        accessor[row][col++] =
+            static_cast<T>(features.has_bidirectional_flows.value_or(false) ? 1.0 : 0.0);
+    }
+    if (m_feature_config.bidirectional_response_time) {
+        accessor[row][col++] = static_cast<T>(features.avg_response_time.value_or(0.0));
+    }
+    if (m_feature_config.bidirectional_request_ratio) {
+        accessor[row][col++] =
+            static_cast<T>(features.request_response_ratio.value_or(0.0));
+    }
+    if (m_feature_config.bidirectional_asymmetry) {
+        accessor[row][col++] =
+            static_cast<T>(features.directional_asymmetry.value_or(0.0));
+    }
+
+    return col;
 }

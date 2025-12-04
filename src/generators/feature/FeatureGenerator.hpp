@@ -1,9 +1,12 @@
 #pragma once
 
 #include "IFeatureGenerator.hpp"
+#include "generators/feature/BidirectionalFeatureExtractor.hpp"
 #include "generators/feature/FeatureConfig.hpp"
+#include "generators/feature/TemporalFeatureExtractor.hpp"
 #include "graph/IGraphAnalytics.hpp"
-#include "graph/network/NetworkGraphManager.hpp"
+#include "graph/network/INetworkGraphManager.hpp"
+#include "utils/PortClassifier.hpp"
 
 /**
  * @brief Class for generating features.
@@ -228,6 +231,39 @@ private:
     std::size_t add_node_features(Vertex v1, Vertex v2,
                                   torch::TensorAccessor<T, 2> &accessor, std::size_t row,
                                   std::size_t col);
+
+    /**
+     * @brief Add temporal edge features to the feature tensor.
+     *
+     * @tparam T The type of elements in the tensor.
+     * @param v1 The first vertex.
+     * @param v2 The second vertex.
+     * @param accessor The tensor accessor for the feature tensor.
+     * @param row The row index in the feature tensor.
+     * @param col The column index in the feature tensor.
+     * @return The updated column index after adding the features.
+     */
+    template <typename T>
+    std::size_t add_temporal_features(Vertex v1, Vertex v2,
+                                      torch::TensorAccessor<T, 2> &accessor,
+                                      std::size_t row, std::size_t col);
+
+    /**
+     * @brief Add bidirectional flow features to the feature tensor.
+     *
+     * @tparam T The type of elements in the tensor.
+     * @param v1 The first vertex.
+     * @param v2 The second vertex.
+     * @param accessor The tensor accessor for the feature tensor.
+     * @param row The row index in the feature tensor.
+     * @param col The column index in the feature tensor.
+     * @return The updated column index after adding the features.
+     */
+    template <typename T>
+    std::size_t add_bidirectional_features(Vertex v1, Vertex v2,
+                                           torch::TensorAccessor<T, 2> &accessor,
+                                           std::size_t row, std::size_t col);
+
     /**
      * @brief Calculate cosine similarity between two tensors.
      *
