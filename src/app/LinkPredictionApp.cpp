@@ -13,6 +13,7 @@
 #include "generators/feature/FeatureGenerator.hpp"
 #include "graph/boost/analytics/BoostGraphAnalytics.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
+#include "graph/network/NetworkGraphManager.hpp"
 #include "io/FileReader.hpp"
 #include "model/trainer/SkipGramTrainer.hpp"
 #include "model/optimizer/Optimizer.hpp"
@@ -151,7 +152,7 @@ void LinkPredictionApp::run_training_mode(
     BoostGraphAnalytics analytics{*m_graph_manager};
     FeatureGenerator<BoostGraphTraits<Graph>, decltype(m_model->get_embeddings()),
                      decltype(all_deps)>
-        feature_generator{analytics, *m_graph_manager, m_model->get_embeddings(),
+        feature_generator{analytics, m_model->get_embeddings(),
             m_config.FEATURE_CONFIG};
 
     auto [combined, arma_labels] = feature_generator.generate_labeled_features(
@@ -462,17 +463,16 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
         auto calc_avg = [](double total, int count) { return count > 0 ? total / count : 0.0; };
         
         std::cout << "  Embedding features:      total=" << emb_importance 
-                 << " count=" << emb_count << " avg=" << calc_avg(emb_importance, emb_count) << std::endl;
-        std::cout << "  Topology features:       total=" << topo_importance 
-                 << " count=" << topo_count << " avg=" << calc_avg(topo_importance, topo_count) << std::endl;
-        std::cout << "  Temporal features:       total=" << temporal_importance 
-                 << " count=" << temporal_count << " avg=" << calc_avg(temporal_importance, temporal_count) << std::endl;
-        std::cout << "  Bidirectional features:  total=" << bidir_importance 
-                 << " count=" << bidir_count << " avg=" << calc_avg(bidir_importance, bidir_count) << std::endl;
-        std::cout << "  Port features:           total=" << port_importance 
-                 << " count=" << port_count << " avg=" << calc_avg(port_importance, port_count) << std::endl;
-        
-        std::cout << "\n=== End Feature Importance ===" << std::endl;
+                  << " count=" << emb_count << " avg=" << calc_avg(emb_importance, emb_count) << "\n"
+                  << "  Topology features:       total=" << topo_importance 
+                  << " count=" << topo_count << " avg=" << calc_avg(topo_importance, topo_count) << "\n"
+                  << "  Temporal features:       total=" << temporal_importance 
+                  << " count=" << temporal_count << " avg=" << calc_avg(temporal_importance, temporal_count) << "\n"
+                  << "  Bidirectional features:  total=" << bidir_importance 
+                  << " count=" << bidir_count << " avg=" << calc_avg(bidir_importance, bidir_count) << "\n"
+                  << "  Port features:           total=" << port_importance 
+                  << " count=" << port_count << " avg=" << calc_avg(port_importance, port_count) << "\n"
+                  << "\n=== End Feature Importance ===" << std::endl;
     }
 }
 
