@@ -86,6 +86,16 @@ std::size_t BoostGraphAnalytics<Graph>::degree(const Vertex &v) const {
 }
 
 template <typename Graph>
+std::size_t BoostGraphAnalytics<Graph>::in_degree(const Vertex &v) const {
+    return m_graph_manager.get_in_degree(v);
+}
+
+template <typename Graph>
+std::size_t BoostGraphAnalytics<Graph>::out_degree(const Vertex &v) const {
+    return m_graph_manager.get_out_degree(v);
+}
+
+template <typename Graph>
 double BoostGraphAnalytics<Graph>::clustering_coefficient(const Vertex &v) const {
     std::size_t k = m_graph_manager.get_degree(v);
     

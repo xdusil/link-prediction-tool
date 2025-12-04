@@ -109,6 +109,22 @@ public:
     virtual std::size_t degree(const Vertex &v) const = 0;
 
     /**
+     * @brief Calculate in-degree of a vertex.
+     *
+     * @param v The vertex
+     * @return In-degree of the vertex
+     */
+    virtual std::size_t in_degree(const Vertex &v) const = 0;
+
+    /**
+     * @brief Calculate out-degree of a vertex.
+     *
+     * @param v The vertex
+     * @return Out-degree of the vertex
+     */
+    virtual std::size_t out_degree(const Vertex &v) const = 0;
+
+    /**
      * @brief Calculate local clustering coefficient of a vertex.
      *
      * @param v The vertex

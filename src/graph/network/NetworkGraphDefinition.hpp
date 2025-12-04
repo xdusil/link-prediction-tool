@@ -36,16 +36,17 @@ struct EdgeProperties {
 /**
  * @brief Graph type for the network graph.
  *
- * This graph is a directed graph with multiple edges between the same nodes.
+ * This graph is a bidirectional directed graph with multiple edges between the same nodes.
  * Each vertex has an IP address, and each edge has a start and end timestamp,
  * protocol, and source and destination port numbers.
+ * Uses bidirectionalS to enable efficient in-degree and out-degree queries.
  */
-using Graph = boost::adjacency_list<boost::multisetS, // Allow multiple edges between the
-                                                      // same nodes
-                                    boost::vecS,      // Use a vector to store vertices
-                                    boost::directedS, // Directed graph
-                                    VertexProperties, // Properties for each vertex
-                                    EdgeProperties,   // Properties for each edge
+using Graph = boost::adjacency_list<boost::multisetS,        // Allow multiple edges between the
+                                                              // same nodes
+                                    boost::vecS,              // Use a vector to store vertices
+                                    boost::bidirectionalS,    // Bidirectional graph (stores in-edges)
+                                    VertexProperties,         // Properties for each vertex
+                                    EdgeProperties,           // Properties for each edge
                                     boost::allow_parallel_edge_tag // Allow parallel edges
                                     >;
 

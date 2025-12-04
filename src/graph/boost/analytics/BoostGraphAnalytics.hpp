@@ -105,6 +105,22 @@ public:
     std::size_t degree(const Vertex &v) const override;
 
     /**
+     * @brief Get the in-degree of a vertex.
+     *
+     * @param v The vertex to get the in-degree for.
+     * @return The in-degree of the vertex.
+     */
+    std::size_t in_degree(const Vertex &v) const override;
+
+    /**
+     * @brief Get the out-degree of a vertex.
+     *
+     * @param v The vertex to get the out-degree for.
+     * @return The out-degree of the vertex.
+     */
+    std::size_t out_degree(const Vertex &v) const override;
+
+    /**
      * @brief Calculate the clustering coefficient of a vertex.
      *
      * @param v The vertex to calculate the clustering coefficient for.

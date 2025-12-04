@@ -128,6 +128,22 @@ public:
      virtual std::size_t get_degree(const Vertex &vertex) const override;
 
      /**
+      * @brief Get the in-degree of a vertex.
+      *
+      * @param vertex The vertex to get the in-degree for.
+      * @return The in-degree of the vertex.
+      */
+     virtual std::size_t get_in_degree(const Vertex &vertex) const override;
+
+     /**
+      * @brief Get the out-degree of a vertex.
+      *
+      * @param vertex The vertex to get the out-degree for.
+      * @return The out-degree of the vertex.
+      */
+     virtual std::size_t get_out_degree(const Vertex &vertex) const override;
+
+     /**
       * @brief Get neighbors of a vertex.
       *
       * @param vertex The vertex to get neighbors for.

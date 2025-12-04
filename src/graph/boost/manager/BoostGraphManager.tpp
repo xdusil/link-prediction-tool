@@ -76,6 +76,16 @@ std::size_t BoostGraphManager<Graph>::get_degree(const Vertex &vertex) const {
 }
 
 template <typename Graph>
+std::size_t BoostGraphManager<Graph>::get_in_degree(const Vertex &vertex) const {
+    return boost::in_degree(vertex, m_graph);
+}
+
+template <typename Graph>
+std::size_t BoostGraphManager<Graph>::get_out_degree(const Vertex &vertex) const {
+    return boost::out_degree(vertex, m_graph);
+}
+
+template <typename Graph>
 std::vector<typename BoostGraphManager<Graph>::Vertex> 
 BoostGraphManager<Graph>::get_neighbors(const Vertex &vertex) const {
     std::vector<Vertex> neighbors;
