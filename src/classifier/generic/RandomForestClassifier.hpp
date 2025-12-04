@@ -123,7 +123,7 @@ public:
         const Features &features, const Labels &labels,
         const std::vector<std::string> &feature_names,
         const std::string &metric = "f1",
-        size_t n_repeats = 5) const;
+        size_t n_repeats = 5) const override;
 
     /**
      * @brief Perform a grid search to find the best Random Forest parameters.

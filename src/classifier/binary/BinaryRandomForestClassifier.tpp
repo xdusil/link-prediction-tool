@@ -64,7 +64,7 @@ Labels BinaryRandomForestClassifier<Features, Labels, Scaler>::predict(
 template <typename Features, typename Labels, typename Scaler>
 statistics::Metrics
 BinaryRandomForestClassifier<Features, Labels, Scaler>::evaluate(const Features &features,
-                                                                 const Labels &labels) {
+                                                                 const Labels &labels) const {
 
     // Get probabilities for each class
     auto [_, probabilities] = Base::predict_proba(features);
