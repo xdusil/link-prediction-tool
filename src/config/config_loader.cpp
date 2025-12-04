@@ -35,7 +35,7 @@ void validate_parameter_combinations(const Config& config) {
 
 Config parse_json(const std::string &json_content) {
     try {
-        json::value jv = JsonHelper::parse_json(json_content);
+        json::value jv = JsonHelper::parse_json(json_content, json::parse_options{.allow_comments = true});
         Config config = json::value_to<Config>(jv);
 
         return config;

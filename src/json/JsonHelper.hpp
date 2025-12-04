@@ -21,9 +21,9 @@ public:
      * @return The parsed JSON object.
      * @throws JSONException if the error occurs during parsing.
      */
-    static json::object parse_json(const std::string &json_str) {
+    static json::object parse_json(const std::string &json_str, const json::parse_options &opt = {}) {
         try {
-            json::value jv = json::parse(json_str);
+            json::value jv = json::parse(json_str, /*storage_ptr*/ {}, opt);
             return jv.as_object();
         } catch (const boost::system::system_error &e) {
             const std::string error_msg = "JSON parse error";
