@@ -20,7 +20,7 @@ public:
     struct TemporalFeatures {
         std::optional<double> avg_duration;
         std::optional<double> avg_inter_arrival;
-        std::optional<double> burstiness;
+        std::optional<double> var_inter_arrival;
         std::optional<double> regularity;
         std::optional<double> temporal_concentration;
     };
@@ -34,7 +34,9 @@ public:
      * @param v1 First vertex
      * @param v2 Second vertex
      * @param config Feature configuration specifying which features to compute
-     * @return TemporalFeatures struct with only enabled features populated
+     * @return TemporalFeatures containing entries for only the enabled features; 
+     *         disabled features are left unset, and enabled features may be 
+     *         `std::nullopt` if computation is not possible. 
      */
     template <typename GraphTraits>
     static TemporalFeatures

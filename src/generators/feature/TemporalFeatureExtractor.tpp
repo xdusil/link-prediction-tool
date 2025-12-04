@@ -14,7 +14,7 @@ TemporalFeatureExtractor::TemporalFeatures TemporalFeatureExtractor::extract_all
     TemporalFeatures result;
 
     // Determine what needs to be collected
-    bool need_timestamps = config.temporal_inter_arrival || config.temporal_burstiness ||
+    bool need_timestamps = config.temporal_avg_inter_arrival || config.temporal_var_inter_arrival ||
                            config.temporal_regularity || config.temporal_concentration;
     bool need_durations = config.temporal_avg_duration;
 
@@ -54,7 +54,7 @@ TemporalFeatureExtractor::TemporalFeatures TemporalFeatureExtractor::extract_all
 
     // Compute inter-arrival times if any feature needs them
     std::vector<double> inter_arrivals;
-    if (config.temporal_inter_arrival || config.temporal_burstiness ||
+    if (config.temporal_avg_inter_arrival || config.temporal_var_inter_arrival ||
         config.temporal_regularity) {
         inter_arrivals.reserve(timestamps.size() - 1);
         for (std::size_t i = 1; i < timestamps.size(); ++i) {
@@ -64,19 +64,19 @@ TemporalFeatureExtractor::TemporalFeatures TemporalFeatureExtractor::extract_all
         double mean = std::accumulate(inter_arrivals.begin(), inter_arrivals.end(), 0.0) /
                       inter_arrivals.size();
 
-        if (config.temporal_inter_arrival) {
+        if (config.temporal_avg_inter_arrival) {
             result.avg_inter_arrival = mean;
         }
 
-        if (config.temporal_burstiness || config.temporal_regularity) {
+        if (config.temporal_var_inter_arrival || config.temporal_regularity) {
             double variance = 0.0;
             for (double val : inter_arrivals) {
                 variance += (val - mean) * (val - mean);
             }
             variance /= inter_arrivals.size();
 
-            if (config.temporal_burstiness) {
-                result.burstiness = variance;
+            if (config.temporal_var_inter_arrival) {
+                result.var_inter_arrival = variance;
             }
 
             if (config.temporal_regularity) {
