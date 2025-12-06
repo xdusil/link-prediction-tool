@@ -63,17 +63,10 @@ public:
                                                            InputIt end) const;
 
 private:
-    /**
-     * @brief Initialize the random number generators.
-     *
-     * @param seed The seed for the random number generator.
-     */
-    void initialize_rngs(int seed) const;
-
     const IGraphManager<GraphTraits> &m_graph; // The graph to perform random walks on
-    int m_num_threads; // The number of threads to use for parallel execution
-    int m_walk_length; // The fixed length of each random walk
-    mutable std::vector<RNG> m_rngs; // Random number generators for worker threads
+    const int m_num_threads; // The number of threads to use for parallel execution
+    const int m_walk_length; // The fixed length of each random walk
+    const RNG m_rng;         // The random number generator
     const IRandomWalkLogic<GraphTraits, RNG>
         &m_walk_logic; // Logic object for generating random walks
 };

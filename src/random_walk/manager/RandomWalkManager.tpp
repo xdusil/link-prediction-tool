@@ -17,7 +17,7 @@ RandomWalkManager<GraphTraits, RNG>::RandomWalkManager(
     const IRandomWalkLogic<GraphTraits, RNG> &walk_logic, int walk_length,
     int seed /*= 0*/)
     : m_graph(graph), m_num_threads(num_threads), m_walk_logic(walk_logic),
-      m_walk_length(walk_length) {
+      m_walk_length(walk_length), m_rng(seed) {
 
     if (m_num_threads <= 0) {
         throw std::invalid_argument("Number of threads must be positive.");
@@ -25,19 +25,6 @@ RandomWalkManager<GraphTraits, RNG>::RandomWalkManager(
 
     if (m_walk_length <= 0) {
         throw std::invalid_argument("Walk length must be positive.");
-    }
-
-    initialize_rngs(seed);
-}
-
-// Initialize the random number generators.
-template <typename GraphTraits, typename RNG>
-void RandomWalkManager<GraphTraits, RNG>::initialize_rngs(int seed) const {
-    m_rngs.clear();
-    m_rngs.reserve(m_num_threads);
-    RNG rng(seed);
-    for (int i = 0; i < m_num_threads; ++i) {
-        m_rngs.emplace_back(rng());
     }
 }
 
@@ -63,48 +50,50 @@ template <typename InputIt>
 std::vector<std::vector<typename GraphTraits::Vertex>>
 RandomWalkManager<GraphTraits, RNG>::generate_random_walks(InputIt begin,
                                                            InputIt end) const {
-    auto vertex_count = std::distance(begin, end);
+    const std::size_t vertex_count = std::distance(begin, end);
+    if (vertex_count == 0) return {};
+
     std::vector<std::vector<Vertex>> all_walks(vertex_count);
-    size_t num_threads =
-        std::min(static_cast<size_t>(m_num_threads), static_cast<size_t>(vertex_count));
-    
+    const std::size_t num_threads =
+        std::min(static_cast<std::size_t>(m_num_threads), vertex_count);
+    int seed = m_rng();
+
 #ifdef USE_OPENMP
     // OpenMP implementation
     #pragma omp parallel num_threads(num_threads)
     {
-        int thread_id = omp_get_thread_num();
-        int total_threads = omp_get_num_threads();
-        
-        size_t segment_size = vertex_count / total_threads;
-        size_t start_idx = thread_id * segment_size;
-        size_t end_idx = (thread_id == total_threads - 1) ? 
-                        vertex_count : start_idx + segment_size;
-        
-        for (size_t i = start_idx; i < end_idx; ++i) {
-            all_walks[i] = std::move(m_walk_logic.generate_single_walk(
-                m_graph, *(begin + i), m_walk_length, m_rngs[thread_id]));
+        int tid = omp_get_thread_num();
+        RNG rng(seed + tid);
+
+        #pragma omp for schedule(static)
+        for (std::size_t i = 0; i < vertex_count; ++i) {
+            all_walks[i] = m_walk_logic.generate_single_walk(m_graph, *(begin + i),
+                                                             m_walk_length, rng);
         }
     }
-#else
-    // Non-OpenMP implementation
-    std::vector<std::thread> threads;
 
-    auto generate_walks_segment = [this, &all_walks](InputIt start, InputIt end,
-                                                     size_t offset, int rng_idx) {
-        for (auto it = start; it != end; ++it, ++offset) {
-            all_walks[offset] = std::move(m_walk_logic.generate_single_walk(
-                m_graph, *it, m_walk_length, m_rngs[rng_idx]));
+#else
+    //  Non-OpenMP implementation
+    std::vector<std::thread> threads;
+    threads.reserve(num_threads);
+
+    auto generate_walks_segment = [this, &all_walks, begin, seed](std::size_t start, std::size_t end,
+                                                            std::size_t tid) {
+        RNG rng(seed + tid);
+
+        for (std::size_t i = start; i < end; ++i) {
+            all_walks[i] = m_walk_logic.generate_single_walk(m_graph, *(begin + i),
+                                                             m_walk_length, rng);
         }
     };
 
-    size_t segment_size = vertex_count / num_threads;
+    const std::size_t segment_size = vertex_count / num_threads;
 
-    // Launch threads
-    for (size_t i = 0; i < num_threads; ++i) {
-        size_t start = i * segment_size;
-        size_t end = (i == num_threads - 1) ? vertex_count : start + segment_size;
-        threads.emplace_back(generate_walks_segment, begin + start, begin + end, start,
-                             i);
+    for (std::size_t tid = 0; tid < num_threads; ++tid) {
+        std::size_t start = tid * segment_size;
+        std::size_t end = (tid == num_threads - 1) ? vertex_count : start + segment_size;
+
+        threads.emplace_back(generate_walks_segment, start, end, tid);
     }
 
     // Join threads
