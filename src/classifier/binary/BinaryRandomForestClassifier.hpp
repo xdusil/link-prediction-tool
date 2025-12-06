@@ -3,6 +3,7 @@
 #include "../generic/RandomForestClassifier.hpp"
 #include "IBinaryRandomForestClassifier.hpp"
 #include "statistics/metrics.hpp"
+#include <mlpack/core/data/scaler_methods/standard_scaler.hpp>
 
 /**
  * @brief Specialized Random Forest classifier optimized for binary classification.
@@ -15,7 +16,7 @@
  * @tparam Scaler The type of the scaler.
  */
 template <typename Features, typename Labels,
-          typename Scaler = mlpack::data::MinMaxScaler>
+          typename Scaler = mlpack::data::StandardScaler>
 class BinaryRandomForestClassifier
     : public RandomForestClassifier<Features, Labels, statistics::AverageType::BINARY,
                                     Scaler>,
