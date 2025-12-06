@@ -2,116 +2,198 @@
 
 #include "FeatureConfig.hpp"
 #include "graph/IGraphManager.hpp"
+#include "utils/FlowDataCollector.hpp"
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <optional>
 #include <vector>
 
 /**
- * @brief Extractor for bidirectional flow features.
+ * @brief Extractor for bidirectional flow asymmetry features.
  *
- * Analyzes request-response patterns between node pairs.
- *
- * @note All bidirectional features are commutative: f(v1, v2) == f(v2, v1).
+ * Analyzes request-response patterns and flow asymmetry between node pairs.
  */
 class BidirectionalFeatureExtractor {
 public:
-    // Configuration constants
-    static constexpr auto MAX_RESPONSE_TIME =
-        std::chrono::milliseconds(10000); // 10 seconds
-
-    static constexpr double COUNT_WEIGHT = 0.6;    // Weight for count asymmetry
-    static constexpr double DURATION_WEIGHT = 0.4; // Weight for duration asymmetry
-    static_assert(COUNT_WEIGHT + DURATION_WEIGHT > 0.999 &&
-                      COUNT_WEIGHT + DURATION_WEIGHT < 1.001,
-                  "Asymmetry weights must sum to 1.0");
-
-    struct BidirectionalFeatures {
-        std::optional<bool> has_bidirectional_flows;
-        std::optional<double> avg_response_time;
-        std::optional<double> request_response_ratio;
-        std::optional<double> directional_asymmetry;
+    /**
+     * @brief Result structure containing bidirectional features.
+     */
+    struct Features {
+        std::optional<double> response_time;
+        std::optional<double> request_ratio;
+        std::optional<double> direction_asymmetry;
+        std::optional<double> causality_score;
     };
 
     /**
-     * @brief Batch extraction - collects edges once and computes only enabled features.
+     * @brief Extract bidirectional features for a vertex pair.
      *
-     * @complexity O(degree(v1) + degree(v2) + E_pair*log(E_pair)) where E_pair is edges
-     * between v1 and v2
-     * @param graph_manager The graph manager interface
-     * @param v1 First vertex
-     * @param v2 Second vertex
-     * @param config Feature configuration specifying which features to compute
-     * @return BidirectionalFeatures containing entries for only the enabled features;
-     *         disabled features are left unset, and enabled features may be
-     *         `std::nullopt` if computation is not possible.
+     * @param graph_manager The graph manager instance.
+     * @param src The source vertex.
+     * @param dst The destination vertex.
+     * @param config The feature configuration.
+     * @return The extracted bidirectional features. If a feature is not computable,
+     * its value will be std::nullopt.
      */
     template <typename GraphTraits>
-    static BidirectionalFeatures
-    extract_all_features(const IGraphManager<GraphTraits> &graph_manager,
-                         const typename GraphTraits::Vertex &v1,
-                         const typename GraphTraits::Vertex &v2,
-                         const FeatureConfig &config);
+    static Features extract(const IGraphManager<GraphTraits>& graph_manager,
+                            const typename GraphTraits::Vertex& src,
+                            const typename GraphTraits::Vertex& dst,
+                            const FeatureConfig& config);
 
 private:
     /**
-     * @brief Collect all edges in a specific direction sorted by timestamp.
+     * @brief Compute average response time.
      *
-     * @param graph_manager The graph manager interface
-     * @param src Source vertex
-     * @param dst Destination vertex
-     * @return Vector of edge properties sorted by start timestamp
+     * It is defined as the average time difference between the end of
+     * a request and the start of an response. It does not necessarily
+     * require strict pairing of requests and responses (refers to closest subsequent
+     * response).
+     *
+     * @param flow_data The aggregated flow data.
+     * @return Average response time in milliseconds.
      */
-    template <typename GraphTraits>
-    static std::vector<typename GraphTraits::EdgeProperties>
-    collect_edges_directional(const IGraphManager<GraphTraits> &graph_manager,
-                              const typename GraphTraits::Vertex &src,
-                              const typename GraphTraits::Vertex &dst);
+    template <typename FlowData>
+    static double compute_avg_response_time(const FlowData& flow_data);
 
     /**
-     * @brief Calculate average response time for request-response pairs.
+     * @brief Compute causality score.
      *
-     * Matches forward flows with subsequent reverse flows and calculates
-     * the time delay.
+     * It is defined based on counting the number of times a forward flow
+     * (request) is followed by a reverse flow (response) versus the opposite.
      *
-     * @param forward_edges Edges in forward direction (sorted by timestamp)
-     * @param reverse_edges Edges in reverse direction (sorted by timestamp)
-     * @return Optional mean response time in milliseconds (nullopt if no valid matches)
+     * @param flow_data The aggregated flow data.
+     * @return Causality score. Positive values indicate forward->reverse dominance,
+     * negative values indicate reverse->forward dominance.
      */
-    template <typename EdgeProperties>
-    static std::optional<double>
-    calculate_avg_response_time(const std::vector<EdgeProperties> &forward_edges,
-                                const std::vector<EdgeProperties> &reverse_edges);
-
-    /**
-     * @brief Calculate directional asymmetry in edge properties.
-     *
-     * Measures difference in flow characteristics between directions.
-     *
-     * @param forward_edges Edges in forward direction
-     * @param reverse_edges Edges in reverse direction
-     * @return Normalized asymmetry score (0 = symmetric, 1 = highly asymmetric)
-     */
-    template <typename EdgeProperties>
-    static double
-    calculate_directional_asymmetry(const std::vector<EdgeProperties> &forward_edges,
-                                    const std::vector<EdgeProperties> &reverse_edges);
-
-    /**
-     * @brief Find the closest reverse flow after a forward flow.
-     *
-     * Searches for the first reverse edge that starts after the forward edge.
-     *
-     * @param forward_edge The forward flow edge
-     * @param reverse_edges All reverse flows (sorted by timestamp)
-     * @param start_index Index to start searching from; updated to exclude processed
-     * edges
-     * @return Optional response time in milliseconds if matching reverse flow found
-     */
-    template <typename EdgeProperties>
-    static std::optional<double>
-    find_response_time(const EdgeProperties &forward_edge,
-                       const std::vector<EdgeProperties> &reverse_edges,
-                       std::size_t &start_index);
+    template <typename FlowData>
+    static double compute_causality(const FlowData& flow_data);
 };
 
-#include "BidirectionalFeatureExtractor.tpp"
+// ====================================================================================================
+
+template <typename GraphTraits>
+BidirectionalFeatureExtractor::Features
+BidirectionalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_manager,
+                                       const typename GraphTraits::Vertex& src,
+                                       const typename GraphTraits::Vertex& dst,
+                                       const FeatureConfig& config) {
+
+    Features result;
+
+    const FlowDataCollector::AggregatedFlowData flow_data =
+        FlowDataCollector::collect(graph_manager, src, dst);
+
+    const std::size_t total_flows = flow_data.total_flow_count();
+
+    // Response time: average time between request end and response start
+    if (config.flow_response_time && flow_data.has_flows()) {
+        result.response_time = compute_avg_response_time(flow_data);
+    }
+
+    // Request ratio: proportion of forward flows vs total
+    if (config.flow_request_ratio && flow_data.has_flows()) {
+        result.request_ratio = static_cast<double>(flow_data.forward_flow_count()) /
+                               static_cast<double>(total_flows);
+    }
+
+    // Direction asymmetry: (forward - reverse) / total
+    if (config.flow_direction_asymmetry && flow_data.has_flows()) {
+        double diff = static_cast<double>(flow_data.forward_flow_count()) -
+                      static_cast<double>(flow_data.reverse_flow_count());
+        result.direction_asymmetry = diff / static_cast<double>(total_flows);
+    }
+
+    // Causality score: temporal ordering pattern strength
+    if (config.flow_causality_score && flow_data.has_flows()) {
+        result.causality_score = compute_causality(flow_data);
+    }
+
+    return result;
+}
+
+template <typename FlowData>
+double
+BidirectionalFeatureExtractor::compute_avg_response_time(const FlowData& flow_data) {
+
+    if (!flow_data.is_bidirectional()) {
+        return 0.0;
+    }
+
+    auto forward_end_times = flow_data.forward_end_times;
+    auto reverse_start_times = flow_data.reverse_start_times;
+
+    std::sort(forward_end_times.begin(), forward_end_times.end());
+    std::sort(reverse_start_times.begin(), reverse_start_times.end());
+
+    double total_response_time = 0.0;
+    std::size_t matched_pairs = 0;
+
+    // For each forward flow end, find the next reverse flow start
+    for (const auto& forward_end : forward_end_times) {
+        auto it = std::lower_bound(reverse_start_times.begin(), reverse_start_times.end(),
+                                   forward_end);
+        if (it != reverse_start_times.end()) {
+            total_response_time += static_cast<double>((*it - forward_end).count());
+            ++matched_pairs;
+        }
+    }
+
+    return (matched_pairs > 0) ? total_response_time / static_cast<double>(matched_pairs)
+                               : 0.0;
+}
+
+template <typename FlowData>
+double BidirectionalFeatureExtractor::compute_causality(const FlowData& flow_data) {
+
+    // Create time-ordered events with direction labels
+    struct TimedEvent {
+        std::chrono::milliseconds timestamp;
+        bool is_forward_flow;
+    };
+    std::vector<TimedEvent> all_events;
+
+    // Mark forward flow completions
+    for (const auto& end_time : flow_data.forward_end_times) {
+        all_events.push_back({end_time, true});
+    }
+
+    // Mark reverse flow starts
+    for (const auto& start_time : flow_data.reverse_start_times) {
+        all_events.push_back({start_time, false});
+    }
+
+    if (all_events.size() < 2) {
+        return 0.0;
+    }
+
+    std::sort(all_events.begin(), all_events.end(),
+              [](const auto& a, const auto& b) { return a.timestamp < b.timestamp; });
+
+    // Count transition patterns
+    std::size_t forward_then_reverse = 0; // Request  -> Response pattern
+    std::size_t reverse_then_forward = 0; // Response -> Request pattern
+
+    for (std::size_t i = 1; i < all_events.size(); ++i) {
+        bool prev_is_forward = all_events[i - 1].is_forward_flow;
+        bool curr_is_forward = all_events[i].is_forward_flow;
+
+        if (prev_is_forward && !curr_is_forward) {
+            ++forward_then_reverse; // Forward flow followed by reverse
+        } else if (!prev_is_forward && curr_is_forward) {
+            ++reverse_then_forward; // Reverse flow followed by forward
+        }
+    }
+
+    std::size_t total_transitions = forward_then_reverse + reverse_then_forward;
+    if (total_transitions == 0) {
+        return 0.0;
+    }
+
+    // Positive score = forward->reverse dominant (request-response pattern)
+    // Negative score = reverse->forward dominant
+    return (static_cast<double>(forward_then_reverse) -
+            static_cast<double>(reverse_then_forward)) /
+           static_cast<double>(total_transitions);
+}
