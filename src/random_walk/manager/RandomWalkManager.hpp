@@ -66,7 +66,7 @@ private:
     const IGraphManager<GraphTraits> &m_graph; // The graph to perform random walks on
     const int m_num_threads; // The number of threads to use for parallel execution
     const int m_walk_length; // The fixed length of each random walk
-    const RNG m_rng;         // The random number generator
+    mutable RNG m_rng;       // The random number generator
     const IRandomWalkLogic<GraphTraits, RNG>
         &m_walk_logic; // Logic object for generating random walks
 };
