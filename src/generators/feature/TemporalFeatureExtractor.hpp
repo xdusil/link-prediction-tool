@@ -2,6 +2,7 @@
 
 #include "FeatureConfig.hpp"
 #include "graph/IGraphManager.hpp"
+#include "utils/FlowDataCollector.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -51,32 +52,10 @@ public:
                             const FeatureConfig& config);
 
 private:
-    struct EdgeData {
-        std::vector<std::chrono::milliseconds> all_timestamps;
-        std::vector<std::chrono::milliseconds> forward_timestamps;
-        std::vector<std::chrono::milliseconds> reverse_timestamps;
-        double total_duration = 0.0;
-    };
-
-    /**
-     * @brief Collect edge data between two vertices.
-     *
-     * @param graph_manager The graph manager instance.
-     * @param src The source vertex.
-     * @param dst The destination vertex.
-     * @param config The feature configuration.
-     * @return The collected edge data, populated based on the enabled features.
-     */
-    template <typename GraphTraits>
-    static EdgeData collect_edge_data(const IGraphManager<GraphTraits>& graph_manager,
-                                      const typename GraphTraits::Vertex& src,
-                                      const typename GraphTraits::Vertex& dst,
-                                      const FeatureConfig& config);
-
     /**
      * @brief Compute inter-arrival features.
      *
-     * @param timestamps The timestamps to analyze.
+     * @param timestamps The sorted flow start timestamps.
      * @param config The feature configuration.
      * @param result The result structure to populate.
      */
@@ -87,8 +66,8 @@ private:
     /**
      * @brief Compute cross-correlation features.
      *
-     * @param forward The forward direction timestamps.
-     * @param reverse The reverse direction timestamps.
+     * @param forward The forward direction start timestamps.
+     * @param reverse The reverse direction start timestamps.
      * @param result The result structure to populate.
      */
     static void
@@ -99,8 +78,8 @@ private:
     /**
      * @brief Compute spike score feature.
      *
-     * @param forward The forward direction timestamps.
-     * @param reverse The reverse direction timestamps.
+     * @param forward The forward direction end timestamps.
+     * @param reverse The reverse direction start timestamps.
      * @param result The result structure to populate.
      */
     static void compute_spike_score(const std::vector<std::chrono::milliseconds>& forward,
@@ -118,98 +97,66 @@ TemporalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_manage
                                   const FeatureConfig& config) {
 
     Features result;
-    EdgeData data = collect_edge_data(graph_manager, src, dst, config);
-    std::size_t edge_count = data.all_timestamps.size();
+    const FlowDataCollector::AggregatedFlowData flow_data =
+        FlowDataCollector::collect(graph_manager, src, dst);
 
     // Average duration
-    if (config.time_avg_duration && edge_count > 0) {
-        result.avg_duration = data.total_duration / static_cast<double>(edge_count);
+    if (config.time_avg_duration && flow_data.has_flows()) {
+        result.avg_duration = flow_data.total_duration_ms /
+                              static_cast<double>(flow_data.total_flow_count());
     }
 
-    if (data.all_timestamps.size() < 2) {
+    const std::vector<std::chrono::milliseconds> all_timestamps =
+        FlowDataCollector::get_all_start_times_sorted(flow_data);
+    if (all_timestamps.size() < 2) {
         return result;
     }
 
-    std::sort(data.all_timestamps.begin(), data.all_timestamps.end());
-    compute_interarrival_features(data.all_timestamps, config, result);
+    compute_interarrival_features(all_timestamps, config, result);
 
-    // Direction bias
-    if (config.time_direction_bias) {
-        if (edge_count > 0) {
-            result.direction_bias = (static_cast<double>(data.forward_timestamps.size()) -
-                                     static_cast<double>(data.reverse_timestamps.size())) /
-                                    static_cast<double>(edge_count);
-        }
+    // Direction bias: (forward - reverse) / total
+    if (config.time_direction_bias && flow_data.has_flows()) {
+        result.direction_bias = (static_cast<double>(flow_data.forward_flow_count()) -
+                                 static_cast<double>(flow_data.reverse_flow_count())) /
+                                static_cast<double>(flow_data.total_flow_count());
     }
 
-    // Initiation order
+    // Initiation order: who initiated communication first?
     if (config.time_initiation_order) {
-        if (!data.forward_timestamps.empty() && !data.reverse_timestamps.empty()) {
-            auto first_fwd = *std::min_element(data.forward_timestamps.begin(),
-                                               data.forward_timestamps.end());
-            auto first_rev = *std::min_element(data.reverse_timestamps.begin(),
-                                               data.reverse_timestamps.end());
-            if (first_fwd < first_rev) {
-                result.initiation_order = 1.0;
-            } else if (first_rev < first_fwd) {
-                result.initiation_order = -1.0;
+        if (!flow_data.forward_start_times.empty() &&
+            !flow_data.reverse_start_times.empty()) {
+            auto first_forward = *std::min_element(flow_data.forward_start_times.begin(),
+                                                   flow_data.forward_start_times.end());
+            auto first_reverse = *std::min_element(flow_data.reverse_start_times.begin(),
+                                                   flow_data.reverse_start_times.end());
+
+            if (first_forward < first_reverse) {
+                result.initiation_order = 1.0; // src initiated
+            } else if (first_reverse < first_forward) {
+                result.initiation_order = -1.0; // dst initiated
             } else {
-                result.initiation_order = 0.0;
+                result.initiation_order = 0.0; // simultaneous
             }
-        } else if (!data.forward_timestamps.empty()) {
-            result.initiation_order = 1.0;
-        } else if (!data.reverse_timestamps.empty()) {
-            result.initiation_order = -1.0;
+        } else if (!flow_data.forward_start_times.empty()) {
+            result.initiation_order = 1.0; // only forward flows
+        } else if (!flow_data.reverse_start_times.empty()) {
+            result.initiation_order = -1.0; // only reverse flows
         }
     }
 
-    // Cross-correlation
-    if (config.time_crosscorr_peak && !data.forward_timestamps.empty() &&
-        !data.reverse_timestamps.empty()) {
-        compute_cross_correlation(data.forward_timestamps, data.reverse_timestamps,
-                                  result);
+    // Cross-correlation: timing correlation between forward and reverse flows
+    if (config.time_crosscorr_peak && flow_data.is_bidirectional()) {
+        compute_cross_correlation(flow_data.forward_start_times,
+                                  flow_data.reverse_start_times, result);
     }
 
-    // Spike score
-    if (config.time_spike_score && !data.forward_timestamps.empty() &&
-        !data.reverse_timestamps.empty()) {
-        compute_spike_score(data.forward_timestamps, data.reverse_timestamps, result);
+    // Spike score: response time consistency
+    if (config.time_spike_score && flow_data.is_bidirectional()) {
+        compute_spike_score(flow_data.forward_end_times, flow_data.reverse_start_times,
+                            result);
     }
 
     return result;
-}
-
-template <typename GraphTraits>
-TemporalFeatureExtractor::EdgeData TemporalFeatureExtractor::collect_edge_data(
-    const IGraphManager<GraphTraits>& graph_manager,
-    const typename GraphTraits::Vertex& src, const typename GraphTraits::Vertex& dst,
-    const FeatureConfig& config) {
-
-    EdgeData data;
-
-    auto collect_direction = [&](const auto& from, const auto& to, bool is_forward) {
-        auto [it, end] = graph_manager.get_out_edges(from);
-        for (; it != end; ++it) {
-            if (graph_manager.get_target_vertex(*it) != to)
-                continue;
-
-            const auto& edge = graph_manager.get_edge_properties(*it);
-
-            data.all_timestamps.push_back(edge.start_timestamp);
-
-            auto& vec =
-                is_forward ? data.forward_timestamps : data.reverse_timestamps;
-            vec.push_back(edge.start_timestamp);
-
-            data.total_duration += static_cast<double>(
-                (edge.end_timestamp - edge.start_timestamp).count());
-        }
-    };
-
-    collect_direction(src, dst, true);
-    collect_direction(dst, src, false);
-
-    return data;
 }
 
 inline void TemporalFeatureExtractor::compute_interarrival_features(
