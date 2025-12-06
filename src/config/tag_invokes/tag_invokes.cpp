@@ -163,102 +163,101 @@ FeatureConfig tag_invoke(json::value_to_tag<FeatureConfig>, const json::value &j
     FeatureConfig config;
     const auto &obj = JsonHelper::parse_json_value(jv);
 
-    // Process all boolean feature flags
-    set_validated<bool>(obj, "cosine_similarity", config.cosine_similarity,
-                        always_true{});
-    set_validated<bool>(obj, "dot_product", config.dot_product, always_true{});
-    set_validated<bool>(obj, "l1_distance", config.l1_distance, always_true{});
-    set_validated<bool>(obj, "l2_distance", config.l2_distance, always_true{});
+    // 1. Directional Embedding Similarity
+    set_validated<bool>(obj, "emb_dot_src_dst", config.emb_dot_src_dst, always_true{});
+    set_validated<bool>(obj, "emb_cosine_src_dst", config.emb_cosine_src_dst, always_true{});
+    set_validated<bool>(obj, "emb_l1_src_dst", config.emb_l1_src_dst, always_true{});
+    set_validated<bool>(obj, "emb_l2_src_dst", config.emb_l2_src_dst, always_true{});
 
-    set_validated<bool>(obj, "embedding_std", config.embedding_std, always_true{});
-    set_validated<bool>(obj, "embedding_abs_mean", config.embedding_abs_mean,
-                        always_true{});
-    set_validated<bool>(obj, "embedding_norm_ratio", config.embedding_norm_ratio,
-                        always_true{});
+    // 2. Embedding Asymmetry
+    set_validated<bool>(obj, "emb_src_norm", config.emb_src_norm, always_true{});
+    set_validated<bool>(obj, "emb_dst_norm", config.emb_dst_norm, always_true{});
+    set_validated<bool>(obj, "emb_norm_ratio", config.emb_norm_ratio, always_true{});
 
-    set_validated<bool>(obj, "hadamard_product_sum", config.hadamard_product_sum,
-                        always_true{});
-    set_validated<bool>(obj, "hadamard_product_mean", config.hadamard_product_mean,
-                        always_true{});
-    set_validated<bool>(obj, "hadamard_product_components",
-                        config.hadamard_product_components, always_true{});
+    // 3. Hadamard Aggregates
+    set_validated<bool>(obj, "emb_hadamard_sum", config.emb_hadamard_sum, always_true{});
+    set_validated<bool>(obj, "emb_hadamard_mean", config.emb_hadamard_mean, always_true{});
 
-    set_validated<bool>(obj, "common_neighbors_count", config.common_neighbors_count,
-                        always_true{});
-    set_validated<bool>(obj, "jaccard_coefficient", config.jaccard_coefficient,
-                        always_true{});
+    // 4. Structural Graph Features
+    set_validated<bool>(obj, "struct_in_degree_src", config.struct_in_degree_src, always_true{});
+    set_validated<bool>(obj, "struct_out_degree_src", config.struct_out_degree_src, always_true{});
+    set_validated<bool>(obj, "struct_in_degree_dst", config.struct_in_degree_dst, always_true{});
+    set_validated<bool>(obj, "struct_out_degree_dst", config.struct_out_degree_dst, always_true{});
+    set_validated<bool>(obj, "struct_degree_ratio", config.struct_degree_ratio, always_true{});
+    set_validated<bool>(obj, "struct_common_neighbors", config.struct_common_neighbors, always_true{});
+    set_validated<bool>(obj, "struct_transitive_reachability", config.struct_transitive_reachability, always_true{});
+    set_validated<bool>(obj, "struct_shortest_path", config.struct_shortest_path, always_true{});
+    set_validated<bool>(obj, "struct_hierarchy_diff", config.struct_hierarchy_diff, always_true{});
 
-    set_validated<bool>(obj, "adamic_adar_index", config.adamic_adar_index,
-                        always_true{});
-    set_validated<bool>(obj, "preferential_attachment", config.preferential_attachment,
-                        always_true{});
-    set_validated<bool>(obj, "resource_allocation_index",
-                        config.resource_allocation_index, always_true{});
+    // 5. Temporal Causality
+    set_validated<bool>(obj, "time_avg_duration", config.time_avg_duration, always_true{});
+    set_validated<bool>(obj, "time_avg_interarrival", config.time_avg_interarrival, always_true{});
+    set_validated<bool>(obj, "time_regularity", config.time_regularity, always_true{});
+    set_validated<bool>(obj, "time_direction_bias", config.time_direction_bias, always_true{});
+    set_validated<bool>(obj, "time_initiation_order", config.time_initiation_order, always_true{});
+    set_validated<bool>(obj, "time_crosscorr_peak", config.time_crosscorr_peak, always_true{});
+    set_validated<bool>(obj, "time_spike_score", config.time_spike_score, always_true{});
 
-    set_validated<bool>(obj, "node_degree", config.node_degree, always_true{});
-    
-    // Temporal edge features
-    set_validated<bool>(obj, "temporal_avg_duration", config.temporal_avg_duration,
-                        always_true{});
-    set_validated<bool>(obj, "temporal_avg_inter_arrival", config.temporal_avg_inter_arrival,
-                        always_true{});
-    set_validated<bool>(obj, "temporal_var_inter_arrival", config.temporal_var_inter_arrival,
-                        always_true{});
-    set_validated<bool>(obj, "temporal_regularity", config.temporal_regularity,
-                        always_true{});
-    set_validated<bool>(obj, "temporal_concentration", config.temporal_concentration,
-                        always_true{});
-    
-    // Bidirectional flow features
-    set_validated<bool>(obj, "bidirectional_has_flows", config.bidirectional_has_flows,
-                        always_true{});
-    set_validated<bool>(obj, "bidirectional_response_time",
-                        config.bidirectional_response_time, always_true{});
-    set_validated<bool>(obj, "bidirectional_request_ratio",
-                        config.bidirectional_request_ratio, always_true{});
-    set_validated<bool>(obj, "bidirectional_asymmetry", config.bidirectional_asymmetry,
-                        always_true{});
-    
+    // 6. Bidirectional Flow
+    set_validated<bool>(obj, "flow_response_time", config.flow_response_time, always_true{});
+    set_validated<bool>(obj, "flow_request_ratio", config.flow_request_ratio, always_true{});
+    set_validated<bool>(obj, "flow_direction_asymmetry", config.flow_direction_asymmetry, always_true{});
+    set_validated<bool>(obj, "flow_causality_score", config.flow_causality_score, always_true{});
+
+    // 7. Protocol/Port Role
+    set_validated<bool>(obj, "net_protocol_role", config.net_protocol_role, always_true{});
+    set_validated<bool>(obj, "net_port_role", config.net_port_role, always_true{});
+
     return config;
 }
 
 void tag_invoke(json::value_from_tag, json::value &jv, const FeatureConfig &config) {
     json::object obj;
 
-    obj["cosine_similarity"] = json::value_from(config.cosine_similarity);
-    obj["dot_product"] = json::value_from(config.dot_product);
-    obj["l1_distance"] = json::value_from(config.l1_distance);
-    obj["l2_distance"] = json::value_from(config.l2_distance);
+    // 1. Directional Embedding Similarity
+    obj["emb_dot_src_dst"] = json::value_from(config.emb_dot_src_dst);
+    obj["emb_cosine_src_dst"] = json::value_from(config.emb_cosine_src_dst);
+    obj["emb_l1_src_dst"] = json::value_from(config.emb_l1_src_dst);
+    obj["emb_l2_src_dst"] = json::value_from(config.emb_l2_src_dst);
 
-    obj["embedding_std"] = json::value_from(config.embedding_std);
-    obj["embedding_abs_mean"] = json::value_from(config.embedding_abs_mean);
-    obj["embedding_norm_ratio"] = json::value_from(config.embedding_norm_ratio);
+    // 2. Embedding Asymmetry
+    obj["emb_src_norm"] = json::value_from(config.emb_src_norm);
+    obj["emb_dst_norm"] = json::value_from(config.emb_dst_norm);
+    obj["emb_norm_ratio"] = json::value_from(config.emb_norm_ratio);
 
-    obj["hadamard_product_sum"] = json::value_from(config.hadamard_product_sum);
-    obj["hadamard_product_mean"] = json::value_from(config.hadamard_product_mean);
-    obj["hadamard_product_components"] =
-        json::value_from(config.hadamard_product_components);
+    // 3. Hadamard Aggregates
+    obj["emb_hadamard_sum"] = json::value_from(config.emb_hadamard_sum);
+    obj["emb_hadamard_mean"] = json::value_from(config.emb_hadamard_mean);
 
-    obj["common_neighbors_count"] = json::value_from(config.common_neighbors_count);
-    obj["jaccard_coefficient"] = json::value_from(config.jaccard_coefficient);
-    obj["adamic_adar_index"] = json::value_from(config.adamic_adar_index);
-    obj["preferential_attachment"] = json::value_from(config.preferential_attachment);
-    obj["resource_allocation_index"] = json::value_from(config.resource_allocation_index);
+    // 4. Structural Graph Features
+    obj["struct_in_degree_src"] = json::value_from(config.struct_in_degree_src);
+    obj["struct_out_degree_src"] = json::value_from(config.struct_out_degree_src);
+    obj["struct_in_degree_dst"] = json::value_from(config.struct_in_degree_dst);
+    obj["struct_out_degree_dst"] = json::value_from(config.struct_out_degree_dst);
+    obj["struct_degree_ratio"] = json::value_from(config.struct_degree_ratio);
+    obj["struct_common_neighbors"] = json::value_from(config.struct_common_neighbors);
+    obj["struct_transitive_reachability"] = json::value_from(config.struct_transitive_reachability);
+    obj["struct_shortest_path"] = json::value_from(config.struct_shortest_path);
+    obj["struct_hierarchy_diff"] = json::value_from(config.struct_hierarchy_diff);
 
-    obj["node_degree"] = json::value_from(config.node_degree);
+    // 5. Temporal Causality
+    obj["time_avg_duration"] = json::value_from(config.time_avg_duration);
+    obj["time_avg_interarrival"] = json::value_from(config.time_avg_interarrival);
+    obj["time_regularity"] = json::value_from(config.time_regularity);
+    obj["time_direction_bias"] = json::value_from(config.time_direction_bias);
+    obj["time_initiation_order"] = json::value_from(config.time_initiation_order);
+    obj["time_crosscorr_peak"] = json::value_from(config.time_crosscorr_peak);
+    obj["time_spike_score"] = json::value_from(config.time_spike_score);
 
-    // Temporal edge features
-    obj["temporal_avg_duration"] = json::value_from(config.temporal_avg_duration);
-    obj["temporal_avg_inter_arrival"] = json::value_from(config.temporal_avg_inter_arrival);
-    obj["temporal_var_inter_arrival"] = json::value_from(config.temporal_var_inter_arrival);
-    obj["temporal_regularity"] = json::value_from(config.temporal_regularity);
-    obj["temporal_concentration"] = json::value_from(config.temporal_concentration);
-    
-    // Bidirectional flow features
-    obj["bidirectional_has_flows"] = json::value_from(config.bidirectional_has_flows);
-    obj["bidirectional_response_time"] = json::value_from(config.bidirectional_response_time);
-    obj["bidirectional_request_ratio"] = json::value_from(config.bidirectional_request_ratio);
-    obj["bidirectional_asymmetry"] = json::value_from(config.bidirectional_asymmetry);
+    // 6. Bidirectional Flow
+    obj["flow_response_time"] = json::value_from(config.flow_response_time);
+    obj["flow_request_ratio"] = json::value_from(config.flow_request_ratio);
+    obj["flow_direction_asymmetry"] = json::value_from(config.flow_direction_asymmetry);
+    obj["flow_causality_score"] = json::value_from(config.flow_causality_score);
+
+    // 7. Protocol/Port Role
+    obj["net_protocol_role"] = json::value_from(config.net_protocol_role);
+    obj["net_port_role"] = json::value_from(config.net_port_role);
 
     jv = std::move(obj);
 }
