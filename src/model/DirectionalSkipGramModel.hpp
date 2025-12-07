@@ -48,12 +48,12 @@ struct DirectionalTrainingBatch {
  * - Negative pairs: maximize log σ(-src[u] · dst[neg])
  */
 class DirectionalSkipGramModel
-    : public IModel<DirectionalTrainingBatch,             // Input type
-                    torch::Tensor,                        // Output type
-                    torch::Tensor,                        // Loss type
-                    DirectionalEmbeddings,                // Embedding type
-                    std::pair<std::vector<torch::Tensor>, // Parameters type
-                              std::vector<torch::Tensor>>>,
+    : public IModel<DirectionalTrainingBatch,   // Input type
+                    torch::Tensor,              // Output type
+                    torch::Tensor,              // Loss type
+                    DirectionalEmbeddings,      // Embedding type
+                    std::vector<torch::Tensor>> // Parameters type
+    ,
       public torch::nn::Module {
 public:
     /**
@@ -97,7 +97,7 @@ public:
      * @return DirectionalEmbeddings wrapper providing both source and dest embeddings.
      */
     DirectionalEmbeddings get_embeddings() override {
-        return {m_source_embeddings, m_destination_embeddings};
+        return DirectionalEmbeddings{m_source_embeddings, m_destination_embeddings};
     }
 
     /**
@@ -105,10 +105,14 @@ public:
      *
      * @return Vector of model parameter tensors.
      */
-    std::pair<std::vector<torch::Tensor>, std::vector<torch::Tensor>>
-    get_parameters() override {
-        return {m_source_embeddings->parameters(),
-                m_destination_embeddings->parameters()};
+    std::vector<torch::Tensor> get_parameters() override {
+        std::vector<torch::Tensor> flat_params;
+        flat_params.insert(flat_params.end(), m_source_embeddings->parameters().begin(),
+                           m_source_embeddings->parameters().end());
+        flat_params.insert(flat_params.end(),
+                           m_destination_embeddings->parameters().begin(),
+                           m_destination_embeddings->parameters().end());
+        return flat_params;
     }
 
     /**
