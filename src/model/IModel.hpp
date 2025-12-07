@@ -28,10 +28,9 @@ public:
      * @brief Computes the loss for the model.
      *
      * @param predictions The model's predictions.
-     * @param input The input data.
      * @return The loss value.
      */
-    virtual TLoss loss(const TOutput &predictions, const TInput &input) = 0;
+    virtual TLoss loss(const TOutput &predictions) = 0;
 
     /**
      * @brief Returns the model's embeddings.

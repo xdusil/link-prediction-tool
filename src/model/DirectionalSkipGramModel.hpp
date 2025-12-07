@@ -77,11 +77,9 @@ public:
      * @brief Compute Skip-Gram negative sampling loss.
      *
      * @param scores Output from forward() [batch_size, 1 + num_negatives].
-     * @param input The input data. - unused
      * @return Scalar loss tensor.
      */
-    torch::Tensor loss(const torch::Tensor& scores,
-                       const DirectionalTrainingBatch& /*input*/) override;
+    torch::Tensor loss(const torch::Tensor& scores) override;
 
     /**
      * @brief Get source embeddings module.

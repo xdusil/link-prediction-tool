@@ -35,8 +35,7 @@ torch::Tensor DirectionalSkipGramModel::forward(const DirectionalTrainingBatch& 
     return torch::cat({pos_scores, neg_scores}, /*dim=*/-1);
 }
 
-torch::Tensor DirectionalSkipGramModel::loss(const torch::Tensor& scores,
-                                             const DirectionalTrainingBatch& /*input*/) {
+torch::Tensor DirectionalSkipGramModel::loss(const torch::Tensor& scores) {
     // SGNS loss: maximize log σ(pos) + log σ(-neg)
     // Equivalent to minimizing -log σ(pos) - log σ(-neg)
 
