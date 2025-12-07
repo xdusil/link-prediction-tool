@@ -18,10 +18,12 @@ public:
     /**
      * @brief Generate dependencies from a list of contexts.
      *
-     * @param context_list A vector of contexts, where each context is a vector of elements
-     * of type T.
-     * @return A tuple containing the context, positive target, and 2D tensor of negative
-     * samples.
+     * @param context_list A vector of contexts, where each context is a vector of
+     * elements of type T.
+     * @return A tuple containing three tensors of equal length `num_pairs`:
+     *   - sources_tensor    [num_pairs]
+     *   - targets_tensor    [num_pairs]
+     *   - negatives_tensor  [num_pairs, num_negative_samples]
      */
     virtual std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>
     generate_dependencies(const std::vector<std::vector<T>> &contexts) = 0;
