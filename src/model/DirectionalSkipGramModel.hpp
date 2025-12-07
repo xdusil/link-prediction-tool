@@ -48,12 +48,12 @@ struct DirectionalTrainingBatch {
  * - Negative pairs: maximize log σ(-src[u] · dst[neg])
  */
 class DirectionalSkipGramModel
-    : public IModel<DirectionalTrainingBatch,  // Input type
-                    torch::Tensor,             // Output type
-                    torch::Tensor,             // Loss type
-                    DirectionalEmbeddings,     // Embedding type
-                    std::vector<torch::Tensor> // Parameters type
-                    >,
+    : public IModel<DirectionalTrainingBatch,             // Input type
+                    torch::Tensor,                        // Output type
+                    torch::Tensor,                        // Loss type
+                    DirectionalEmbeddings,                // Embedding type
+                    std::pair<std::vector<torch::Tensor>, // Parameters type
+                              std::vector<torch::Tensor>>>,
       public torch::nn::Module {
 public:
     /**
@@ -83,18 +83,34 @@ public:
     torch::Tensor loss(const torch::Tensor& scores,
                        const DirectionalTrainingBatch& /*input*/) override;
 
-    /// @brief Get source embeddings module.
+    /**
+     * @brief Get source embeddings module.
+     */
     torch::nn::Embedding& source_embeddings() { return m_source_embeddings; }
 
-    /// @brief Get destination embeddings module.
+    /**
+     * @brief Get destination embeddings module.
+     */
     torch::nn::Embedding& destination_embeddings() { return m_destination_embeddings; }
 
     /**
-     * @brief Get directional embeddings wrapper for feature generation.
+     * @brief Get directional embeddings wrapper.
+     *
      * @return DirectionalEmbeddings wrapper providing both source and dest embeddings.
      */
-    DirectionalEmbeddings get_directional_embeddings() {
-        return DirectionalEmbeddings(m_source_embeddings, m_destination_embeddings);
+    DirectionalEmbeddings get_embeddings() override {
+        return {m_source_embeddings, m_destination_embeddings};
+    }
+
+    /**
+     * @brief Get model parameters.
+     *
+     * @return Vector of model parameter tensors.
+     */
+    std::pair<std::vector<torch::Tensor>, std::vector<torch::Tensor>>
+    get_parameters() override {
+        return {m_source_embeddings->parameters(),
+                m_destination_embeddings->parameters()};
     }
 
     /**
@@ -106,7 +122,7 @@ public:
 
     /**
      * @brief Get embedding dimension.
-        *
+     *
      * @return Embedding vector dimension.
      */
     int64_t embedding_dim() const { return m_embedding_dim; }
@@ -131,4 +147,3 @@ private:
     int64_t m_num_vertices;
     int64_t m_embedding_dim;
 };
-

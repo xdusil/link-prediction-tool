@@ -38,7 +38,7 @@ public:
      *
      * @return The model's embeddings.
      */
-    virtual TEmbedding &get_embeddings() = 0;
+    virtual TEmbedding get_embeddings() = 0;
 
     /**
      * @brief Returns the model's parameters.
