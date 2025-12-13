@@ -56,6 +56,10 @@ public:
     bool struct_degree_ratio = true;   // out(u) / in(v) - dependency direction signal
 
     bool struct_common_neighbors = true;        // normalized common neighbor count
+    bool struct_jaccard_coefficient = true;     // Jaccard coefficient
+    bool struct_adamic_adar_index = true;       // Adamic-Adar index
+    bool struct_preferential_attachment = true; // Preferential attachment score
+    bool struct_resource_allocation = true;     // Resource allocation index
     bool struct_transitive_reachability = true; // # of 2-hop paths u -> ... -> v
     bool struct_shortest_path = true;           // directed shortest path length
     bool struct_hierarchy_diff = true;          // hierarchy_level(v) - hierarchy_level(u)
@@ -101,6 +105,8 @@ public:
     constexpr bool are_structural_features_enabled() const noexcept {
         return struct_in_degree_src || struct_out_degree_src || struct_in_degree_dst ||
                struct_out_degree_dst || struct_degree_ratio || struct_common_neighbors ||
+               struct_jaccard_coefficient || struct_adamic_adar_index ||
+               struct_preferential_attachment || struct_resource_allocation ||
                struct_transitive_reachability || struct_shortest_path ||
                struct_hierarchy_diff;
     }
@@ -144,13 +150,17 @@ public:
         dim += emb_hadamard_sum ? 1 : 0;
         dim += emb_hadamard_mean ? 1 : 0;
 
-        // 4. Structural Graph Features (9 features)
+        // 4. Structural Graph Features (13 features)
         dim += struct_in_degree_src ? 1 : 0;
         dim += struct_out_degree_src ? 1 : 0;
         dim += struct_in_degree_dst ? 1 : 0;
         dim += struct_out_degree_dst ? 1 : 0;
         dim += struct_degree_ratio ? 1 : 0;
         dim += struct_common_neighbors ? 1 : 0;
+        dim += struct_jaccard_coefficient ? 1 : 0;
+        dim += struct_adamic_adar_index ? 1 : 0;
+        dim += struct_preferential_attachment ? 1 : 0;
+        dim += struct_resource_allocation ? 1 : 0;
         dim += struct_transitive_reachability ? 1 : 0;
         dim += struct_shortest_path ? 1 : 0;
         dim += struct_hierarchy_diff ? 1 : 0;
@@ -218,6 +228,14 @@ public:
             names.push_back("struct_degree_ratio");
         if (struct_common_neighbors)
             names.push_back("struct_common_neighbors");
+        if (struct_jaccard_coefficient)
+            names.push_back("struct_jaccard_coefficient");
+        if (struct_adamic_adar_index)
+            names.push_back("struct_adamic_adar_index");
+        if (struct_preferential_attachment)
+            names.push_back("struct_preferential_attachment");
+        if (struct_resource_allocation)
+            names.push_back("struct_resource_allocation");
         if (struct_transitive_reachability)
             names.push_back("struct_transitive_reachability");
         if (struct_shortest_path)
