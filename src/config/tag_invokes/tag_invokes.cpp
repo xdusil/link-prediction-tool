@@ -185,6 +185,10 @@ FeatureConfig tag_invoke(json::value_to_tag<FeatureConfig>, const json::value &j
     set_validated<bool>(obj, "struct_out_degree_dst", config.struct_out_degree_dst, always_true{});
     set_validated<bool>(obj, "struct_degree_ratio", config.struct_degree_ratio, always_true{});
     set_validated<bool>(obj, "struct_common_neighbors", config.struct_common_neighbors, always_true{});
+    set_validated<bool>(obj, "struct_jaccard_coefficient", config.struct_jaccard_coefficient, always_true{});
+    set_validated<bool>(obj, "struct_adamic_adar_index", config.struct_adamic_adar_index, always_true{});
+    set_validated<bool>(obj, "struct_preferential_attachment", config.struct_preferential_attachment, always_true{});
+    set_validated<bool>(obj, "struct_resource_allocation", config.struct_resource_allocation, always_true{});
     set_validated<bool>(obj, "struct_transitive_reachability", config.struct_transitive_reachability, always_true{});
     set_validated<bool>(obj, "struct_shortest_path", config.struct_shortest_path, always_true{});
     set_validated<bool>(obj, "struct_hierarchy_diff", config.struct_hierarchy_diff, always_true{});
@@ -236,6 +240,10 @@ void tag_invoke(json::value_from_tag, json::value &jv, const FeatureConfig &conf
     obj["struct_out_degree_dst"] = json::value_from(config.struct_out_degree_dst);
     obj["struct_degree_ratio"] = json::value_from(config.struct_degree_ratio);
     obj["struct_common_neighbors"] = json::value_from(config.struct_common_neighbors);
+    obj["struct_jaccard_coefficient"] = json::value_from(config.struct_jaccard_coefficient);
+    obj["struct_adamic_adar_index"] = json::value_from(config.struct_adamic_adar_index);
+    obj["struct_preferential_attachment"] = json::value_from(config.struct_preferential_attachment);
+    obj["struct_resource_allocation"] = json::value_from(config.struct_resource_allocation);
     obj["struct_transitive_reachability"] = json::value_from(config.struct_transitive_reachability);
     obj["struct_shortest_path"] = json::value_from(config.struct_shortest_path);
     obj["struct_hierarchy_diff"] = json::value_from(config.struct_hierarchy_diff);
