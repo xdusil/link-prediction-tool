@@ -2,439 +2,530 @@
 
 #include "FeatureGenerator.hpp"
 #include "exceptions/exceptions.hpp"
-#include "generators/feature/BidirectionalFeatureExtractor.hpp"
 #include <c10/core/TensorOptions.h>
-#include <cstddef>
-#include <functional>
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::FeatureGenerator(
-    const IGraphAnalytics<GraphTraits> &graph_analytics,
-    const EmbeddingModule &embedding_module,
-    const FeatureConfig &config /*= FeatureConfig()*/)
-    : m_graph_analytics(graph_analytics), m_embedding_module(embedding_module),
-      m_feature_config(config) {
-    if (!m_feature_config.is_any_feature_enabled()) {
-        throw FeatureGeneratorException("No features enabled in the configuration.");
+    const IGraphAnalytics<GraphTraits>& graph_analytics,
+    EmbeddingModule& embedding_module, const FeatureConfig& config)
+    : m_graph_analytics{graph_analytics}, m_embedding_module{embedding_module},
+      m_config{config} {
+
+    if (!m_config.is_any_feature_enabled()) {
+        throw FeatureGeneratorException("No features enabled in configuration.");
     }
 }
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-std::tuple<torch::Tensor, arma::Row<size_t>>
+    requires HasContains<GroundTruthDependencies>
+std::tuple<torch::Tensor, arma::Row<std::size_t>>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     generate_labeled_features(
-        const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const GroundTruthDependencies &ground_truth_dependencies) {
-    auto [features, labels, _] = generate_features_and_labels_impl<true, false>(
-        vertex_to_index, ground_truth_dependencies);
-    return {features, labels};
+        const std::unordered_map<IPAddress, Vertex>& vertex_to_index,
+        const GroundTruthDependencies& ground_truth) {
+
+    auto [features, labels, _] =
+        generate_impl<true, false>(vertex_to_index, ground_truth);
+    return {std::move(features), std::move(labels)};
 }
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-std::tuple<torch::Tensor, arma::Row<size_t>, std::vector<std::pair<IPAddress, IPAddress>>>
+    requires HasContains<GroundTruthDependencies>
+std::tuple<torch::Tensor, arma::Row<std::size_t>,
+           std::vector<std::pair<IPAddress, IPAddress>>>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     generate_labeled_features_with_pairs(
-        const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const GroundTruthDependencies &ground_truth_dependencies) {
-    return generate_features_and_labels_impl<true, true>(vertex_to_index,
-                                                         ground_truth_dependencies);
+        const std::unordered_map<IPAddress, Vertex>& vertex_to_index,
+        const GroundTruthDependencies& ground_truth) {
+
+    return generate_impl<true, true>(vertex_to_index, ground_truth);
 }
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
 std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     generate_unlabeled_features_with_pairs(
-        const std::unordered_map<IPAddress, Vertex> &vertex_to_index) {
-    auto [features, _, vertex_pairs] =
-        generate_features_and_labels_impl<false, true>(vertex_to_index, {});
-    return {features, vertex_pairs};
+        const std::unordered_map<IPAddress, Vertex>& vertex_to_index) {
+
+    auto [features, _, pairs] = generate_impl<false, true>(vertex_to_index, {});
+    return {std::move(features), std::move(pairs)};
 }
+
+// ============================================================================
+// Core Implementation
+// ============================================================================
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-template <bool WithLabels /*= true */, bool WithVertexPairs /*= false */>
-std::tuple<torch::Tensor, arma::Row<size_t>, std::vector<std::pair<IPAddress, IPAddress>>>
-FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    generate_features_and_labels_impl(
-        const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-        const GroundTruthDependencies &ground_truth_dependencies) {
+    requires HasContains<GroundTruthDependencies>
+template <bool WithLabels, bool WithPairs>
+std::tuple<torch::Tensor, arma::Row<std::size_t>,
+           std::vector<std::pair<IPAddress, IPAddress>>>
+FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::generate_impl(
+    const std::unordered_map<IPAddress, Vertex>& vertex_to_index,
+    const GroundTruthDependencies& ground_truth) {
 
-    // Setup and validation
     const std::size_t num_vertices = vertex_to_index.size();
-    const std::size_t num_pairs =
-        num_vertices * (num_vertices - 1) / 2; // Avoid self-loops and duplicate pairs
-    const std::size_t feature_dim =
-        m_feature_config.get_dimension(m_embedding_module->options.embedding_dim());
+    const std::size_t num_pairs = num_vertices * (num_vertices - 1);
+    const std::size_t feature_dim = m_config.get_dimension();
 
-    if (num_pairs == 0) {
+    if (num_pairs == 0)
         throw FeatureGeneratorException("No vertex pairs to process.");
+
+    auto tensor_opts = torch::TensorOptions()
+                           .dtype(torch::kFloat32)
+                           .memory_format(torch::MemoryFormat::Contiguous);
+
+    torch::Tensor features =
+        torch::empty({static_cast<int64_t>(num_pairs), static_cast<int64_t>(feature_dim)},
+                     tensor_opts);
+
+    arma::Row<std::size_t> labels(WithLabels ? num_pairs : 1, arma::fill::none);
+    std::vector<std::pair<IPAddress, IPAddress>> pairs;
+    if constexpr (WithPairs) {
+        pairs.resize(num_pairs);
     }
 
-    // Prepare tensor options and containers
-    torch::TensorOptions opts = torch::TensorOptions()
-                                    .dtype(torch::kFloat32)
-                                    .memory_format(torch::MemoryFormat::Contiguous);
+    auto [vertex_ips, indices] = prepare_sorted_vertices(vertex_to_index);
 
-    torch::Tensor all_features = torch::empty(
-        {static_cast<int64_t>(num_pairs), static_cast<int64_t>(feature_dim)}, opts);
-    arma::Row<size_t> arma_labels((WithLabels) ? num_pairs : 1, arma::fill::none);
-    std::vector<std::pair<IPAddress, IPAddress>> vertex_pairs(
-        (WithVertexPairs) ? num_pairs : 1);
-
-    // Extract and sort vertices for consistent ordering
-    auto [vertex_ips, all_indices] = extract_sorted_vertices(vertex_to_index);
-
-    // Only calculate embeddings if any embedding features are enabled
-    torch::Tensor all_embeddings;
-    if (m_feature_config.are_embedding_features_enabled()) {
-        torch::TensorOptions idx_opts =
-            torch::TensorOptions()
-                .dtype(torch::kInt64)
-                .device(torch::kCPU)
-                .memory_format(torch::MemoryFormat::Contiguous);
-        // Get all embeddings in a single forward pass
-        torch::Tensor all_indices_tensor = torch::tensor(all_indices, idx_opts);
-        all_embeddings = m_embedding_module->forward(all_indices_tensor);
+    // Pre-compute expensive features if needed
+    if (m_config.struct_shortest_path || m_config.struct_transitive_reachability) {
+        std::vector<Vertex> vertices;
+        vertices.reserve(vertex_to_index.size());
+        for (const auto& [ip, v] : vertex_to_index) {
+            vertices.push_back(v);
+        }
+        precompute_expensive_features(vertices);
     }
 
-    // Generate features for all vertex pairs
-    process_vertex_pairs<WithLabels, WithVertexPairs>(
-        vertex_ips, all_embeddings, vertex_to_index, ground_truth_dependencies,
-        all_features, arma_labels, vertex_pairs);
+    torch::Tensor source_embeddings;
+    torch::Tensor dest_embeddings;
+    if (m_config.are_embedding_features_enabled()) {
+        auto idx_opts = torch::TensorOptions()
+                            .dtype(torch::kInt64)
+                            .device(torch::kCPU)
+                            .memory_format(torch::MemoryFormat::Contiguous);
 
-    return {all_features, arma_labels, vertex_pairs};
+        torch::Tensor indices_tensor = torch::tensor(indices, idx_opts);
+
+        std::tie(source_embeddings, dest_embeddings) =
+            m_embedding_module.forward_both(indices_tensor);
+    }
+
+    process_all_pairs<WithLabels, WithPairs>(vertex_ips, source_embeddings,
+                                             dest_embeddings, vertex_to_index,
+                                             ground_truth, features, labels, pairs);
+
+    // Print profiling results
+    m_profiler.print_results();
+    m_profiler.reset();
+
+    return {std::move(features), std::move(labels), std::move(pairs)};
 }
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
 std::pair<std::vector<IPAddress>, std::vector<int64_t>>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    extract_sorted_vertices(
-        const std::unordered_map<IPAddress, Vertex> &vertex_to_index) {
+    prepare_sorted_vertices(
+        const std::unordered_map<IPAddress, Vertex>& vertex_to_index) const {
 
-    // Create a vector of vertex IPs and their corresponding indices
-    std::vector<std::pair<IPAddress, int64_t>> vertex_data;
-    vertex_data.reserve(vertex_to_index.size());
+    std::vector<std::pair<IPAddress, int64_t>> data;
+    data.reserve(vertex_to_index.size());
 
-    for (const auto &[ip, vertex_idx] : vertex_to_index) {
-        vertex_data.push_back({ip, static_cast<int64_t>(vertex_idx)});
+    for (const auto& [ip, vertex] : vertex_to_index) {
+        data.emplace_back(ip, static_cast<int64_t>(vertex));
     }
 
-    // Sort by IP address for consistent iteration order
-    std::sort(vertex_data.begin(), vertex_data.end(),
-              [](const auto &a, const auto &b) { return a.first < b.first; });
+    std::sort(data.begin(), data.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
 
-    // Extract sorted IPs and indices into separate vectors
-    std::vector<IPAddress> vertex_ips;
-    std::vector<int64_t> all_indices;
-    vertex_ips.reserve(vertex_data.size());
-    all_indices.reserve(vertex_data.size());
+    std::vector<IPAddress> ips;
+    std::vector<int64_t> indices;
+    ips.reserve(data.size());
+    indices.reserve(data.size());
 
-    for (const auto &[ip, idx] : vertex_data) {
-        vertex_ips.push_back(ip);
-        all_indices.push_back(idx);
+    for (auto& [ip, idx] : data) {
+        ips.push_back(std::move(ip));
+        indices.push_back(idx);
     }
 
-    return {vertex_ips, all_indices};
+    return {std::move(ips), std::move(indices)};
 }
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-template <bool WithLabels, bool WithVertexPairs>
+    requires HasContains<GroundTruthDependencies>
+template <bool WithLabels, bool WithPairs>
 void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    process_vertex_pairs(const std::vector<IPAddress> &vertex_ips,
-                         const torch::Tensor &all_embeddings,
-                         const std::unordered_map<IPAddress, Vertex> &vertex_to_index,
-                         const GroundTruthDependencies &ground_truth_dependencies,
-                         torch::Tensor &all_features, arma::Row<size_t> &arma_labels,
-                         std::vector<std::pair<IPAddress, IPAddress>> &vertex_pairs) {
+    process_all_pairs(const std::vector<IPAddress>& vertex_ips,
+                      const torch::Tensor& source_embeddings,
+                      const torch::Tensor& dest_embeddings,
+                      const std::unordered_map<IPAddress, Vertex>& vertex_to_index,
+                      const GroundTruthDependencies& ground_truth,
+                      torch::Tensor& features, arma::Row<std::size_t>& labels,
+                      std::vector<std::pair<IPAddress, IPAddress>>& pairs) {
+    const std::size_t directed_pairs = vertex_ips.size() * (vertex_ips.size() - 1);
+    if (WithLabels && labels.n_elem != directed_pairs) {
+        throw FeatureGeneratorException(
+            "Labels size does not match number of vertex pairs.");
+    }
+    if (WithPairs && pairs.size() != directed_pairs) {
+        throw FeatureGeneratorException(
+            "Pairs size does not match number of vertex pairs.");
+    }
+    if (features.size(0) != directed_pairs) {
+        throw FeatureGeneratorException(
+            "Features size does not match number of vertex pairs.");
+    }
+    if (features.size(1) != static_cast<int64_t>(m_config.get_dimension())) {
+        throw FeatureGeneratorException(
+            "Features dimension does not match configuration.");
+    }
 
-    std::size_t pair_index = 0;
-    const bool use_embeddings = m_feature_config.are_embedding_features_enabled();
+    const bool use_embeddings = m_config.are_embedding_features_enabled();
+    if (use_embeddings) {
+        if (source_embeddings.size(0) != static_cast<int64_t>(vertex_ips.size()) ||
+            dest_embeddings.size(0) != static_cast<int64_t>(vertex_ips.size())) {
+            throw FeatureGeneratorException(
+                "Embedding sizes do not match number of vertices.");
+        }
+    }
 
-    // Initialize empty tensors for embeddings if not using them
     const torch::Tensor empty_tensor;
+    auto accessor = features.accessor<float, 2>();
 
-    // Process each pair once (with idx1 < idx2 to avoid duplicates)
-    for (size_t idx1 = 0; idx1 < vertex_ips.size(); ++idx1) {
-        const auto &ip1 = vertex_ips[idx1];
-        const auto v1 = vertex_to_index.at(ip1);
-        const torch::Tensor &v1_emb =
-            use_embeddings ? all_embeddings[idx1] : empty_tensor;
+    std::size_t pair_idx = 0;
 
-        for (size_t idx2 = idx1 + 1; idx2 < vertex_ips.size(); ++idx2) {
-            const auto &ip2 = vertex_ips[idx2];
-            const auto v2 = vertex_to_index.at(ip2);
-            const torch::Tensor &v2_emb =
-                use_embeddings ? all_embeddings[idx2] : empty_tensor;
+    for (std::size_t i = 0; i < vertex_ips.size(); ++i) {
+        const auto& ip_src = vertex_ips[i];
+        const auto v_src = vertex_to_index.at(ip_src);
+        // Use SOURCE embedding for source node (caller/client role)
+        const auto& src_emb = use_embeddings ? source_embeddings[i] : empty_tensor;
 
-            // Create features
-            create_features_and_set_to_tensor<float>(v1, v2, v1_emb, v2_emb, all_features,
-                                                     pair_index);
+        for (std::size_t j = 0; j < vertex_ips.size(); ++j) {
+            if (i == j)
+                continue;
 
-            // Handle labels if needed
+            const auto& ip_dst = vertex_ips[j];
+            const auto v_dst = vertex_to_index.at(ip_dst);
+            // Use DESTINATION embedding for destination node (callee/server role)
+            const auto& dst_emb = use_embeddings ? dest_embeddings[j] : empty_tensor;
+
+            write_pair_features<float>(v_src, v_dst, src_emb, dst_emb, accessor,
+                                       pair_idx);
+
             if constexpr (WithLabels) {
-                arma_labels[pair_index] =
-                    (ground_truth_dependencies.contains({ip1, ip2}) ||
-                     ground_truth_dependencies.contains({ip2, ip1}))
-                        ? 1
-                        : 0;
+                labels[pair_idx] = ground_truth.contains({ip_src, ip_dst}) ? 1 : 0;
             }
 
-            // Store vertex pairs if needed
-            if constexpr (WithVertexPairs) {
-                vertex_pairs[pair_index] = {ip1, ip2};
+            if constexpr (WithPairs) {
+                pairs[pair_idx] = {ip_src, ip_dst};
             }
 
-            pair_index++;
+            ++pair_idx;
         }
     }
 }
 
+// ============================================================================
+// Feature Writers
+// ============================================================================
+
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
 template <typename T>
 void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    create_features_and_set_to_tensor(Vertex v1, Vertex v2, const torch::Tensor &v1_emb,
-                                      const torch::Tensor &v2_emb,
-                                      torch::Tensor &features_tensor,
-                                      std::size_t row_index) {
-    // Verify tensor dimensions and type
-    assert(features_tensor.dim() == 2);
-    assert(features_tensor.size(1) ==
-           m_feature_config.get_dimension(m_embedding_module->options.embedding_dim()));
-    assert((std::is_same_v<T, float> &&
-            features_tensor.scalar_type() == c10::ScalarType::Float) ||
-           (std::is_same_v<T, double> &&
-            features_tensor.scalar_type() == c10::ScalarType::Double));
+    write_pair_features(Vertex src, Vertex dst, const torch::Tensor& src_emb,
+                        const torch::Tensor& dst_emb,
+                        torch::TensorAccessor<T, 2>& accessor, std::size_t row) {
 
-    auto features_accessor = features_tensor.accessor<T, 2>();
-    std::size_t col_index = 0;
+    std::size_t col = 0;
 
-    // Apply feature generators by category
-    col_index = add_similarity_features<T>(v1_emb, v2_emb, features_accessor, row_index,
-                                           col_index);
-    col_index = add_statistical_features<T>(v1_emb, v2_emb, features_accessor, row_index,
-                                            col_index);
-    col_index =
-        add_hadamard_features<T>(v1_emb, v2_emb, features_accessor, row_index, col_index);
-    col_index = add_network_features<T>(v1, v2, features_accessor, row_index, col_index);
-    col_index = add_node_features<T>(v1, v2, features_accessor, row_index, col_index);
-    col_index = add_temporal_features<T>(v1, v2, features_accessor, row_index, col_index);
-    col_index =
-        add_bidirectional_features<T>(v1, v2, features_accessor, row_index, col_index);
+    col = write_embedding_similarity_features<T>(src_emb, dst_emb, accessor, row, col);
+    col = write_embedding_asymmetry_features<T>(src_emb, dst_emb, accessor, row, col);
+    col = write_hadamard_features<T>(src_emb, dst_emb, accessor, row, col);
+    col = write_structural_features<T>(src, dst, accessor, row, col);
+    col = write_temporal_features<T>(src, dst, accessor, row, col);
+    col = write_flow_features<T>(src, dst, accessor, row, col);
+    col = write_protocol_features<T>(src, dst, accessor, row, col);
 }
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    add_similarity_features(const torch::Tensor &v1_emb, const torch::Tensor &v2_emb,
-                            torch::TensorAccessor<T, 2> &accessor, std::size_t row,
+    write_embedding_similarity_features(const torch::Tensor& src_emb,
+                                        const torch::Tensor& dst_emb,
+                                        torch::TensorAccessor<T, 2>& accessor,
+                                        std::size_t row, std::size_t col) {
+
+    if (m_config.emb_dot_src_dst) {
+        PROFILE_FEATURE(m_profiler, "emb_dot_src_dst");
+        accessor[row][col++] = math::dot_product<T>(src_emb, dst_emb);
+    }
+    if (m_config.emb_cosine_src_dst) {
+        PROFILE_FEATURE(m_profiler, "emb_cosine_src_dst");
+        accessor[row][col++] = math::cosine_similarity<T>(src_emb, dst_emb);
+    }
+    if (m_config.emb_l1_src_dst) {
+        PROFILE_FEATURE(m_profiler, "emb_l1_src_dst");
+        accessor[row][col++] = math::l1_distance<T>(src_emb, dst_emb);
+    }
+    if (m_config.emb_l2_src_dst) {
+        PROFILE_FEATURE(m_profiler, "emb_l2_src_dst");
+        accessor[row][col++] = math::l2_distance<T>(src_emb, dst_emb);
+    }
+
+    return col;
+}
+
+template <typename GraphTraits, typename EmbeddingModule,
+          typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
+template <typename T>
+std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
+    write_embedding_asymmetry_features(const torch::Tensor& src_emb,
+                                       const torch::Tensor& dst_emb,
+                                       torch::TensorAccessor<T, 2>& accessor,
+                                       std::size_t row, std::size_t col) {
+
+    T src_norm = static_cast<T>(0);
+    T dst_norm = static_cast<T>(0);
+
+    if (m_config.emb_src_norm || m_config.emb_norm_ratio) {
+        src_norm = math::tensor_norm<T>(src_emb);
+    }
+    if (m_config.emb_dst_norm || m_config.emb_norm_ratio) {
+        dst_norm = math::tensor_norm<T>(dst_emb);
+    }
+
+    if (m_config.emb_src_norm) {
+        PROFILE_FEATURE(m_profiler, "emb_src_norm");
+        accessor[row][col++] = src_norm;
+    }
+    if (m_config.emb_dst_norm) {
+        PROFILE_FEATURE(m_profiler, "emb_dst_norm");
+        accessor[row][col++] = dst_norm;
+    }
+    if (m_config.emb_norm_ratio) {
+        PROFILE_FEATURE(m_profiler, "emb_norm_ratio");
+        accessor[row][col++] = math::safe_ratio<T>(src_norm, dst_norm);
+    }
+
+    return col;
+}
+
+template <typename GraphTraits, typename EmbeddingModule,
+          typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
+template <typename T>
+std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
+    write_hadamard_features(const torch::Tensor& src_emb, const torch::Tensor& dst_emb,
+                            torch::TensorAccessor<T, 2>& accessor, std::size_t row,
                             std::size_t col) {
-    if (m_feature_config.cosine_similarity) {
-        accessor[row][col++] = cosine_similarity<T>(v1_emb, v2_emb);
+
+    if (m_config.emb_hadamard_sum) {
+        PROFILE_FEATURE(m_profiler, "emb_hadamard_sum");
+        accessor[row][col++] = math::hadamard_sum<T>(src_emb, dst_emb);
     }
-    if (m_feature_config.dot_product) {
-        accessor[row][col++] = dot_product<T>(v1_emb, v2_emb);
+    if (m_config.emb_hadamard_mean) {
+        PROFILE_FEATURE(m_profiler, "emb_hadamard_mean");
+        accessor[row][col++] = math::hadamard_mean<T>(src_emb, dst_emb);
     }
-    if (m_feature_config.l1_distance) {
-        accessor[row][col++] = (v1_emb - v2_emb).abs().sum().item<T>();
-    }
-    if (m_feature_config.l2_distance) {
-        accessor[row][col++] = euclidean_distance<T>(v1_emb, v2_emb);
-    }
+
     return col;
 }
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    add_statistical_features(const torch::Tensor &v1_emb, const torch::Tensor &v2_emb,
-                             torch::TensorAccessor<T, 2> &accessor, std::size_t row,
-                             std::size_t col) {
-    if (m_feature_config.embedding_std) {
-        T std1 = v1_emb.std().item<T>();
-        T std2 = v2_emb.std().item<T>();
-        accessor[row][col++] = std::min(std1, std2);
-        accessor[row][col++] = std::max(std1, std2);
-    }
-    if (m_feature_config.embedding_abs_mean) {
-        T mean1 = v1_emb.abs().mean().item<T>();
-        T mean2 = v2_emb.abs().mean().item<T>();
-        accessor[row][col++] = std::min(mean1, mean2);
-        accessor[row][col++] = std::max(mean1, mean2);
-    }
-    if (m_feature_config.embedding_norm_ratio) {
-        T v1_norm = v1_emb.norm().item<T>();
-        T v2_norm = v2_emb.norm().item<T>();
+    write_structural_features(Vertex src, Vertex dst,
+                              torch::TensorAccessor<T, 2>& accessor, std::size_t row,
+                              std::size_t col) {
 
-        accessor[row][col++] =
-            (v1_norm > 0 && v2_norm > 0)
-                ? std::min(v1_norm, v2_norm) / std::max(v1_norm, v2_norm)
-                : 0.0;
-    }
-    return col;
-}
-
-template <typename GraphTraits, typename EmbeddingModule,
-          typename GroundTruthDependencies>
-template <typename T>
-std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    add_hadamard_features(const torch::Tensor &v1_emb, const torch::Tensor &v2_emb,
-                          torch::TensorAccessor<T, 2> &accessor, std::size_t row,
-                          std::size_t col) {
-
-    if (!m_feature_config.hadamard_product_sum &&
-        !m_feature_config.hadamard_product_mean &&
-        !m_feature_config.hadamard_product_components) {
+    if (!m_config.are_structural_features_enabled()) {
         return col;
     }
 
-    auto hadamard = v1_emb * v2_emb;
-    if (m_feature_config.hadamard_product_sum) {
-        accessor[row][col++] = hadamard.sum().item<T>();
+    // Degree features
+    if (m_config.struct_in_degree_src) {
+        PROFILE_FEATURE(m_profiler, "struct_in_degree_src");
+        accessor[row][col++] = static_cast<T>(m_graph_analytics.in_degree(src));
     }
-    if (m_feature_config.hadamard_product_mean) {
-        accessor[row][col++] = hadamard.mean().item<T>();
+    if (m_config.struct_out_degree_src) {
+        PROFILE_FEATURE(m_profiler, "struct_out_degree_src");
+        accessor[row][col++] = static_cast<T>(m_graph_analytics.out_degree(src));
     }
-    if (m_feature_config.hadamard_product_components) {
-        for (std::size_t i = 0; i < hadamard.size(0); ++i) {
-            accessor[row][col++] = hadamard[i].item<T>();
+    if (m_config.struct_in_degree_dst) {
+        PROFILE_FEATURE(m_profiler, "struct_in_degree_dst");
+        accessor[row][col++] = static_cast<T>(m_graph_analytics.in_degree(dst));
+    }
+    if (m_config.struct_out_degree_dst) {
+        PROFILE_FEATURE(m_profiler, "struct_out_degree_dst");
+        accessor[row][col++] = static_cast<T>(m_graph_analytics.out_degree(dst));
+    }
+    if (m_config.struct_degree_ratio) {
+        PROFILE_FEATURE(m_profiler, "struct_degree_ratio");
+        T out_src = static_cast<T>(m_graph_analytics.out_degree(src));
+        T in_dst = static_cast<T>(m_graph_analytics.in_degree(dst));
+        accessor[row][col++] = math::safe_ratio<T>(out_src, in_dst);
+    }
+
+    // Cache common neighbors once and reuse for next features
+    const bool need_common_neighbors =
+        m_config.struct_common_neighbors || m_config.struct_jaccard_coefficient ||
+        m_config.struct_adamic_adar_index || m_config.struct_resource_allocation;
+
+    std::vector<Vertex> common_neighbors;
+    std::size_t deg_src = 0, deg_dst = 0;
+
+    if (need_common_neighbors) {
+        common_neighbors = m_graph_analytics.get_common_neighbors(src, dst);
+        deg_src = m_graph_analytics.degree(src);
+        deg_dst = m_graph_analytics.degree(dst);
+    }
+
+    // Common neighbors (normalized)
+    if (m_config.struct_common_neighbors) {
+        PROFILE_FEATURE(m_profiler, "struct_common_neighbors");
+        std::size_t max_possible = std::min(deg_src, deg_dst);
+        double normalized = math::safe_ratio<T>(common_neighbors.size(), max_possible);
+        accessor[row][col++] = static_cast<T>(normalized);
+    }
+
+    // Jaccard coefficient
+    if (m_config.struct_jaccard_coefficient) {
+        PROFILE_FEATURE(m_profiler, "struct_jaccard_coefficient");
+        std::size_t total = deg_src + deg_dst - common_neighbors.size();
+        double jaccard = math::safe_ratio<T>(common_neighbors.size(), total);
+        accessor[row][col++] = static_cast<T>(jaccard);
+    }
+
+    // Adamic-Adar index
+    if (m_config.struct_adamic_adar_index) {
+        PROFILE_FEATURE(m_profiler, "struct_adamic_adar_index");
+        double score = 0.0;
+        for (const auto& w : common_neighbors) {
+            std::size_t deg_w = m_graph_analytics.degree(w);
+            if (deg_w > 1) {
+                score += 1.0 / std::log(static_cast<double>(deg_w));
+            }
         }
+        accessor[row][col++] = static_cast<T>(score);
     }
+
+    // Preferential attachment
+    if (m_config.struct_preferential_attachment) {
+        PROFILE_FEATURE(m_profiler, "struct_preferential_attachment");
+        accessor[row][col++] =
+            static_cast<T>(m_graph_analytics.preferential_attachment(src, dst));
+    }
+
+    // Resource allocation index
+    if (m_config.struct_resource_allocation) {
+        PROFILE_FEATURE(m_profiler, "struct_resource_allocation");
+        double score = 0.0;
+        for (const auto& w : common_neighbors) {
+            std::size_t deg_w = m_graph_analytics.degree(w);
+            if (deg_w > 0) {
+                score += 1.0 / deg_w;
+            }
+        }
+        accessor[row][col++] = static_cast<T>(score);
+    }
+
+    // Transitive reachability (2-hop paths)
+    if (m_config.struct_transitive_reachability) {
+        PROFILE_FEATURE(m_profiler, "struct_transitive_reachability");
+        std::size_t count = m_transitive_path_cache.get(src, dst).value_or(0);
+        accessor[row][col++] = static_cast<T>(count);
+    }
+
+    // Shortest path (excluding direct edge)
+    if (m_config.struct_shortest_path) {
+        PROFILE_FEATURE(m_profiler, "struct_shortest_path");
+        std::size_t dist = m_shortest_path_cache.get(src, dst).value_or(999);
+        accessor[row][col++] = static_cast<T>(dist);
+    }
+
+    // Hierarchy difference
+    if (m_config.struct_hierarchy_diff) {
+        PROFILE_FEATURE(m_profiler, "struct_hierarchy_diff");
+        T in_src = static_cast<T>(m_graph_analytics.in_degree(src));
+        T out_src = static_cast<T>(m_graph_analytics.out_degree(src));
+        T in_dst = static_cast<T>(m_graph_analytics.in_degree(dst));
+        T out_dst = static_cast<T>(m_graph_analytics.out_degree(dst));
+
+        T level_src = std::log(in_src + static_cast<T>(1.0)) -
+                      std::log(out_src + static_cast<T>(1.0));
+        T level_dst = std::log(in_dst + static_cast<T>(1.0)) -
+                      std::log(out_dst + static_cast<T>(1.0));
+        accessor[row][col++] = level_dst - level_src;
+    }
+
     return col;
 }
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    add_network_features(Vertex v1, Vertex v2, torch::TensorAccessor<T, 2> &accessor,
-                         std::size_t row, std::size_t col) {
-    if (m_feature_config.common_neighbors_count) {
-        accessor[row][col++] =
-            static_cast<T>(m_graph_analytics.normalized_common_neighbors_count(v1, v2));
-    }
-    if (m_feature_config.jaccard_coefficient) {
-        accessor[row][col++] =
-            static_cast<T>(m_graph_analytics.jaccard_coefficient(v1, v2));
-    }
-    if (m_feature_config.adamic_adar_index) {
-        accessor[row][col++] =
-            static_cast<T>(m_graph_analytics.adamic_adar_index(v1, v2));
-    }
-    if (m_feature_config.preferential_attachment) {
-        accessor[row][col++] =
-            static_cast<T>(m_graph_analytics.preferential_attachment(v1, v2));
-    }
-    if (m_feature_config.resource_allocation_index) {
-        accessor[row][col++] =
-            static_cast<T>(m_graph_analytics.resource_allocation_index(v1, v2));
-    }
-    return col;
-}
+    write_temporal_features(Vertex src, Vertex dst, torch::TensorAccessor<T, 2>& accessor,
+                            std::size_t row, std::size_t col) {
 
-template <typename GraphTraits, typename EmbeddingModule,
-          typename GroundTruthDependencies>
-template <typename T>
-std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    add_node_features(Vertex v1, Vertex v2, torch::TensorAccessor<T, 2> &accessor,
-                      std::size_t row, std::size_t col) {
-    if (m_feature_config.node_degree) {
-        T avg_degree = get_set_avg_degree<T>();
-        T deg1 = static_cast<T>(m_graph_analytics.degree(v1)) / avg_degree;
-        T deg2 = static_cast<T>(m_graph_analytics.degree(v2)) / avg_degree;
-
-        accessor[row][col++] = std::min(deg1, deg2);
-        accessor[row][col++] = std::max(deg1, deg2);
-    }
-    return col;
-}
-
-template <typename GraphTraits, typename EmbeddingModule,
-          typename GroundTruthDependencies>
-template <typename T>
-T FeatureGenerator<GraphTraits, EmbeddingModule,
-                   GroundTruthDependencies>::cosine_similarity(const torch::Tensor &a,
-                                                               const torch::Tensor &b) {
-    // Calculate norms
-    T norm_a = a.norm().item<T>();
-    T norm_b = b.norm().item<T>();
-
-    // Avoid division by zero
-    if (norm_a < 1e-8 || norm_b < 1e-8) {
-        return 0.0;
-    }
-
-    // Calculate cosine similarity: dot(a,b) / (||a|| * ||b||)
-    return torch::dot(a, b).item<T>() / (norm_a * norm_b);
-}
-
-template <typename GraphTraits, typename EmbeddingModule,
-          typename GroundTruthDependencies>
-template <typename T>
-T FeatureGenerator<GraphTraits, EmbeddingModule,
-                   GroundTruthDependencies>::euclidean_distance(const torch::Tensor &a,
-                                                                const torch::Tensor &b) {
-    // Calculate Euclidean (L2) distance
-    return torch::pairwise_distance(a.unsqueeze(0), b.unsqueeze(0)).item<T>();
-}
-
-template <typename GraphTraits, typename EmbeddingModule,
-          typename GroundTruthDependencies>
-template <typename T>
-T FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::dot_product(
-    const torch::Tensor &a, const torch::Tensor &b) {
-    // Calculate dot product: a·b
-    return torch::dot(a, b).item<T>();
-}
-
-template <typename GraphTraits, typename EmbeddingModule,
-          typename GroundTruthDependencies>
-template <typename T>
-T FeatureGenerator<GraphTraits, EmbeddingModule,
-                   GroundTruthDependencies>::get_set_avg_degree() {
-    if (!m_avg_degree.has_value()) {
-        m_avg_degree = m_graph_analytics.avg_degree();
-    }
-    return m_avg_degree.value();
-}
-
-template <typename GraphTraits, typename EmbeddingModule,
-          typename GroundTruthDependencies>
-template <typename T>
-std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    add_temporal_features(Vertex v1, Vertex v2, torch::TensorAccessor<T, 2> &accessor,
-                          std::size_t row, std::size_t col) {
-    if (!m_feature_config.are_temporal_features_enabled()) {
+    if (!m_config.are_temporal_features_enabled()) {
         return col;
     }
 
-    const TemporalFeatureExtractor::TemporalFeatures features =
-        TemporalFeatureExtractor::extract_all_features(
-            m_graph_analytics.get_graph_manager(), v1, v2, m_feature_config);
+    decltype(TemporalFeatureExtractor::extract(m_graph_analytics.get_graph_manager(), src,
+                                               dst, m_config)) features;
+    {
+        PROFILE_FEATURE(m_profiler, "TemporalFeatureExtractor::extract");
+        features = TemporalFeatureExtractor::extract(
+            m_graph_analytics.get_graph_manager(), src, dst, m_config);
+    }
 
-    if (m_feature_config.temporal_avg_duration) {
+    if (m_config.time_avg_duration) {
+        PROFILE_FEATURE(m_profiler, "time_avg_duration");
         accessor[row][col++] = static_cast<T>(features.avg_duration.value_or(0.0));
     }
-    if (m_feature_config.temporal_avg_inter_arrival) {
-        accessor[row][col++] = static_cast<T>(features.avg_inter_arrival.value_or(0.0));
+    if (m_config.time_avg_interarrival) {
+        PROFILE_FEATURE(m_profiler, "time_avg_interarrival");
+        accessor[row][col++] = static_cast<T>(features.avg_interarrival.value_or(0.0));
     }
-    if (m_feature_config.temporal_var_inter_arrival) {
-        accessor[row][col++] = static_cast<T>(features.var_inter_arrival.value_or(0.0));
-    }
-    if (m_feature_config.temporal_regularity) {
+    if (m_config.time_regularity) {
+        PROFILE_FEATURE(m_profiler, "time_regularity");
         accessor[row][col++] = static_cast<T>(features.regularity.value_or(0.0));
     }
-    if (m_feature_config.temporal_concentration) {
-        accessor[row][col++] =
-            static_cast<T>(features.temporal_concentration.value_or(0.0));
+    if (m_config.time_direction_bias) {
+        PROFILE_FEATURE(m_profiler, "time_direction_bias");
+        accessor[row][col++] = static_cast<T>(features.direction_bias.value_or(0.0));
+    }
+    if (m_config.time_initiation_order) {
+        PROFILE_FEATURE(m_profiler, "time_initiation_order");
+        accessor[row][col++] = static_cast<T>(features.initiation_order.value_or(0.0));
+    }
+    if (m_config.time_crosscorr_peak) {
+        PROFILE_FEATURE(m_profiler, "time_crosscorr_peak");
+        accessor[row][col++] = static_cast<T>(features.crosscorr_max.value_or(0.0));
+        accessor[row][col++] = static_cast<T>(features.crosscorr_lag.value_or(0.0));
+    }
+    if (m_config.time_spike_score) {
+        PROFILE_FEATURE(m_profiler, "time_spike_score");
+        accessor[row][col++] = static_cast<T>(features.spike_score.value_or(0.0));
     }
 
     return col;
@@ -442,34 +533,173 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
-    add_bidirectional_features(Vertex v1, Vertex v2,
-                               torch::TensorAccessor<T, 2> &accessor, std::size_t row,
-                               std::size_t col) {
-    if (!m_feature_config.are_bidirectional_features_enabled()) {
+    write_flow_features(Vertex src, Vertex dst, torch::TensorAccessor<T, 2>& accessor,
+                        std::size_t row, std::size_t col) {
+
+    if (!m_config.are_flow_features_enabled()) {
         return col;
     }
 
-    const BidirectionalFeatureExtractor::BidirectionalFeatures features =
-        BidirectionalFeatureExtractor::extract_all_features(
-            m_graph_analytics.get_graph_manager(), v1, v2, m_feature_config);
+    decltype(BidirectionalFeatureExtractor::extract(m_graph_analytics.get_graph_manager(),
+                                                    src, dst, m_config)) features;
+    {
+        PROFILE_FEATURE(m_profiler, "BidirectionalFeatureExtractor::extract");
+        features = BidirectionalFeatureExtractor::extract(
+            m_graph_analytics.get_graph_manager(), src, dst, m_config);
+    }
 
-    if (m_feature_config.bidirectional_has_flows) {
-        accessor[row][col++] =
-            static_cast<T>(features.has_bidirectional_flows.value_or(false) ? 1.0 : 0.0);
+    if (m_config.flow_response_time) {
+        PROFILE_FEATURE(m_profiler, "flow_response_time");
+        accessor[row][col++] = static_cast<T>(features.response_time.value_or(0.0));
     }
-    if (m_feature_config.bidirectional_response_time) {
-        accessor[row][col++] = static_cast<T>(features.avg_response_time.value_or(0.0));
+    if (m_config.flow_request_ratio) {
+        PROFILE_FEATURE(m_profiler, "flow_request_ratio");
+        accessor[row][col++] = static_cast<T>(features.request_ratio.value_or(0.0));
     }
-    if (m_feature_config.bidirectional_request_ratio) {
-        accessor[row][col++] =
-            static_cast<T>(features.request_response_ratio.value_or(0.0));
+    if (m_config.flow_direction_asymmetry) {
+        PROFILE_FEATURE(m_profiler, "flow_direction_asymmetry");
+        accessor[row][col++] = static_cast<T>(features.direction_asymmetry.value_or(0.0));
     }
-    if (m_feature_config.bidirectional_asymmetry) {
-        accessor[row][col++] =
-            static_cast<T>(features.directional_asymmetry.value_or(0.0));
+    if (m_config.flow_causality_score) {
+        PROFILE_FEATURE(m_profiler, "flow_causality_score");
+        accessor[row][col++] = static_cast<T>(features.causality_score.value_or(0.0));
     }
 
     return col;
+}
+
+template <typename GraphTraits, typename EmbeddingModule,
+          typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
+template <typename T>
+std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
+    write_protocol_features(Vertex src, Vertex dst, torch::TensorAccessor<T, 2>& accessor,
+                            std::size_t row, std::size_t col) {
+
+    if (!m_config.are_network_features_enabled()) {
+        return col;
+    }
+
+    decltype(ProtocolFeatureExtractor::extract(m_graph_analytics.get_graph_manager(), src,
+                                               dst, m_config)) features;
+    {
+        PROFILE_FEATURE(m_profiler, "ProtocolFeatureExtractor::extract");
+        features = ProtocolFeatureExtractor::extract(
+            m_graph_analytics.get_graph_manager(), src, dst, m_config);
+    }
+
+    if (m_config.net_protocol_role) {
+        PROFILE_FEATURE(m_profiler, "net_protocol_role");
+        accessor[row][col++] = static_cast<T>(features.protocol_role.value_or(0.0));
+    }
+    if (m_config.net_port_role) {
+        PROFILE_FEATURE(m_profiler, "net_port_role");
+        accessor[row][col++] = static_cast<T>(features.port_role.value_or(0.0));
+    }
+
+    return col;
+}
+
+// ============================================================================
+// Helper Utilities
+// ============================================================================
+
+template <typename GraphTraits, typename EmbeddingModule,
+          typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies>
+void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
+    precompute_expensive_features(const std::vector<Vertex>& vertices) const {
+
+    std::cout << "[FeatureGenerator] Pre-computing expensive features for "
+              << vertices.size() << " vertices..." << std::endl;
+    auto total_start = std::chrono::high_resolution_clock::now();
+
+    const auto& gm = m_graph_analytics.get_graph_manager();
+
+    // Pre-compute shortest paths
+    if (m_config.struct_shortest_path) {
+        auto start = std::chrono::high_resolution_clock::now();
+        m_shortest_path_cache.clear();
+
+        std::size_t total_paths = 0;
+        for (const auto& src : vertices) {
+            // BFS from src to all other vertices using unordered_set for visited
+            std::queue<std::pair<Vertex, std::size_t>> queue;
+            std::unordered_map<Vertex, std::size_t> distances;
+            distances.reserve(vertices.size()); // Pre-allocate
+
+            queue.push({src, 0});
+            distances[src] = 0;
+
+            while (!queue.empty()) {
+                auto [current, dist] = queue.front();
+                queue.pop();
+
+                for (const auto& neighbor : gm.get_neighbors(current)) {
+                    if (distances.find(neighbor) == distances.end()) {
+                        distances[neighbor] = dist + 1;
+                        queue.push({neighbor, dist + 1});
+                    }
+                }
+            }
+
+            // Batch insert: store only indirect paths (dist > 1)
+            for (const auto& [dst, dist] : distances) {
+                if (dst != src && dist > 1) { // Exclude self and direct edges
+                    m_shortest_path_cache.put(src, dst, dist);
+                    ++total_paths;
+                }
+            }
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "  [Shortest Path] " << elapsed << "ms -> cached " << total_paths
+                  << " paths" << std::endl;
+    }
+
+    // Pre-compute transitive paths (2-hop counts)
+    if (m_config.struct_transitive_reachability) {
+        auto start = std::chrono::high_resolution_clock::now();
+        m_transitive_path_cache.clear();
+
+        std::size_t total_paths = 0;
+        for (const auto& src : vertices) {
+            std::unordered_map<Vertex, std::size_t> two_hop_counts;
+            two_hop_counts.reserve(vertices.size());
+
+            const auto src_neighbors = gm.get_neighbors(src);
+            for (const auto& intermediate : src_neighbors) {
+                const auto dst_neighbors = gm.get_neighbors(intermediate);
+                for (const auto& dst : dst_neighbors) {
+                    if (dst != src) { // Don't count back to source
+                        two_hop_counts[dst]++;
+                    }
+                }
+            }
+
+            // Batch insert: store all 2-hop counts for this source at once
+            for (const auto& [dst, count] : two_hop_counts) {
+                m_transitive_path_cache.put(src, dst, count);
+                ++total_paths;
+            }
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cout << "  [Transitive Paths] " << elapsed << "ms -> cached " << total_paths
+                  << " paths" << std::endl;
+    }
+
+    auto total_end = std::chrono::high_resolution_clock::now();
+    auto total_elapsed =
+        std::chrono::duration_cast<std::chrono::milliseconds>(total_end - total_start)
+            .count();
+    std::cout << "[FeatureGenerator] Pre-computation complete: " << total_elapsed
+              << "ms total" << std::endl;
 }
