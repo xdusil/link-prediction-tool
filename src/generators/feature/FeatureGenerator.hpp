@@ -9,7 +9,7 @@
 #include "graph/network/INetworkGraphManager.hpp"
 #include "utils/cache/FeatureCache.hpp"
 #include "utils/math/TensorMath.hpp"
-#include "utils/timers/FeatureProfiler.hpp"
+#include "utils/profilers/FeatureProfiler.hpp"
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -89,7 +89,7 @@ private:
     const IGraphAnalytics<GraphTraits>& m_graph_analytics;
     EmbeddingModule& m_embedding_module;
     FeatureConfig m_config;
-    mutable FeatureProfiler m_profiler;
+    mutable profilers::FeatureProfiler m_profiler;
 
     // Caches for expensive graph computations
     mutable FeatureCache<Vertex, std::size_t> m_shortest_path_cache;
