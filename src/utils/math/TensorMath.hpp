@@ -146,11 +146,13 @@ inline T tensor_norm(const torch::Tensor& tensor) {
  * @param numerator Numerator value
  * @param denominator Denominator value
  * @param epsilon Threshold for considering denominator as zero (default: 1e-8)
- * @return numerator / denominator if denominator > epsilon, else 1.0
+ * @param default_value Value to return if denominator is too small (default: 0.0)
+ * @return numerator / denominator if denominator > epsilon, else default_value
  */
 template <typename T>
-inline T safe_ratio(T numerator, T denominator, T epsilon = static_cast<T>(1e-8)) {
-    return (denominator > epsilon) ? numerator / denominator : static_cast<T>(1.0);
+inline T safe_ratio(T numerator, T denominator, T epsilon = static_cast<T>(1e-8),
+                    T default_value = static_cast<T>(0.0)) {
+    return (denominator > epsilon) ? numerator / denominator : default_value;
 }
 
 } // namespace math
