@@ -21,7 +21,7 @@ void validate_parameter_combinations(const Config& config) {
     }
     
     // Check that at least one feature is enabled
-    bool any_feature_enabled = config.FEATURE_CONFIG.get_dimension(config.EMBEDDING_DIM) > 0;
+    bool any_feature_enabled = config.FEATURE_CONFIG.get_dimension() > 0;
     if (!any_feature_enabled) {
         throw ConfigurationException("At least one feature must be enabled in FEATURE_CONFIG");
     }
