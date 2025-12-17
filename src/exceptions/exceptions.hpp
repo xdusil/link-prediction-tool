@@ -126,3 +126,12 @@ class FlowProcessorException : public ApplicationException {
 class GraphEmptyException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
+
+/**
+ * @brief Embedding exception class
+ *
+ * Exception will be thrown when an error occurs during embedding operations
+ */
+class EmbeddingException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};
