@@ -48,13 +48,12 @@ struct DirectionalTrainingBatch {
  * - Negative pairs: maximize log σ(-src[u] · dst[neg])
  */
 class DirectionalSkipGramModel
-    : public IModel<DirectionalTrainingBatch,   // Input type
-                    torch::Tensor,              // Output type
-                    torch::Tensor,              // Loss type
-                    DirectionalEmbeddings,      // Embedding type
-                    std::vector<torch::Tensor>> // Parameters type
-    ,
-      public torch::nn::Module {
+    : public IModel<DirectionalTrainingBatch,             // Input type
+                    torch::Tensor,                        // Output type
+                    torch::Tensor,                        // Loss type
+                    DirectionalEmbeddings,                // Embedding type
+                    std::vector<torch::Tensor>>           // Parameters type
+    , public torch::nn::Module {
 public:
     /**
      * @brief Construct the model.
@@ -107,11 +106,10 @@ public:
      */
     std::vector<torch::Tensor> get_parameters() override {
         std::vector<torch::Tensor> flat_params;
-        flat_params.insert(flat_params.end(), m_source_embeddings->parameters().begin(),
-                           m_source_embeddings->parameters().end());
-        flat_params.insert(flat_params.end(),
-                           m_destination_embeddings->parameters().begin(),
-                           m_destination_embeddings->parameters().end());
+        const auto& src_params = m_source_embeddings->parameters();
+        flat_params.insert(flat_params.end(), src_params.begin(), src_params.end());
+        const auto& dst_params = m_destination_embeddings->parameters();
+        flat_params.insert(flat_params.end(), dst_params.begin(), dst_params.end());
         return flat_params;
     }
 
