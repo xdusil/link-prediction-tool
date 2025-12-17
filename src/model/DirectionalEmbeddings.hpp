@@ -1,5 +1,8 @@
 #pragma once
 
+#include "exceptions/exceptions.hpp"
+#include <memory>
+#include <torch/nn/modules/embedding.h>
 #include <torch/torch.h>
 
 /**
@@ -19,26 +22,33 @@ public:
      * @param dest_emb Destination embeddings (for nodes acting as callees/servers).
      */
     DirectionalEmbeddings(torch::nn::Embedding source_emb, torch::nn::Embedding dest_emb)
-        : m_source_embeddings(source_emb), m_destination_embeddings(dest_emb) {}
+        : m_source_embeddings(std::move(source_emb)),
+          m_destination_embeddings(std::move(dest_emb)) {
+        if (m_source_embeddings->options.embedding_dim() !=
+            m_destination_embeddings->options.embedding_dim()) {
+            throw EmbeddingException(
+                "Source and destination embeddings must have the same dimension.");
+        }
+    }
 
     /**
      * @brief Get source embedding for given indices.
      *
-     * @param indices Vertex indices.
+     * @param indices Vertex indices [N].
      * @return Embeddings tensor [N, embedding_dim].
      */
-    const torch::Tensor source(const torch::Tensor& indices) {
-        return m_source_embeddings(indices);
+    torch::Tensor forward_src(const torch::Tensor& indices) {
+        return m_source_embeddings->forward(indices);
     }
 
     /**
      * @brief Get destination embedding for given indices.
      *
-     * @param indices Vertex indices.
+     * @param indices Vertex indices [N].
      * @return Embeddings tensor [N, embedding_dim].
      */
-    const torch::Tensor destination(const torch::Tensor& indices) {
-        return m_destination_embeddings(indices);
+    torch::Tensor forward_dst(const torch::Tensor& indices) {
+        return m_destination_embeddings->forward(indices);
     }
 
     /**
