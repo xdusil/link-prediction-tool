@@ -6,7 +6,7 @@
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::FeatureGenerator(
     const IGraphAnalytics<GraphTraits>& graph_analytics,
     EmbeddingModule& embedding_module, const FeatureConfig& config)
@@ -20,7 +20,7 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::Feature
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 std::tuple<torch::Tensor, arma::Row<std::size_t>>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     generate_labeled_features(
@@ -34,7 +34,7 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 std::tuple<torch::Tensor, arma::Row<std::size_t>,
            std::vector<std::pair<IPAddress, IPAddress>>>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
@@ -47,7 +47,7 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 std::tuple<torch::Tensor, std::vector<std::pair<IPAddress, IPAddress>>>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     generate_unlabeled_features_with_pairs(
@@ -63,7 +63,7 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 template <bool WithLabels, bool WithPairs>
 std::tuple<torch::Tensor, arma::Row<std::size_t>,
            std::vector<std::pair<IPAddress, IPAddress>>>
@@ -114,8 +114,8 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::generat
 
         torch::Tensor indices_tensor = torch::tensor(indices, idx_opts);
 
-        std::tie(source_embeddings, dest_embeddings) =
-            m_embedding_module.forward_both(indices_tensor);
+        source_embeddings = m_embedding_module.forward_src(indices_tensor);
+        dest_embeddings = m_embedding_module.forward_dst(indices_tensor);
     }
 
     process_all_pairs<WithLabels, WithPairs>(vertex_ips, source_embeddings,
@@ -131,7 +131,7 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::generat
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 std::pair<std::vector<IPAddress>, std::vector<int64_t>>
 FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     prepare_sorted_vertices(
@@ -162,7 +162,7 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 template <bool WithLabels, bool WithPairs>
 void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     process_all_pairs(const std::vector<IPAddress>& vertex_ips,
@@ -241,7 +241,7 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 template <typename T>
 void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     write_pair_features(Vertex src, Vertex dst, const torch::Tensor& src_emb,
@@ -261,7 +261,7 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     write_embedding_similarity_features(const torch::Tensor& src_emb,
@@ -291,7 +291,7 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     write_embedding_asymmetry_features(const torch::Tensor& src_emb,
@@ -327,7 +327,7 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     write_hadamard_features(const torch::Tensor& src_emb, const torch::Tensor& dst_emb,
@@ -348,7 +348,7 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     write_structural_features(Vertex src, Vertex dst,
@@ -480,7 +480,7 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     write_temporal_features(Vertex src, Vertex dst, torch::TensorAccessor<T, 2>& accessor,
@@ -533,7 +533,7 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     write_flow_features(Vertex src, Vertex dst, torch::TensorAccessor<T, 2>& accessor,
@@ -573,7 +573,7 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 template <typename T>
 std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     write_protocol_features(Vertex src, Vertex dst, torch::TensorAccessor<T, 2>& accessor,
@@ -609,7 +609,7 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     precompute_expensive_features(const std::vector<Vertex>& vertices) const {
 

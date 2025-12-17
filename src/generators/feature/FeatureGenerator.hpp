@@ -22,6 +22,17 @@
 #include <vector>
 
 /**
+ * @brief Concept to ensure EmbeddingModule has directional forward methods.
+ *
+ * @tparam EmbeddingModule The embedding module type to check.
+ */
+template <typename EmbeddingModule>
+concept HasDirectionalForward = requires(EmbeddingModule &m, const torch::Tensor &indices) {
+    {m.forward_src(indices)} -> std::same_as<torch::Tensor>;
+    {m.forward_dst(indices)} -> std::same_as<torch::Tensor>;
+};
+
+/**
  * @brief Feature generator for directed link prediction.
  *
  * @tparam GraphTraits The graph traits type defining the graph element types.
@@ -30,7 +41,7 @@
  */
 template <typename GraphTraits, typename EmbeddingModule,
           typename GroundTruthDependencies>
-    requires HasContains<GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
 class FeatureGenerator
     : public IFeatureGenerator<typename GraphTraits::Vertex, GroundTruthDependencies> {
 public:
