@@ -132,7 +132,7 @@ public:
                are_network_features_enabled();
     }
 
-    constexpr std::size_t get_dimension(std::size_t /*embedding_dim*/) const noexcept {
+    constexpr std::size_t get_dimension() const noexcept {
         std::size_t dim = 0;
 
         // 1. Directional Embedding Similarity (4 features)
@@ -187,9 +187,9 @@ public:
         return dim;
     }
 
-    std::vector<std::string> get_feature_names(std::size_t /*embedding_dim*/) const {
+    std::vector<std::string> get_feature_names() const {
         std::vector<std::string> names;
-        names.reserve(get_dimension(0));
+        names.reserve(get_dimension());
 
         // 1. Directional Embedding Similarity
         if (emb_dot_src_dst)
