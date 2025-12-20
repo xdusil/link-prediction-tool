@@ -5,10 +5,10 @@
 #include <vector>
 
 /**
- * @brief Generic interface for managing graphs.
+ * @brief Generic interface for managing directed graphs.
  *
- * This interface provides methods for adding vertices and edges to a graph, as well as
- * accessing the vertices and edges in the graph.
+ * This interface provides methods for adding vertices and edges to a directed graph,
+ * as well as accessing the vertices and edges in the graph.
  *
  * @tparam GraphTraits The graph traits type defining the graph element types.
  */
@@ -36,7 +36,7 @@ public:
     virtual Vertex add_vertex(const VertexProperties &properties) = 0;
 
     /**
-     * @brief Add an edge between two vertices with associated properties.
+     * @brief Add a directed edge from src to dst with associated properties.
      *
      * @param src The source vertex.
      * @param dst The destination vertex.
@@ -47,7 +47,7 @@ public:
                           const EdgeProperties &properties) = 0;
 
     /**
-     * @brief Add an edge between two vertices with associated properties.
+     * @brief Add a directed edge between two vertices with associated properties.
      * If the vertices do not exist, they are added to the graph.
      *
      * @param src_properties Properties of the source vertex.
@@ -55,9 +55,9 @@ public:
      * @param properties Properties of the edge to add.
      * @return True if the edge was successfully added, false otherwise.
      */
-     virtual bool add_edge_and_vertex_if_not_exists(const VertexProperties &src_properties,
-        const VertexProperties &dst_properties,
-        const EdgeProperties &properties) = 0;
+    virtual bool add_edge_and_vertex_if_not_exists(const VertexProperties &src_properties,
+                                                   const VertexProperties &dst_properties,
+                                                   const EdgeProperties &properties) = 0;
 
     /**
      * @brief Get count of vertices in the graph.
@@ -129,68 +129,80 @@ public:
     virtual const EdgeProperties &get_edge_properties(const Edge &edge) const = 0;
 
     /**
-     * @brief Get the degree of a vertex.
+     * @brief Get the in-degree of a vertex (number of incoming edges).
      *
-     * @param vertex The vertex to get the degree for.
-     * @return The degree of the vertex.
+     * @param vertex The vertex to get the in-degree for.
+     * @return The in-degree of the vertex.
      */
-     virtual std::size_t get_degree(const Vertex &vertex) const = 0;
+    virtual std::size_t get_in_degree(const Vertex &vertex) const = 0;
 
-     /**
-      * @brief Get the in-degree of a vertex.
-      *
-      * @param vertex The vertex to get the in-degree for.
-      * @return The in-degree of the vertex.
-      */
-     virtual std::size_t get_in_degree(const Vertex &vertex) const = 0;
+    /**
+     * @brief Get the out-degree of a vertex (number of outgoing edges).
+     *
+     * @param vertex The vertex to get the out-degree for.
+     * @return The out-degree of the vertex.
+     */
+    virtual std::size_t get_out_degree(const Vertex &vertex) const = 0;
 
-     /**
-      * @brief Get the out-degree of a vertex.
-      *
-      * @param vertex The vertex to get the out-degree for.
-      * @return The out-degree of the vertex.
-      */
-     virtual std::size_t get_out_degree(const Vertex &vertex) const = 0;
+    /**
+     * @brief Get out-neighbors of a vertex (vertices this vertex points to).
+     *
+     * Returns all vertices v such that there exists an edge (vertex -> v).
+     *
+     * @param vertex The vertex to get out-neighbors for.
+     * @return Vector of out-neighbor vertices.
+     */
+    virtual std::vector<Vertex> get_out_neighbors(const Vertex &vertex) const = 0;
 
-     /**
-      * @brief Get neighbors of a vertex.
-      *
-      * @param vertex The vertex to get neighbors for.
-      * @return Vector of neighbor vertices.
-      */
-     virtual std::vector<Vertex> get_neighbors(const Vertex &vertex) const = 0;
- 
-     /**
-      * @brief Check if two vertices are connected.
-      *
-      * @param u First vertex
-      * @param v Second vertex
-      * @return True if vertices are connected, false otherwise.
-      */
-     virtual bool are_connected(const Vertex &u, const Vertex &v) const = 0;
- 
-     /**
-      * @brief Get common neighbors between two vertices.
-      *
-      * @param u First vertex
-      * @param v Second vertex
-      * @return Vector of common neighbor vertices
-      */
-     virtual std::vector<Vertex> get_common_neighbors(const Vertex &u, const Vertex &v) const = 0;
- 
-     /**
-      * @brief Get count of common neighbors between two vertices.
-      *
-      * @param u First vertex
-      * @param v Second vertex
-      * @return Number of common neighbors
-      */
-     virtual std::size_t get_common_neighbors_count(const Vertex &u, const Vertex &v) const = 0;
+    /**
+     * @brief Get in-neighbors of a vertex (vertices that point to this vertex).
+     *
+     * Returns all vertices u such that there exists an edge (u -> vertex).
+     *
+     * @param vertex The vertex to get in-neighbors for.
+     * @return Vector of in-neighbor vertices.
+     */
+    virtual std::vector<Vertex> get_in_neighbors(const Vertex &vertex) const = 0;
+
+    /**
+     * @brief Check if a directed edge exists from src to dst.
+     *
+     * @param src Source vertex
+     * @param dst Destination vertex
+     * @return True if edge (src -> dst) exists, false otherwise.
+     */
+    virtual bool has_edge(const Vertex &src, const Vertex &dst) const = 0;
+
+    /**
+     * @brief Get common out-neighbors between two vertices.
+     *
+     * Returns vertices that both u and v point to:
+     * { w : (u -> w) AND (v -> w) }
+     *
+     * @param u First vertex
+     * @param v Second vertex
+     * @return Vector of common out-neighbor vertices
+     */
+    virtual std::vector<Vertex> get_common_out_neighbors(const Vertex &u,
+                                                         const Vertex &v) const = 0;
+
+    /**
+     * @brief Get common in-neighbors between two vertices.
+     *
+     * Returns vertices that point to both u and v:
+     * { w : (w -> u) AND (w -> v) }
+     *
+     * @param u First vertex
+     * @param v Second vertex
+     * @return Vector of common in-neighbor vertices
+     */
+    virtual std::vector<Vertex> get_common_in_neighbors(const Vertex &u,
+                                                        const Vertex &v) const = 0;
 
     /**
      * @brief Get the underlying graph object.
      *
      * @return The underlying graph.
      */
-     virtual const GraphType &get_graph() const = 0;
+    virtual const GraphType &get_graph() const = 0;
 };
