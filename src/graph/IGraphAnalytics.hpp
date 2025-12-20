@@ -47,7 +47,8 @@ public:
      * @brief Calculate directional Jaccard coefficient.
      *
      * Uses directional common neighbors: vertices w where (u -> w) AND (w -> v).
-     * Jaccard = |out_neighbors(u) ∩ in_neighbors(v)| / |out_neighbors(u) ∪ in_neighbors(v)|
+     * Jaccard = |out_neighbors(u) ∩ in_neighbors(v)| / |out_neighbors(u) ∪
+     * in_neighbors(v)|
      *
      * @param u Source vertex (potential edge origin)
      * @param v Destination vertex (potential edge target)
@@ -58,7 +59,7 @@ public:
     /**
      * @brief Get directional common neighbors count.
      *
-     * Counts vertices w where (u -> w) AND (w -> v), i.e., 2-hop paths from u to v.
+     * Counts vertices w where (u -> w) AND (w -> v), forming 2-hop paths from u to v.
      *
      * @param u Source vertex (potential edge origin)
      * @param v Destination vertex (potential edge target)
@@ -83,7 +84,7 @@ public:
     /**
      * @brief Get directional common neighbors for predicting edge (u -> v).
      *
-     * Returns vertices w where (u -> w) AND (w -> v), forming 2-hop paths.
+     * Returns vertices w where (u -> w) AND (w -> v), i.e., out_neighbors(u) ∩ in_neighbors(v).
      *
      * @param u Source vertex (potential edge origin)
      * @param v Destination vertex (potential edge target)
