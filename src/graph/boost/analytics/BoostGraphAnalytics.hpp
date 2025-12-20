@@ -29,80 +29,90 @@ public:
         : m_graph_manager(graph_manager) {}
 
     /**
-     * @brief Calculate Adamic-Adar index between two vertices.
+     * @brief Calculate directional Adamic-Adar index.
      *
-     * @param u First vertex
-     * @param v Second vertex
-     * @return The Adamic-Adar score
+     * Uses directional common neighbors: vertices w where (u -> w) AND (w -> v).
+     * For each such w, contributes 1/log(out_degree(w)).
+     * out_degree(w) is used because w acts as an intermediary forwarding connections.
+     *
+     * @param u Source vertex
+     * @param v Destination vertex
+     * @return The directional Adamic-Adar score
      */
     double adamic_adar_index(const Vertex &u, const Vertex &v) const override;
 
     /**
-     * @brief Calculate Jaccard coefficient between two vertices.
+     * @brief Calculate directional Jaccard coefficient.
      *
-     * @param u First vertex
-     * @param v Second vertex
-     * @return The Jaccard coefficient
+     * Uses directional common neighbors: vertices w where (u -> w) AND (w -> v).
+     * Jaccard = |out_neighbors(u) ∩ in_neighbors(v)| / |out_neighbors(u) ∪ in_neighbors(v)|
+     * 
+     * @param u Source vertex
+     * @param v Destination vertex
+     * @return The directional Jaccard coefficient
      */
     double jaccard_coefficient(const Vertex &u, const Vertex &v) const override;
 
     /**
-     * @brief Calculate common neighbors count between two vertices.
+     * @brief Get directional common neighbors count.
      *
-     * @param u First vertex
-     * @param v Second vertex
-     * @return Number of common neighbors
+     * Counts vertices w where (u -> w) AND (w -> v), forming 2-hop paths from u to v.
+     * 
+     * @param u Source vertex
+     * @param v Destination vertex
+     * @return Number of directional common neighbors
      */
     std::size_t common_neighbors_count(const Vertex &u, const Vertex &v) const override;
 
     /**
-     * @brief Calculate normalized common neighbors count between two vertices.
+     * @brief Calculate normalized directional common neighbors count.
      *
-     * This metric is the common neighbors count divided by the maximum possible
-     * number of common neighbors for these two vertices, which is min(deg_u, deg_v).
-     *
-     * @param u First vertex
-     * @param v Second vertex
-     * @return Normalized common neighbors count in range [0,1]
+     * Normalized by min(out_degree(u), in_degree(v)) - the maximum possible
+     * number of directional common neighbors for these two vertices.
+     * 
+     * @param u Source vertex
+     * @param v Destination vertex
+     * @return Normalized directional common neighbors count in range [0,1]
      */
     double normalized_common_neighbors_count(const Vertex &u,
                                              const Vertex &v) const override;
 
     /**
-     * @brief Get common neighbors between two vertices.
+     * @brief Get directional common neighbors for predicting edge (u -> v).
      *
-     * @param u First vertex
-     * @param v Second vertex
-     * @return Set of common neighbor vertices
+     * Returns vertices w where (u -> w) AND (w -> v), i.e., out_neighbors(u) ∩ in_neighbors(v).
+     *
+     * @param u Source vertex
+     * @param v Destination vertex
+     * @return Vector of directional common neighbor vertices
      */
     std::vector<Vertex> get_common_neighbors(const Vertex &u,
                                              const Vertex &v) const override;
 
     /**
-     * @brief Calculate preferential attachment score between two vertices.
+     * @brief Calculate directional preferential attachment for edge (u -> v).
      *
-     * @param u First vertex
-     * @param v Second vertex
-     * @return The preferential attachment score
+     * Uses out_degree(u) × in_degree(v), reflecting that:
+     * - u with high out-degree is more likely to create new outgoing edges
+     * - v with high in-degree is more likely to attract new incoming edges
+     *
+     * @param u Source vertex
+     * @param v Destination vertex
+     * @return The directional preferential attachment score
      */
     double preferential_attachment(const Vertex &u, const Vertex &v) const override;
 
     /**
-     * @brief Calculate resource allocation index between two vertices.
+     * @brief Calculate directional resource allocation index for edge (u -> v).
      *
-     * @param u First vertex
-     * @param v Second vertex
-     * @return The resource allocation score
+     * Uses directional common neighbors: for each w where (u -> w) AND (w -> v),
+     * contributes 1/out_degree(w) representing w's capacity to forward resources.
+     * 
+     * @param u Source vertex
+     * @param v Destination vertex
+     * @return The directional resource allocation score
      */
     double resource_allocation_index(const Vertex &u, const Vertex &v) const override;
-
-    /**
-     * @brief Get the degree of a vertex.
-     *
-     * @param v The vertex to get the degree for.
-     * @return The degree of the vertex.
-     */
-    std::size_t degree(const Vertex &v) const override;
 
     /**
      * @brief Get the in-degree of a vertex.
@@ -123,6 +133,8 @@ public:
     /**
      * @brief Calculate the clustering coefficient of a vertex.
      *
+     * Uses out-neighbors and checks for edges between them (in either direction).
+     * 
      * @param v The vertex to calculate the clustering coefficient for.
      * @return The clustering coefficient of the vertex.
      */
@@ -139,27 +151,36 @@ public:
                                              const Vertex &v) const override;
 
     /**
-     * @brief Get the neighbors of a vertex.
+     * @brief Get the out-neighbors of a vertex.
      *
-     * @param v The vertex to get the neighbors for.
-     * @return The neighbors of the vertex.
+     * @param v The vertex to get the out-neighbors for.
+     * @return The out-neighbors of the vertex.
      */
-    std::vector<Vertex> get_neighbors(const Vertex &v) const override;
+    std::vector<Vertex> get_out_neighbors(const Vertex &v) const override;
 
     /**
-     * @brief Get the average degree of the graph.
+     * @brief Get the in-neighbors of a vertex.
      *
-     * @return The average degree of the graph
+     * @param v The vertex to get the in-neighbors for.
+     * @return The in-neighbors of the vertex.
      */
+    std::vector<Vertex> get_in_neighbors(const Vertex &v) const override;
 
-    double avg_degree() const override;
+    /**
+     * @brief Get the average out-degree of the graph.
+     *
+     * For a directed graph, avg_out_degree == avg_in_degree == |E|/|V|.
+     * 
+     * @return The average out-degree of the graph
+     */
+    double avg_out_degree() const override;
 
     /**
      * @brief Get access to the graph manager interface.
      *
      * @return Reference to the graph manager
      */
-    const IGraphManager<GraphTraits>& get_graph_manager() const override;
+    const IGraphManager<GraphTraits> &get_graph_manager() const override;
 
 private:
     const IGraphManager<GraphTraits> &m_graph_manager; // Reference to the graph manager
