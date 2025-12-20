@@ -71,11 +71,6 @@ BoostGraphManager<Graph>::get_edge_properties(const Edge &edge) const {
 }
 
 template <typename Graph>
-std::size_t BoostGraphManager<Graph>::get_degree(const Vertex &vertex) const {
-    return boost::out_degree(vertex, m_graph);
-}
-
-template <typename Graph>
 std::size_t BoostGraphManager<Graph>::get_in_degree(const Vertex &vertex) const {
     return boost::in_degree(vertex, m_graph);
 }
@@ -87,7 +82,7 @@ std::size_t BoostGraphManager<Graph>::get_out_degree(const Vertex &vertex) const
 
 template <typename Graph>
 std::vector<typename BoostGraphManager<Graph>::Vertex> 
-BoostGraphManager<Graph>::get_neighbors(const Vertex &vertex) const {
+BoostGraphManager<Graph>::get_out_neighbors(const Vertex &vertex) const {
     std::vector<Vertex> neighbors;
     auto range = boost::adjacent_vertices(vertex, m_graph);
     for (auto it = range.first; it != range.second; ++it) {
@@ -97,16 +92,27 @@ BoostGraphManager<Graph>::get_neighbors(const Vertex &vertex) const {
 }
 
 template <typename Graph>
-bool BoostGraphManager<Graph>::are_connected(const Vertex &u, const Vertex &v) const {
-    return boost::edge(u, v, m_graph).second;
+std::vector<typename BoostGraphManager<Graph>::Vertex>
+BoostGraphManager<Graph>::get_in_neighbors(const Vertex &vertex) const {
+    std::vector<Vertex> neighbors;
+    auto range = boost::inv_adjacent_vertices(vertex, m_graph);
+    for (auto it = range.first; it != range.second; ++it) {
+        neighbors.push_back(*it);
+    }
+    return neighbors;
+}
+
+template <typename Graph>
+bool BoostGraphManager<Graph>::has_edge(const Vertex &src, const Vertex &dst) const {
+    return boost::edge(src, dst, m_graph).second;
 }
 
 template <typename Graph>
 std::vector<typename BoostGraphManager<Graph>::Vertex>
-BoostGraphManager<Graph>::get_common_neighbors(const Vertex &u, const Vertex &v) const {
+BoostGraphManager<Graph>::get_common_out_neighbors(const Vertex &u, const Vertex &v) const {
     std::vector<Vertex> common;
-    auto u_neighbors = get_neighbors(u);
-    auto v_neighbors = get_neighbors(v);
+    auto u_neighbors = get_out_neighbors(u);
+    auto v_neighbors = get_out_neighbors(v);
     
     std::sort(u_neighbors.begin(), u_neighbors.end());
     std::sort(v_neighbors.begin(), v_neighbors.end());
@@ -121,9 +127,22 @@ BoostGraphManager<Graph>::get_common_neighbors(const Vertex &u, const Vertex &v)
 }
 
 template <typename Graph>
-std::size_t
-BoostGraphManager<Graph>::get_common_neighbors_count(const Vertex &u, const Vertex &v) const {
-    return get_common_neighbors(u, v).size();
+std::vector<typename BoostGraphManager<Graph>::Vertex>
+BoostGraphManager<Graph>::get_common_in_neighbors(const Vertex &u, const Vertex &v) const {
+    std::vector<Vertex> common;
+    auto u_neighbors = get_in_neighbors(u);
+    auto v_neighbors = get_in_neighbors(v);
+    
+    std::sort(u_neighbors.begin(), u_neighbors.end());
+    std::sort(v_neighbors.begin(), v_neighbors.end());
+    
+    std::set_intersection(
+        u_neighbors.begin(), u_neighbors.end(),
+        v_neighbors.begin(), v_neighbors.end(),
+        std::back_inserter(common)
+    );
+    
+    return common;
 }
 
 template <typename Graph>
