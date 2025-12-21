@@ -389,18 +389,18 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
         m_config.struct_adamic_adar_index || m_config.struct_resource_allocation;
 
     std::vector<Vertex> common_neighbors;
-    std::size_t deg_src = 0, deg_dst = 0;
+    std::size_t out_deg_src = 0, in_deg_dst = 0;
 
     if (need_common_neighbors) {
         common_neighbors = m_graph_analytics.get_common_neighbors(src, dst);
-        deg_src = m_graph_analytics.degree(src);
-        deg_dst = m_graph_analytics.degree(dst);
+        out_deg_src = m_graph_analytics.out_degree(src);
+        in_deg_dst = m_graph_analytics.in_degree(dst);
     }
 
     // Common neighbors (normalized)
     if (m_config.struct_common_neighbors) {
         PROFILE_FEATURE(m_profiler, "struct_common_neighbors");
-        std::size_t max_possible = std::min(deg_src, deg_dst);
+        std::size_t max_possible = std::min(out_deg_src, in_deg_dst);
         double normalized = math::safe_ratio<T>(common_neighbors.size(), max_possible);
         accessor[row][col++] = static_cast<T>(normalized);
     }
@@ -408,8 +408,9 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
     // Jaccard coefficient
     if (m_config.struct_jaccard_coefficient) {
         PROFILE_FEATURE(m_profiler, "struct_jaccard_coefficient");
-        std::size_t total = deg_src + deg_dst - common_neighbors.size();
-        double jaccard = math::safe_ratio<T>(common_neighbors.size(), total);
+        // |out_neighbors(src) ∪ in_neighbors(dst)| = out_deg + in_deg - common
+        std::size_t union_size = out_deg_src + in_deg_dst - common_neighbors.size();
+        double jaccard = math::safe_ratio<T>(common_neighbors.size(), union_size);
         accessor[row][col++] = static_cast<T>(jaccard);
     }
 
@@ -418,9 +419,10 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
         PROFILE_FEATURE(m_profiler, "struct_adamic_adar_index");
         double score = 0.0;
         for (const auto& w : common_neighbors) {
-            std::size_t deg_w = m_graph_analytics.degree(w);
-            if (deg_w > 1) {
-                score += 1.0 / std::log(static_cast<double>(deg_w));
+            // Use out_degree(w) - w acts as intermediary forwarding connections
+            std::size_t out_deg_w = m_graph_analytics.out_degree(w);
+            if (out_deg_w > 1) {
+                score += 1.0 / std::log(static_cast<double>(out_deg_w));
             }
         }
         accessor[row][col++] = static_cast<T>(score);
@@ -438,9 +440,10 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
         PROFILE_FEATURE(m_profiler, "struct_resource_allocation");
         double score = 0.0;
         for (const auto& w : common_neighbors) {
-            std::size_t deg_w = m_graph_analytics.degree(w);
-            if (deg_w > 0) {
-                score += 1.0 / deg_w;
+            // Use out_degree(w) - w's capacity to forward resources
+            std::size_t out_deg_w = m_graph_analytics.out_degree(w);
+            if (out_deg_w > 0) {
+                score += 1.0 / out_deg_w;
             }
         }
         accessor[row][col++] = static_cast<T>(score);
@@ -638,7 +641,7 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
                 auto [current, dist] = queue.front();
                 queue.pop();
 
-                for (const auto& neighbor : gm.get_neighbors(current)) {
+                for (const auto& neighbor : gm.get_out_neighbors(current)) {
                     if (distances.find(neighbor) == distances.end()) {
                         distances[neighbor] = dist + 1;
                         queue.push({neighbor, dist + 1});
@@ -672,10 +675,11 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
             std::unordered_map<Vertex, std::size_t> two_hop_counts;
             two_hop_counts.reserve(vertices.size());
 
-            const auto src_neighbors = gm.get_neighbors(src);
-            for (const auto& intermediate : src_neighbors) {
-                const auto dst_neighbors = gm.get_neighbors(intermediate);
-                for (const auto& dst : dst_neighbors) {
+            // Follow src -> intermediate -> dst (directed 2-hop paths)
+            const auto src_out_neighbors = gm.get_out_neighbors(src);
+            for (const auto& intermediate : src_out_neighbors) {
+                const auto intermediate_out_neighbors = gm.get_out_neighbors(intermediate);
+                for (const auto& dst : intermediate_out_neighbors) {
                     if (dst != src) { // Don't count back to source
                         two_hop_counts[dst]++;
                     }
