@@ -1,8 +1,11 @@
 #pragma once
 #include "classifier/generic/IRandomForestClassifier.hpp"
 #include "generators/feature/FeatureConfig.hpp"
+#include "service/EdgeServiceClassifier.hpp"
 #include <cstddef>
+#include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace config {
@@ -39,6 +42,8 @@ struct Config {
         {10, 20, 50, 100}, {1, 3, 5}, {0.0, 1e-7, 1e-5}, {0, 10, 20, 30}, 0.25};
 
     FeatureConfig FEATURE_CONFIG{};
+
+    service::ServiceClassificationConfig SERVICE_CONFIG{};
 };
 
 /**
@@ -50,6 +55,6 @@ struct Config {
  *                                   the parsing fails or
  *                                   the validation fails
  */
-Config load(const std::string &filename);
+Config load(const std::string& filename);
 
 } // namespace config
