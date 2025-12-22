@@ -65,9 +65,11 @@ public:
 
     /**
      * @brief Get the number of mapped ports.
-     * @return Total number of port mappings.
+     * @return Total number of port mappings (protocol-agnostic + protocol-specific).
      */
-    std::size_t port_count() const { return m_port_to_service.size(); }
+    std::size_t port_count() const {
+        return m_port_to_service.size() + m_port_proto_to_service.size();
+    }
 
 private:
     std::vector<ServiceDefinition> m_definitions;
