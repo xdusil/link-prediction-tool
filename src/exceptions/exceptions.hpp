@@ -135,3 +135,12 @@ class GraphEmptyException : public ApplicationException {
 class EmbeddingException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
+
+/**
+ * @brief Service type exception class
+ *
+ * Exception will be thrown when an error occurs related to service types
+ */
+class ServiceTypeException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};
