@@ -1,5 +1,6 @@
 #pragma once
 
+#include "exceptions/exceptions.hpp"
 #include <array>
 #include <stdexcept>
 #include <string>
@@ -66,7 +67,7 @@ struct ServiceType {
      * @brief Convert string to ServiceType.
      * @param name The service type name.
      * @return The corresponding ServiceType value.
-     * @throws std::invalid_argument if name is not recognized.
+     * @throws ServiceTypeException if name is not recognized.
      */
     static Value from_string(std::string_view name) {
         for (std::size_t i = 0; i < COUNT; ++i) {
@@ -74,7 +75,7 @@ struct ServiceType {
                 return static_cast<Value>(i);
             }
         }
-        throw std::invalid_argument("Unknown service type: " + std::string(name));
+        throw ServiceTypeException("Unknown service type: " + std::string(name));
     }
 
     /**
