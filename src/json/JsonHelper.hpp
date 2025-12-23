@@ -21,11 +21,12 @@ public:
      * @return The parsed JSON object.
      * @throws JSONException if the error occurs during parsing.
      */
-    static json::object parse_json(const std::string &json_str, const json::parse_options &opt = {}) {
+    static json::object parse_json(const std::string& json_str,
+                                   const json::parse_options& opt = {}) {
         try {
             json::value jv = json::parse(json_str, /*storage_ptr*/ {}, opt);
             return jv.as_object();
-        } catch (const boost::system::system_error &e) {
+        } catch (const boost::system::system_error& e) {
             const std::string error_msg = "JSON parse error";
             if (e.code() == boost::json::error::syntax) {
                 throw JSONException(error_msg + ": " + "syntax error");
@@ -40,7 +41,7 @@ public:
      * @param jv The JSON value to parse.
      * @return The parsed JSON object.
      */
-    static json::object parse_json_value(const json::value &jv) { return jv.as_object(); }
+    static json::object parse_json_value(const json::value& jv) { return jv.as_object(); }
 
     /**
      * @brief Extract a value from a JSON object.
@@ -55,8 +56,8 @@ public:
      * ThrowOnConvertError is true.
      */
     template <typename T, bool ThrowOnConvertError = false>
-    static std::optional<T> extract_value(const json::object &data,
-                                          const std::string &key) {
+    static std::optional<T> extract_value(const json::object& data,
+                                          const std::string& key) {
         auto it = data.find(key);
         if (it == data.end()) {
             return std::nullopt;
@@ -77,8 +78,8 @@ public:
      * wrong type - only if ThrowOnConvertError is true.
      */
     template <typename T, bool ThrowOnConvertError = false>
-    static std::optional<std::vector<T>> extract_array(const json::object &obj,
-                                                       const std::string &key) {
+    static std::optional<std::vector<T>> extract_array(const json::object& obj,
+                                                       const std::string& key) {
         auto it = obj.find(key);
         if (it == obj.end()) {
             return std::nullopt;
@@ -92,9 +93,9 @@ public:
         }
 
         std::vector<T> result;
-        const json::array &arr = obj.at(key).as_array();
+        const json::array& arr = obj.at(key).as_array();
 
-        for (const auto &elem : arr) {
+        for (const auto& elem : arr) {
             auto converted = try_convert<T, ThrowOnConvertError>(elem);
             if (converted) {
                 result.push_back(*converted);
@@ -118,10 +119,10 @@ public:
      * type.
      */
     template <typename T>
-    static std::optional<T> extract_validated(const json::object &obj,
-                                              const std::string &key,
-                                              std::function<bool(const T &)> validator,
-                                              const std::string &error_msg) {
+    static std::optional<T> extract_validated(const json::object& obj,
+                                              const std::string& key,
+                                              std::function<bool(const T&)> validator,
+                                              const std::string& error_msg) {
         std::optional<T> value = extract_value<T, true>(obj, key);
         if (value && !validator(*value)) {
             throw JSONException(error_msg);
@@ -144,9 +145,9 @@ public:
      */
     template <typename T>
     static std::optional<std::vector<T>>
-    extract_validated_array(const json::object &obj, const std::string &key,
-                            std::function<bool(const std::vector<T> &)> validator,
-                            const std::string &error_msg) {
+    extract_validated_array(const json::object& obj, const std::string& key,
+                            std::function<bool(const std::vector<T>&)> validator,
+                            const std::string& error_msg) {
         auto arr = extract_array<T, true>(obj, key);
 
         if (arr && !validator(*arr)) {
@@ -163,7 +164,7 @@ public:
      * @param key The key to check for.
      * @return True if the key exists, false otherwise.
      */
-    static bool has_key(const json::object &obj, const std::string &key) {
+    static bool has_key(const json::object& obj, const std::string& key) {
         return obj.contains(key);
     }
 
@@ -179,7 +180,7 @@ private:
      * true.
      */
     template <typename T, bool ThrowOnConvertError = false>
-    static std::optional<T> try_convert(const json::value &val) {
+    static std::optional<T> try_convert(const json::value& val) {
         if (is_type<T>(val)) {
             return json::value_to<T>(val);
         }
@@ -199,36 +200,41 @@ private:
      * @return True if the value is of the specified type, false otherwise.
      */
     template <typename T>
-    static bool is_type(const json::value &val);
+    static bool is_type(const json::value& val);
 };
 
 // Specializations for is_type
 template <>
-inline bool JsonHelper::is_type<std::string>(const json::value &val) {
+inline bool JsonHelper::is_type<std::string>(const json::value& val) {
     return val.is_string();
 }
 
 template <>
-inline bool JsonHelper::is_type<int>(const json::value &val) {
+inline bool JsonHelper::is_type<int>(const json::value& val) {
     return val.is_int64();
 }
 
 template <>
-inline bool JsonHelper::is_type<int64_t>(const json::value &val) {
+inline bool JsonHelper::is_type<int64_t>(const json::value& val) {
     return val.is_int64();
 }
 
 template <>
-inline bool JsonHelper::is_type<size_t>(const json::value &val) {
+inline bool JsonHelper::is_type<std::size_t>(const json::value& val) {
     return val.is_int64() && val.as_int64() >= 0;
 }
 
 template <>
-inline bool JsonHelper::is_type<bool>(const json::value &val) {
+inline bool JsonHelper::is_type<uint16_t>(const json::value& val) {
+    return val.is_int64() && val.as_int64() >= 0 && val.as_int64() <= 65535;
+}
+
+template <>
+inline bool JsonHelper::is_type<bool>(const json::value& val) {
     return val.is_bool();
 }
 
 template <>
-inline bool JsonHelper::is_type<double>(const json::value &val) {
+inline bool JsonHelper::is_type<double>(const json::value& val) {
     return val.is_double();
 }
