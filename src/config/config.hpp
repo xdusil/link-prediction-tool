@@ -23,6 +23,8 @@ struct Config {
     int EPSILON_REV = 1000;
     int EMBEDDING_DIM = 64;
     int WALK_LENGTH = 5;
+    int WALKS_PER_VERTEX = 10;
+    int BATCH_SIZE = 32;
     int CONTEXT_SIZE = 4;
     int NUM_NEGATIVE_SAMPLES = 1;
     int EPOCHS = 15;

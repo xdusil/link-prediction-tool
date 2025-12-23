@@ -328,6 +328,8 @@ Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
     set_validated<int>(obj, "EPSILON_REV", config.EPSILON_REV, is_positive{});
     set_validated<int>(obj, "EMBEDDING_DIM", config.EMBEDDING_DIM, is_positive{});
     set_validated<int>(obj, "WALK_LENGTH", config.WALK_LENGTH, is_positive{});
+    set_validated<int>(obj, "WALKS_PER_VERTEX", config.WALKS_PER_VERTEX, is_positive{});
+    set_validated<int>(obj, "BATCH_SIZE", config.BATCH_SIZE, is_positive{});
     set_validated<int>(obj, "CONTEXT_SIZE", config.CONTEXT_SIZE, is_positive{});
     set_validated<int>(obj, "NUM_NEGATIVE_SAMPLES", config.NUM_NEGATIVE_SAMPLES,
                        is_non_negative{});
@@ -381,6 +383,8 @@ void tag_invoke(json::value_from_tag, json::value &jv, const Config &config) {
     obj["EPSILON_REV"] = json::value_from(config.EPSILON_REV);
     obj["EMBEDDING_DIM"] = json::value_from(config.EMBEDDING_DIM);
     obj["WALK_LENGTH"] = json::value_from(config.WALK_LENGTH);
+    obj["WALKS_PER_VERTEX"] = json::value_from(config.WALKS_PER_VERTEX);
+    obj["BATCH_SIZE"] = json::value_from(config.BATCH_SIZE);
     obj["CONTEXT_SIZE"] = json::value_from(config.CONTEXT_SIZE);
     obj["NUM_NEGATIVE_SAMPLES"] = json::value_from(config.NUM_NEGATIVE_SAMPLES);
     obj["EPOCHS"] = json::value_from(config.EPOCHS);
