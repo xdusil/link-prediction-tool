@@ -19,8 +19,8 @@ struct ServiceClassificationConfig {
     bool enabled = false;                // Enable service classification
     std::string port_config_path = "";   // Path to service_ports.json
     uint16_t ephemeral_port_min = 49152; // Minimum ephemeral port
-    std::size_t min_flows = 1;           // Minimum flows required for classification
-    double min_confidence = 0.0;         // Minimum confidence for non-UNKNOWN result
+    std::size_t min_flows = 3;           // Minimum flows required for classification
+    double min_confidence = 0.1;         // Minimum confidence for non-UNKNOWN result
     double smoothing_alpha = 1.0;        // Laplace smoothing parameter
     std::size_t top_k = 3;               // Number of top services to report
 };
@@ -79,23 +79,46 @@ private:
     ServiceClassificationConfig m_config;
 
     /**
-     * @brief Count destination ports for flows from src to dst.
+     * @brief Port-protocol pair for classification.
+     */
+    struct PortProtocol {
+        uint16_t port;
+        uint8_t protocol; // 6=TCP, 17=UDP, 0=any
+
+        bool operator==(const PortProtocol& other) const {
+            return port == other.port && protocol == other.protocol;
+        }
+    };
+
+    /**
+     * @brief Hash function for PortProtocol.
+     */
+    struct PortProtocolHash {
+        std::size_t operator()(const PortProtocol& pp) const {
+            return std::hash<uint32_t>{}((static_cast<uint32_t>(pp.port) << 8) |
+                                         pp.protocol);
+        }
+    };
+
+    /**
+     * @brief Count destination port+protocol pairs for flows from src to dst.
      * @param graph_manager The graph manager.
      * @param src Source vertex.
      * @param dst Destination vertex.
-     * @return Map of port -> count (ephemeral ports filtered).
+     * @return Map of (port, protocol) -> count (ephemeral ports filtered).
      */
-    std::unordered_map<uint16_t, std::size_t>
+    std::unordered_map<PortProtocol, std::size_t, PortProtocolHash>
     count_destination_ports(const IGraphManager<GraphTraits>& graph_manager,
                             const Vertex& src, const Vertex& dst) const;
 
     /**
-     * @brief Aggregate port counts into service counts.
-     * @param port_counts Map of port -> count.
+     * @brief Aggregate port+protocol counts into service counts.
+     * @param port_counts Map of (port, protocol) -> count.
      * @return Array of service counts.
      */
     std::array<std::size_t, ServiceType::CLASSIFIABLE_COUNT> aggregate_service_counts(
-        const std::unordered_map<uint16_t, std::size_t>& port_counts) const;
+        const std::unordered_map<PortProtocol, std::size_t, PortProtocolHash>&
+            port_counts) const;
 
     /**
      * @brief Compute probabilities with Laplace smoothing.
@@ -106,6 +129,8 @@ private:
 
     /**
      * @brief Format top-k services as string.
+     * @param probs Array of service probabilities.
+     * @return Comma-separated string of top-k services with probabilities.
      */
     std::string
     format_top_k(const std::array<double, ServiceType::CLASSIFIABLE_COUNT>& probs) const;
