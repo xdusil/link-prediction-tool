@@ -2,6 +2,7 @@
 #include "config/config.hpp"
 #include "exceptions/exceptions.hpp"
 #include "utils/validators/simple_validators.hpp"
+#include <cstdint>
 
 namespace json = boost::json;
 using namespace validators;
@@ -270,6 +271,47 @@ void tag_invoke(json::value_from_tag, json::value &jv, const FeatureConfig &conf
     jv = std::move(obj);
 }
 
+namespace service {
+
+// Tag invokes for service::ServiceClassificationConfig (must be in service namespace for ADL)
+
+ServiceClassificationConfig tag_invoke(json::value_to_tag<ServiceClassificationConfig>,
+                                       const json::value &jv) {
+    ServiceClassificationConfig config;
+    const auto &obj = JsonHelper::parse_json_value(jv);
+
+    set_validated<bool>(obj, "enabled", config.enabled, always_true{});
+    set_validated<std::string>(obj, "port_config_path", config.port_config_path,
+                               always_true{});
+    set_validated<uint16_t>(obj, "ephemeral_port_min", config.ephemeral_port_min,
+                            is_positive{});
+    set_validated<std::size_t>(obj, "min_flows", config.min_flows, is_positive{});
+    set_validated<double>(obj, "min_confidence", config.min_confidence,
+                          is_unit_interval{});
+    set_validated<double>(obj, "smoothing_alpha", config.smoothing_alpha,
+                          is_non_negative{});
+    set_validated<std::size_t>(obj, "top_k", config.top_k, is_positive{});
+
+    return config;
+}
+
+void tag_invoke(json::value_from_tag, json::value &jv,
+                const ServiceClassificationConfig &config) {
+    json::object obj;
+
+    obj["enabled"] = json::value_from(config.enabled);
+    obj["port_config_path"] = json::value_from(config.port_config_path);
+    obj["ephemeral_port_min"] = json::value_from(config.ephemeral_port_min);
+    obj["min_flows"] = json::value_from(config.min_flows);
+    obj["min_confidence"] = json::value_from(config.min_confidence);
+    obj["smoothing_alpha"] = json::value_from(config.smoothing_alpha);
+    obj["top_k"] = json::value_from(config.top_k);
+
+    jv = std::move(obj);
+}
+
+} // namespace service
+
 namespace config {
 
 Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
@@ -319,6 +361,8 @@ Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
                                     always_true{});
     set_validated<FeatureConfig>(obj, "FEATURE_CONFIG", config.FEATURE_CONFIG,
                                  always_true{});
+    set_validated<service::ServiceClassificationConfig>(obj, "SERVICE_CONFIG", config.SERVICE_CONFIG,
+                                               always_true{});
 
     return config;
 }
@@ -353,8 +397,10 @@ void tag_invoke(json::value_from_tag, json::value &jv, const Config &config) {
     obj["RF_PARAMS"] = json::value_from(config.RF_PARAMS);
     obj["GRID_PARAMS"] = json::value_from(config.GRID_PARAMS);
     obj["FEATURE_CONFIG"] = json::value_from(config.FEATURE_CONFIG);
+    obj["SERVICE_CONFIG"] = json::value_from(config.SERVICE_CONFIG);
 
     // Assign the filled object to the output value
     jv = std::move(obj);
 }
+
 } // namespace config

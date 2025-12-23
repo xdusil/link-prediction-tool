@@ -70,6 +70,34 @@ inline bool JsonHelper::is_type<FeatureConfig>(const json::value &jv) {
     return jv.is_object();
 }
 
+template <>
+inline bool JsonHelper::is_type<service::ServiceClassificationConfig>(const boost::json::value &jv) {
+    return jv.is_object();
+}
+
+namespace service {
+// Tag invokes for service::ServiceClassificationConfig must be in service namespace for ADL
+
+/**
+ * @brief Tag invoke for ServiceClassificationConfig
+ *
+ * @param jv The JSON value to parse
+ * @return The parsed ServiceClassificationConfig object
+ */
+ServiceClassificationConfig tag_invoke(boost::json::value_to_tag<ServiceClassificationConfig>,
+                                      const boost::json::value &jv);
+
+/**
+ * @brief Tag invoke for serializing ServiceClassificationConfig
+ *
+ * @param jv The JSON value to serialize to
+ * @param config The ServiceClassificationConfig object to serialize
+ */
+void tag_invoke(boost::json::value_from_tag, boost::json::value &jv,
+                const ServiceClassificationConfig &config);
+
+} // namespace service
+
 // Main namespace for Config
 namespace config {
 
