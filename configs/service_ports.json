@@ -1,0 +1,176 @@
+{
+    "_comment": "Service port mappings for edge classification",
+    "_description": "Maps destination ports to service types for dependency classification",
+    "_format": "Ports can be specified as simple arrays or objects with descriptions",
+
+    "WEB_SERVER": {
+        "description": "HTTP/HTTPS web servers and web applications",
+        "ports": {
+            "80": "HTTP",
+            "443": "HTTPS",
+            "8080": "HTTP alternative",
+            "8443": "HTTPS alternative",
+            "8000": "HTTP development",
+            "3000": "Node.js/React development",
+            "5000": "Flask/Python development",
+            "8888": "HTTP alternative"
+        }
+    },
+
+    "DATABASE": {
+        "description": "SQL and NoSQL database servers",
+        "ports": {
+            "3306": "MySQL/MariaDB",
+            "5432": "PostgreSQL",
+            "1433": "Microsoft SQL Server",
+            "1521": "Oracle Database",
+            "27017": "MongoDB",
+            "27018": "MongoDB shard",
+            "27019": "MongoDB config server",
+            "9042": "Apache Cassandra",
+            "7000": "Cassandra inter-node",
+            "7001": "Cassandra SSL inter-node",
+            "5984": "CouchDB",
+            "8529": "ArangoDB",
+            "7474": "Neo4j HTTP",
+            "7687": "Neo4j Bolt",
+            "9200": "Elasticsearch HTTP",
+            "9300": "Elasticsearch transport",
+            "26257": "CockroachDB"
+        }
+    },
+
+    "CACHE": {
+        "description": "In-memory caching and key-value stores",
+        "ports": {
+            "6379": "Redis",
+            "6380": "Redis SSL",
+            "11211": "Memcached",
+            "11212": "Memcached alternative"
+        }
+    },
+
+    "MESSAGE_QUEUE": {
+        "description": "Message brokers and event streaming platforms",
+        "ports": {
+            "5672": "RabbitMQ AMQP",
+            "5671": "RabbitMQ AMQP SSL",
+            "15672": "RabbitMQ management",
+            "61616": "ActiveMQ OpenWire",
+            "61617": "ActiveMQ SSL",
+            "9092": "Apache Kafka",
+            "9093": "Kafka SSL",
+            "2181": "ZooKeeper client",
+            "2888": "ZooKeeper peer",
+            "3888": "ZooKeeper leader election",
+            "4222": "NATS",
+            "6222": "NATS cluster",
+            "1883": "MQTT",
+            "8883": "MQTT SSL"
+        }
+    },
+
+    "DNS": {
+        "description": "Domain Name System servers",
+        "ports": [53]
+    },
+
+    "MAIL": {
+        "description": "Email services - SMTP, POP3, IMAP",
+        "ports": {
+            "25": "SMTP",
+            "465": "SMTPS (deprecated)",
+            "587": "SMTP submission",
+            "110": "POP3",
+            "995": "POP3S",
+            "143": "IMAP",
+            "993": "IMAPS"
+        }
+    },
+
+    "FILE_TRANSFER": {
+        "description": "File transfer and sharing protocols",
+        "ports": {
+            "21": "FTP control",
+            "20": "FTP data",
+            "22": "SFTP/SCP (shared with SSH)",
+            "69": "TFTP",
+            "2049": "NFS",
+            "111": "NFS portmapper",
+            "445": "SMB/CIFS",
+            "139": "NetBIOS/SMB",
+            "873": "rsync"
+        }
+    },
+
+    "REMOTE_ACCESS": {
+        "description": "Remote administration and terminal access",
+        "ports": {
+            "22": "SSH",
+            "23": "Telnet (insecure)",
+            "3389": "RDP (Windows Remote Desktop)",
+            "5900": "VNC",
+            "5901": "VNC display 1",
+            "5902": "VNC display 2",
+            "5985": "WinRM HTTP",
+            "5986": "WinRM HTTPS"
+        }
+    },
+
+    "MONITORING": {
+        "description": "Monitoring, metrics, and observability",
+        "ports": {
+            "161": "SNMP",
+            "162": "SNMP trap",
+            "9090": "Prometheus",
+            "9100": "Prometheus node exporter",
+            "9093": "Alertmanager",
+            "3000": "Grafana (shared with web)",
+            "8086": "InfluxDB HTTP",
+            "8125": "StatsD",
+            "514": "Syslog",
+            "6514": "Syslog TLS",
+            "5044": "Logstash Beats",
+            "9600": "Logstash monitoring"
+        }
+    },
+
+    "DIRECTORY": {
+        "description": "Directory and authentication services",
+        "ports": {
+            "88": "Kerberos",
+            "389": "LDAP",
+            "636": "LDAPS",
+            "464": "Kerberos password change",
+            "749": "Kerberos admin",
+            "3268": "Global Catalog LDAP",
+            "3269": "Global Catalog LDAPS"
+        }
+    },
+
+    "TIME_SYNC": {
+        "description": "Time synchronization services",
+        "ports": {
+            "123": "NTP"
+        },
+        "udp_ports": [123]
+    },
+
+    "OTHER": {
+        "description": "Other well-known services",
+        "ports": {
+            "1194": "OpenVPN",
+            "500": "IKE/IPSec",
+            "4500": "IPSec NAT-T",
+            "1701": "L2TP",
+            "1723": "PPTP",
+            "179": "BGP",
+            "5060": "SIP",
+            "5061": "SIP TLS",
+            "1812": "RADIUS auth",
+            "1813": "RADIUS accounting",
+            "3128": "Squid proxy",
+            "8080": "HTTP proxy (shared with web)"
+        }
+    }
+}
