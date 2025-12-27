@@ -144,3 +144,12 @@ class EmbeddingException : public ApplicationException {
 class ServiceTypeException : public ApplicationException {
     using ApplicationException::ApplicationException;
 };
+
+/**
+ * @brief Data loader exception class
+ *
+ * Exception will be thrown when an error occurs during data loading
+ */
+class DataLoaderException : public ApplicationException {
+    using ApplicationException::ApplicationException;
+};
