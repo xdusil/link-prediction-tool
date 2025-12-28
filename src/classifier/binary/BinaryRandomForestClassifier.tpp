@@ -118,7 +118,7 @@ template <typename Features, typename Labels, typename Scaler>
 std::tuple<double, statistics::Metrics> BinaryRandomForestClassifier<Features, Labels, Scaler>::find_optimal_threshold(
     const Features &val_features, const Labels &val_labels, const std::string &metric,
     double min_threshold /*= 0.01 */, double max_threshold /*= 0.99 */,
-    double step /*= 0.01*/) {
+    double step /*= 0.01*/) const {
 
     // Get probabilities for each class
     auto [_, probabilities] = Base::predict_proba(val_features);

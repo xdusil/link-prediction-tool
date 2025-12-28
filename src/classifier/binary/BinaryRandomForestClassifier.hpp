@@ -47,7 +47,7 @@ public:
      * @param params The Random Forest parameters.
      * @param use_scaling Whether to use scaling for the features.
      */
-    BinaryRandomForestClassifier(const RandomForestParams &params,
+    BinaryRandomForestClassifier(const RandomForestParams& params,
                                  bool use_scaling = true);
 
     /**
@@ -62,9 +62,9 @@ public:
      * @param metric The metric to optimize ("f1", "precision", etc.)
      * @param validation_size The size of the validation set
      */
-    void train_with_calibration(const Features &features, const Labels &labels,
+    void train_with_calibration(const Features& features, const Labels& labels,
                                 bool use_weights = false,
-                                const std::string &metric = "f1",
+                                const std::string& metric = "f1",
                                 double validation_size = 0.25) override;
 
     /**
@@ -76,7 +76,7 @@ public:
      * @param features The features.
      * @return The predicted labels.
      */
-    Labels predict(const Features &features) const override;
+    Labels predict(const Features& features) const override;
 
     /**
      * @brief Evaluate model using the calibrated threshold.
@@ -85,7 +85,8 @@ public:
      * @param labels The labels.
      * @return Model performance metrics.
      */
-    statistics::Metrics evaluate(const Features &features, const Labels &labels) const override;
+    statistics::Metrics evaluate(const Features& features,
+                                 const Labels& labels) const override;
 
     /**
      * @brief Get the current threshold.
@@ -108,22 +109,41 @@ public:
      * @param val_labels Validation labels
      * @param metric Metric to optimize (f1, precision, recall, accuracy)
      */
-    void calibrate_threshold(const Features &val_features, const Labels &val_labels,
-                             const std::string &metric = "f1") override;
+    void calibrate_threshold(const Features& val_features, const Labels& val_labels,
+                             const std::string& metric = "f1") override;
 
     /**
      * @brief Save the model with binary-specific parameters.
      *
      * @param path File path to save to.
      */
-    void save(const std::string &path) const override;
+    void save(const std::string& path) const override;
 
     /**
      * @brief Load the model with binary-specific parameters.
      *
      * @param path File path to load from.
      */
-    void load(const std::string &path) override;
+    void load(const std::string& path) override;
+
+    /**
+     * @brief Find the optimal threshold in a specified range.
+     *
+     * This method does not modify the internal threshold state.
+     *
+     * @param val_features Validation features
+     * @param val_labels Validation labels
+     * @param metric Metric to optimize
+     * @param min_threshold Minimum threshold value to try
+     * @param max_threshold Maximum threshold value to try
+     * @param step Step size between thresholds
+     * @return A tuple containing the optimal threshold and the corresponding metrics.
+     */
+    std::tuple<double, statistics::Metrics>
+    find_optimal_threshold(const Features& val_features, const Labels& val_labels,
+                           const std::string& metric = "f1", double min_threshold = 0.01,
+                           double max_threshold = 0.99,
+                           double step = 0.01) const override;
 
 private:
     double m_binary_threshold = 0.5; // Specialized threshold for binary classification
@@ -135,23 +155,7 @@ private:
      * @param archive The cereal archive.
      */
     template <class Archive>
-    void serialize(Archive &archive);
-
-    /**
-     * @brief Find the optimal threshold in a specified range.
-     *
-     * @param val_features Validation features
-     * @param val_labels Validation labels
-     * @param metric Metric to optimize
-     * @param min_threshold Minimum threshold value to try
-     * @param max_threshold Maximum threshold value to try
-     * @param step Step size between thresholds
-     * @return A tuple containing the optimal threshold and the corresponding metrics.
-     */
-    std::tuple<double, statistics::Metrics>
-    find_optimal_threshold(const Features &val_features, const Labels &val_labels,
-                           const std::string &metric = "f1", double min_threshold = 0.01,
-                           double max_threshold = 0.99, double step = 0.01);
+    void serialize(Archive& archive);
 
     // Allow cereal access to private members
     friend class cereal::access;
