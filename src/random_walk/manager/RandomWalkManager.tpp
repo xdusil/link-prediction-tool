@@ -10,14 +10,13 @@
 #include <omp.h>
 #endif
 
-// Construct a new Random Walk Manager object.
 template <typename GraphTraits, typename RNG>
 RandomWalkManager<GraphTraits, RNG>::RandomWalkManager(
     const IGraphManager<GraphTraits> &graph, int num_threads,
     const IRandomWalkLogic<GraphTraits, RNG> &walk_logic, int walk_length,
-    int seed /*= 0*/)
+    int walks_per_vertex /*= 10*/, int seed /*= 0*/)
     : m_graph(graph), m_num_threads(num_threads), m_walk_logic(walk_logic),
-      m_walk_length(walk_length), m_rng(seed) {
+      m_walk_length(walk_length), m_walks_per_vertex(walks_per_vertex), m_rng(seed) {
 
     if (m_num_threads <= 0) {
         throw std::invalid_argument("Number of threads must be positive.");
@@ -25,6 +24,10 @@ RandomWalkManager<GraphTraits, RNG>::RandomWalkManager(
 
     if (m_walk_length <= 0) {
         throw std::invalid_argument("Walk length must be positive.");
+    }
+
+    if (m_walks_per_vertex <= 0) {
+        throw std::invalid_argument("Walks per vertex must be positive.");
     }
 }
 
@@ -53,21 +56,24 @@ RandomWalkManager<GraphTraits, RNG>::generate_random_walks(InputIt begin,
     const std::size_t vertex_count = std::distance(begin, end);
     if (vertex_count == 0) return {};
 
-    std::vector<std::vector<Vertex>> all_walks(vertex_count);
+    // Generate walks_per_vertex walks for each vertex
+    const std::size_t total_walks = vertex_count * m_walks_per_vertex;
+    std::vector<std::vector<Vertex>> all_walks(total_walks);
     const std::size_t num_threads =
-        std::min(static_cast<std::size_t>(m_num_threads), vertex_count);
-    int seed = m_rng();
+        std::min(static_cast<std::size_t>(m_num_threads), total_walks);
+    const auto seed = m_rng();
 
 #ifdef USE_OPENMP
     // OpenMP implementation
     #pragma omp parallel num_threads(num_threads)
     {
-        int tid = omp_get_thread_num();
-        RNG rng(seed + tid);
+        const int tid = omp_get_thread_num();
+        RNG rng(seed + static_cast<typename RNG::result_type>(tid));
 
         #pragma omp for schedule(static)
-        for (std::size_t i = 0; i < vertex_count; ++i) {
-            all_walks[i] = m_walk_logic.generate_single_walk(m_graph, *(begin + i),
+        for (std::size_t i = 0; i < total_walks; ++i) {
+            const std::size_t vertex_idx = i / m_walks_per_vertex;
+            all_walks[i] = m_walk_logic.generate_single_walk(m_graph, *(begin + vertex_idx),
                                                              m_walk_length, rng);
         }
     }
@@ -79,19 +85,20 @@ RandomWalkManager<GraphTraits, RNG>::generate_random_walks(InputIt begin,
 
     auto generate_walks_segment = [this, &all_walks, begin, seed](std::size_t start, std::size_t end,
                                                             std::size_t tid) {
-        RNG rng(seed + tid);
+        RNG rng(seed + static_cast<typename RNG::result_type>(tid));
 
         for (std::size_t i = start; i < end; ++i) {
-            all_walks[i] = m_walk_logic.generate_single_walk(m_graph, *(begin + i),
+            const std::size_t vertex_idx = i / m_walks_per_vertex;
+            all_walks[i] = m_walk_logic.generate_single_walk(m_graph, *(begin + vertex_idx),
                                                              m_walk_length, rng);
         }
     };
 
-    const std::size_t segment_size = vertex_count / num_threads;
+    const std::size_t segment_size = total_walks / num_threads;
 
     for (std::size_t tid = 0; tid < num_threads; ++tid) {
         std::size_t start = tid * segment_size;
-        std::size_t end = (tid == num_threads - 1) ? vertex_count : start + segment_size;
+        std::size_t end = (tid == num_threads - 1) ? total_walks : start + segment_size;
 
         threads.emplace_back(generate_walks_segment, start, end, tid);
     }
