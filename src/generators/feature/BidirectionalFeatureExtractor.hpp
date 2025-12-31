@@ -82,8 +82,18 @@ BidirectionalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_m
 
     Features result;
 
+    using Fields = FlowDataCollector::Fields;
+    Fields needs = Fields::None;
+
+    if (config.flow_response_time || config.flow_causality_score) {
+        needs |= Fields::ResponseTiming; // ForwardEndTimes | ReverseStartTimes
+    }
+    if (config.flow_request_ratio || config.flow_direction_asymmetry) {
+        needs |= Fields::StartTimesOnly; // ForwardStartTimes | ReverseStartTimes
+    }
+
     const FlowDataCollector::FlowData flow_data =
-        FlowDataCollector::collect_all(graph_manager, src, dst);
+        FlowDataCollector::collect(graph_manager, src, dst, needs);
 
     const std::size_t total_flows = flow_data.total_count();
 
@@ -121,8 +131,8 @@ BidirectionalFeatureExtractor::compute_avg_response_time(const FlowData& flow_da
         return 0.0;
     }
 
-    auto forward_end_times = flow_data.forward_end_times;
-    auto reverse_start_times = flow_data.reverse_start_times;
+    auto forward_end_times = flow_data.forward_end_times();
+    auto reverse_start_times = flow_data.reverse_start_times();
 
     std::sort(forward_end_times.begin(), forward_end_times.end());
     std::sort(reverse_start_times.begin(), reverse_start_times.end());
@@ -155,12 +165,12 @@ double BidirectionalFeatureExtractor::compute_causality(const FlowData& flow_dat
     std::vector<TimedEvent> all_events;
 
     // Mark forward flow completions
-    for (const auto& end_time : flow_data.forward_end_times) {
+    for (const auto& end_time : flow_data.forward_end_times()) {
         all_events.push_back({end_time, true});
     }
 
     // Mark reverse flow starts
-    for (const auto& start_time : flow_data.reverse_start_times) {
+    for (const auto& start_time : flow_data.reverse_start_times()) {
         all_events.push_back({start_time, false});
     }
 

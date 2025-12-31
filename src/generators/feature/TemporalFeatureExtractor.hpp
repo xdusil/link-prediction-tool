@@ -97,21 +97,33 @@ TemporalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_manage
                                   const FeatureConfig& config) {
 
     Features result;
-    
+
+    using Fields = FlowDataCollector::Fields;
+    Fields needs = Fields::None;
+
+    if (config.time_avg_duration) {
+        needs |= Fields::Duration;
+    }
+    if (config.time_avg_interarrival || config.time_regularity ||
+        config.time_direction_bias || config.time_initiation_order ||
+        config.time_crosscorr_peak) {
+        needs |= Fields::StartTimesOnly;
+    }
+    if (config.time_spike_score) {
+        needs |= Fields::ResponseTiming;  // ForwardEndTimes | ReverseStartTimes
+    }
+
     const FlowDataCollector::FlowData flow_data =
-        FlowDataCollector::collect_all(graph_manager, src, dst);
+        FlowDataCollector::collect(graph_manager, src, dst, needs);
 
     // Average duration
     if (config.time_avg_duration && flow_data.has_flows()) {
-        result.avg_duration = flow_data.total_duration_ms /
-                              static_cast<double>(flow_data.total_count());
+        result.avg_duration =
+            flow_data.total_duration_ms() / static_cast<double>(flow_data.total_count());
     }
 
     const std::vector<std::chrono::milliseconds> all_timestamps =
         FlowDataCollector::get_sorted_start_times(flow_data);
-    if (all_timestamps.size() < 2) {
-        return result;
-    }
 
     compute_interarrival_features(all_timestamps, config, result);
 
@@ -124,12 +136,11 @@ TemporalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_manage
 
     // Initiation order: who initiated communication first?
     if (config.time_initiation_order) {
-        if (!flow_data.forward_start_times.empty() &&
-            !flow_data.reverse_start_times.empty()) {
-            auto first_forward = *std::min_element(flow_data.forward_start_times.begin(),
-                                                   flow_data.forward_start_times.end());
-            auto first_reverse = *std::min_element(flow_data.reverse_start_times.begin(),
-                                                   flow_data.reverse_start_times.end());
+        const auto& fwd_times = flow_data.forward_start_times();
+        const auto& rev_times = flow_data.reverse_start_times();
+        if (!fwd_times.empty() && !rev_times.empty()) {
+            auto first_forward = *std::min_element(fwd_times.begin(), fwd_times.end());
+            auto first_reverse = *std::min_element(rev_times.begin(), rev_times.end());
 
             if (first_forward < first_reverse) {
                 result.initiation_order = 1.0; // src initiated
@@ -138,23 +149,23 @@ TemporalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_manage
             } else {
                 result.initiation_order = 0.0; // simultaneous
             }
-        } else if (!flow_data.forward_start_times.empty()) {
+        } else if (!fwd_times.empty()) {
             result.initiation_order = 1.0; // only forward flows
-        } else if (!flow_data.reverse_start_times.empty()) {
+        } else if (!rev_times.empty()) {
             result.initiation_order = -1.0; // only reverse flows
         }
     }
 
     // Cross-correlation: timing correlation between forward and reverse flows
     if (config.time_crosscorr_peak && flow_data.is_bidirectional()) {
-        compute_cross_correlation(flow_data.forward_start_times,
-                                  flow_data.reverse_start_times, result);
+        compute_cross_correlation(flow_data.forward_start_times(),
+                                  flow_data.reverse_start_times(), result);
     }
 
     // Spike score: response time consistency
     if (config.time_spike_score && flow_data.is_bidirectional()) {
-        compute_spike_score(flow_data.forward_end_times, flow_data.reverse_start_times,
-                            result);
+        compute_spike_score(flow_data.forward_end_times(),
+                            flow_data.reverse_start_times(), result);
     }
 
     return result;
