@@ -602,6 +602,10 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
         PROFILE_FEATURE(m_profiler, "net_port_role");
         accessor[row][col++] = static_cast<T>(features.port_role.value_or(0.0));
     }
+    if (m_config.net_top_port) {
+        PROFILE_FEATURE(m_profiler, "net_top_port");
+        accessor[row][col++] = static_cast<T>(features.top_port.value_or(0.0));
+    }
 
     return col;
 }

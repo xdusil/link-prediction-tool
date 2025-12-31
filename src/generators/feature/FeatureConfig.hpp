@@ -91,6 +91,7 @@ public:
 
     bool net_protocol_role = true; // TCP/UDP initiator detection
     bool net_port_role = true;     // server port vs ephemeral client port
+    bool net_top_port = true;      // most frequently used destination port
 
     // =========================================================================
 
@@ -123,7 +124,7 @@ public:
     }
 
     constexpr bool are_network_features_enabled() const noexcept {
-        return net_protocol_role || net_port_role;
+        return net_protocol_role || net_port_role || net_top_port;
     }
 
     constexpr bool is_any_feature_enabled() const noexcept {
@@ -180,9 +181,10 @@ public:
         dim += flow_direction_asymmetry ? 1 : 0;
         dim += flow_causality_score ? 1 : 0;
 
-        // 7. Protocol/Port Role (2 features)
+        // 7. Protocol/Port Role (3 features)
         dim += net_protocol_role ? 1 : 0;
         dim += net_port_role ? 1 : 0;
+        dim += net_top_port ? 1 : 0;
 
         return dim;
     }
@@ -276,6 +278,8 @@ public:
             names.push_back("net_protocol_role");
         if (net_port_role)
             names.push_back("net_port_role");
+        if (net_top_port)
+            names.push_back("net_top_port");
 
         return names;
     }
