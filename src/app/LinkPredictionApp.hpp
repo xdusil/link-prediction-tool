@@ -9,7 +9,8 @@
 #include "graph/network/INetworkGraphManager.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
 #include "ground_truth/DependencyAnalyzer.hpp"
-#include "model/SkipGramModel.hpp"
+#include "model/DirectionalEmbeddings.hpp"
+#include "model/DirectionalSkipGramModel.hpp"
 #include "model/trainer/ITrainer.hpp"
 #include "statistics/metrics.hpp"
 #include "utils/ip/IIPChecker.hpp"
@@ -30,13 +31,13 @@ public:
      * @param config_path Path to the configuration file (optional)
      * @param verbose Enable verbose output (default: false)
      */
-    LinkPredictionApp(const std::optional<std::string> &config_path = std::nullopt,
+    LinkPredictionApp(const std::optional<std::string>& config_path = std::nullopt,
                       bool verbose = false);
 
-    LinkPredictionApp(const LinkPredictionApp &) = delete;
-    LinkPredictionApp &operator=(const LinkPredictionApp &) = delete;
-    LinkPredictionApp(LinkPredictionApp &&) = delete;
-    LinkPredictionApp &operator=(LinkPredictionApp &&) = delete;
+    LinkPredictionApp(const LinkPredictionApp&) = delete;
+    LinkPredictionApp& operator=(const LinkPredictionApp&) = delete;
+    LinkPredictionApp(LinkPredictionApp&&) = delete;
+    LinkPredictionApp& operator=(LinkPredictionApp&&) = delete;
 
     /**
      * @brief Destroy the LinkPredictionApp
@@ -55,11 +56,11 @@ public:
      * @param feature_importance Calculate feature importance (default: false)
      */
     void run_training_mode(
-        const std::string &classifier_path, const std::string &data_path,
-        const std::optional<std::string> &ground_truth_path = std::nullopt,
-        const std::optional<std::string> &ground_truth_output_path = std::nullopt,
-        const std::optional<std::string> &blocked_ips_path = std::nullopt,
-        const std::optional<std::string> &internal_ips_path = std::nullopt,
+        const std::string& classifier_path, const std::string& data_path,
+        const std::optional<std::string>& ground_truth_path = std::nullopt,
+        const std::optional<std::string>& ground_truth_output_path = std::nullopt,
+        const std::optional<std::string>& blocked_ips_path = std::nullopt,
+        const std::optional<std::string>& internal_ips_path = std::nullopt,
         bool feature_importance = false);
 
     /**
@@ -73,11 +74,11 @@ public:
      * @param internal_ips_path Path to the internal IPs file (optional)
      */
     void run_prediction_mode(
-        const std::string &classifier_path, const std::string &predictions_output_path,
-        const std::string &data_path,
-        const std::optional<std::string> &ground_truth_path = std::nullopt,
-        const std::optional<std::string> &blocked_ips_path = std::nullopt,
-        const std::optional<std::string> &internal_ips_path = std::nullopt);
+        const std::string& classifier_path, const std::string& predictions_output_path,
+        const std::string& data_path,
+        const std::optional<std::string>& ground_truth_path = std::nullopt,
+        const std::optional<std::string>& blocked_ips_path = std::nullopt,
+        const std::optional<std::string>& internal_ips_path = std::nullopt);
 
     /**
      * @brief Run the ground truth mode
@@ -88,9 +89,9 @@ public:
      * @param ground_truth_output_path Path to save the calculated ground truth
      * @param blocked_ips_path Path to the blocked IPs file (optional)
      */
-    void run_ground_truth_mode(const std::string &data_path,
-                               const std::string &ground_truth_output_path,
-                               const std::optional<std::string> &blocked_ips_path);
+    void run_ground_truth_mode(const std::string& data_path,
+                               const std::string& ground_truth_output_path,
+                               const std::optional<std::string>& blocked_ips_path);
 
 private:
     /**
@@ -121,7 +122,7 @@ private:
      *
      * @param data_path Path to the input data file
      */
-    void process_data(const std::string &data_path);
+    void process_data(const std::string& data_path);
 
     /**
      * @brief Build the network graph
@@ -143,7 +144,8 @@ private:
      * @param use_grid_search Whether to use grid search for hyperparameter tuning
      * @param feature_importance Whether to calculate feature importance
      */
-    void train_classifier(const auto &features, const auto &labels, bool use_grid_search, bool feature_importance);
+    void train_classifier(const auto& features, const auto& labels, bool use_grid_search,
+                          bool feature_importance);
 
     /**
      * @brief Perform grid search to find the best Random Forest parameters
@@ -152,8 +154,8 @@ private:
      * @param labels The labels
      * @return The best Random Forest parameters
      */
-    RandomForestParams perform_grid_search(const auto &features,
-                                           const auto &labels) const;
+    RandomForestParams perform_grid_search(const auto& features,
+                                           const auto& labels) const;
 
     /**
      * @brief Generate predictions
@@ -164,8 +166,8 @@ private:
      * @param ground_truth_path Path to the ground truth file for evaluation (optional)
      */
 
-    void generate_predictions(const std::string &output_path,
-                              const std::optional<std::string> &ground_truth_path);
+    void generate_predictions(const std::string& output_path,
+                              const std::optional<std::string>& ground_truth_path);
 
     /**
      * @brief Helper function to log messages when verbose mode is enabled
@@ -177,7 +179,7 @@ private:
      * It only logs if the verbose flag is set to true.
      */
     template <typename... Args>
-    void log_verbose(Args &&...args) const {
+    void log_verbose(Args&&... args) const {
         if (m_verbose) {
             std::cout << "[VERBOSE] ";
             (std::cout << ... << std::forward<Args>(args));
@@ -201,13 +203,7 @@ private:
     std::unique_ptr<INetworkGraphManager<BoostGraphTraits<Graph>>> m_graph_manager;
 
     // Model Components
-    std::unique_ptr<IModel<SkipGramInput,             // Input type
-                           torch::Tensor,             // Output type
-                           torch::Tensor,             // Loss type
-                           torch::nn::Embedding,      // Embedding type
-                           std::vector<torch::Tensor> // Parameters type
-                           >>
-        m_model;
+    std::unique_ptr<DirectionalSkipGramModel> m_model;
 
     // Classifier
     std::unique_ptr<IBinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>,
