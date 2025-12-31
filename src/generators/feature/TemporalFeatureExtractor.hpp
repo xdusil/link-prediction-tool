@@ -2,7 +2,7 @@
 
 #include "FeatureConfig.hpp"
 #include "graph/IGraphManager.hpp"
-#include "utils/FlowDataCollector.hpp"
+#include "utils/collectors/FlowDataCollector.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
