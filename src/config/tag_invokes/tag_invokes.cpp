@@ -212,6 +212,7 @@ FeatureConfig tag_invoke(json::value_to_tag<FeatureConfig>, const json::value &j
     // 7. Protocol/Port Role
     set_validated<bool>(obj, "net_protocol_role", config.net_protocol_role, always_true{});
     set_validated<bool>(obj, "net_port_role", config.net_port_role, always_true{});
+    set_validated<bool>(obj, "net_top_port", config.net_top_port, always_true{});
 
     return config;
 }
@@ -267,6 +268,7 @@ void tag_invoke(json::value_from_tag, json::value &jv, const FeatureConfig &conf
     // 7. Protocol/Port Role
     obj["net_protocol_role"] = json::value_from(config.net_protocol_role);
     obj["net_port_role"] = json::value_from(config.net_port_role);
+    obj["net_top_port"] = json::value_from(config.net_top_port);
 
     jv = std::move(obj);
 }
