@@ -36,6 +36,8 @@ public:
         ResponseTiming = ForwardEndTimes | ReverseStartTimes,
         StartTimesAndResponseTiming = StartTimesOnly | ResponseTiming,
         StartTimesAndDuration = StartTimesOnly | Duration,
+        ResponseTimingAndDuration = ResponseTiming | Duration,
+        AllWithoutReverseEnd = StartTimesOnly | ResponseTiming | Duration,
         All = ForwardStartTimes | ForwardEndTimes | ReverseStartTimes | ReverseEndTimes |
               Duration
     };
@@ -280,8 +282,10 @@ FlowDataCollector::collect(const IGraphManager<GraphTraits>& graph,
         return collect<Fields::StartTimesAndResponseTiming>(graph, src, dst);
     case Fields::StartTimesAndDuration:
         return collect<Fields::StartTimesAndDuration>(graph, src, dst);
-    case Fields::All:
-        return collect<Fields::All>(graph, src, dst);
+    case Fields::ResponseTimingAndDuration:
+        return collect<Fields::ResponseTimingAndDuration>(graph, src, dst);
+    case Fields::AllWithoutReverseEnd:
+        return collect<Fields::AllWithoutReverseEnd>(graph, src, dst);
     default:
         // For uncommon field combinations
         return collect<Fields::All>(graph, src, dst);
