@@ -12,3 +12,4 @@ FixNamespaceComments: false
 AlwaysBreakTemplateDeclarations: Yes
 IndentAccessModifiers: false
 AccessModifierOffset: -4
+PointerAlignment: Left
