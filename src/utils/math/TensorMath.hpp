@@ -12,6 +12,23 @@
 namespace math {
 
 /**
+ * @brief Compute safe division ratio (returns default value if denominator is too small).
+ *
+ * @tparam T The scalar type for the result and parameters (must be floating-point)
+ * @param numerator Numerator value
+ * @param denominator Denominator value
+ * @param epsilon Threshold for considering denominator as zero (default: 1e-8)
+ * @param default_value Value to return if denominator is too small (default: 0.0)
+ * @return numerator / denominator if denominator > epsilon, else default_value
+ */
+template <typename T>
+    requires std::is_floating_point_v<T>
+inline T safe_ratio(T numerator, T denominator, T epsilon = static_cast<T>(1e-8),
+                    T default_value = static_cast<T>(0.0)) {
+    return (denominator > epsilon) ? numerator / denominator : default_value;
+}
+
+/**
  * @brief Compute dot product between two tensors.
  *
  * @tparam T The scalar type for the result
@@ -50,12 +67,9 @@ inline T cosine_similarity(const torch::Tensor& a, const torch::Tensor& b) {
 
     T norm_a = a.norm().template item<T>();
     T norm_b = b.norm().template item<T>();
+    T dot = torch::dot(a, b).template item<T>();
 
-    if (norm_a < static_cast<T>(1e-8) || norm_b < static_cast<T>(1e-8)) {
-        return static_cast<T>(0.0);
-    }
-
-    return torch::dot(a, b).template item<T>() / (norm_a * norm_b);
+    return safe_ratio(dot, norm_a * norm_b);
 }
 
 /**
@@ -140,19 +154,41 @@ inline T tensor_norm(const torch::Tensor& tensor) {
 }
 
 /**
- * @brief Compute safe division ratio (returns 1.0 if denominator is too small).
+ * @brief Apply z-score normalization to a value.
  *
- * @tparam T The scalar type for the result
- * @param numerator Numerator value
- * @param denominator Denominator value
- * @param epsilon Threshold for considering denominator as zero (default: 1e-8)
- * @param default_value Value to return if denominator is too small (default: 0.0)
- * @return numerator / denominator if denominator > epsilon, else default_value
+ * Z-score = (value - mean) / std
+ *
+ * @tparam T The scalar type for the result and parameters (must be floating-point)
+ * @param value Value to normalize
+ * @param mean Distribution mean
+ * @param std Distribution standard deviation
+ * @return Z-score normalized value
  */
 template <typename T>
-inline T safe_ratio(T numerator, T denominator, T epsilon = static_cast<T>(1e-8),
-                    T default_value = static_cast<T>(0.0)) {
-    return (denominator > epsilon) ? numerator / denominator : default_value;
+    requires std::is_floating_point_v<T>
+inline T apply_z_score(T value, T mean, T std) {
+    return safe_ratio(value - mean, std);
+}
+
+/**
+ * @brief Get percentile rank of a value within a sorted distribution.
+ *
+ * @tparam T The scalar type for the result (must be floating-point)
+ * @tparam U The type of values in the distribution
+ * @param value Value to rank
+ * @param sorted_values Pre-sorted distribution (ascending order)
+ * @return Percentile rank in range [0, 1]
+ */
+template <typename T, typename U = double>
+    requires std::is_floating_point_v<T>
+inline T get_percentile_rank(U value, const std::vector<U>& sorted_values) {
+    if (sorted_values.empty()) {
+        return static_cast<T>(0);
+    }
+
+    auto it = std::lower_bound(sorted_values.begin(), sorted_values.end(), value);
+    std::size_t pos = it - sorted_values.begin();
+    return static_cast<T>(pos) / static_cast<T>(sorted_values.size());
 }
 
 } // namespace math
