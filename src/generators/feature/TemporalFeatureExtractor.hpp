@@ -97,17 +97,18 @@ TemporalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_manage
                                   const FeatureConfig& config) {
 
     Features result;
-    const FlowDataCollector::AggregatedFlowData flow_data =
-        FlowDataCollector::collect(graph_manager, src, dst);
+    
+    const FlowDataCollector::FlowData flow_data =
+        FlowDataCollector::collect_all(graph_manager, src, dst);
 
     // Average duration
     if (config.time_avg_duration && flow_data.has_flows()) {
         result.avg_duration = flow_data.total_duration_ms /
-                              static_cast<double>(flow_data.total_flow_count());
+                              static_cast<double>(flow_data.total_count());
     }
 
     const std::vector<std::chrono::milliseconds> all_timestamps =
-        FlowDataCollector::get_all_start_times_sorted(flow_data);
+        FlowDataCollector::get_sorted_start_times(flow_data);
     if (all_timestamps.size() < 2) {
         return result;
     }
@@ -116,9 +117,9 @@ TemporalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_manage
 
     // Direction bias: (forward - reverse) / total
     if (config.time_direction_bias && flow_data.has_flows()) {
-        result.direction_bias = (static_cast<double>(flow_data.forward_flow_count()) -
-                                 static_cast<double>(flow_data.reverse_flow_count())) /
-                                static_cast<double>(flow_data.total_flow_count());
+        result.direction_bias = (static_cast<double>(flow_data.forward_count()) -
+                                 static_cast<double>(flow_data.reverse_count())) /
+                                static_cast<double>(flow_data.total_count());
     }
 
     // Initiation order: who initiated communication first?

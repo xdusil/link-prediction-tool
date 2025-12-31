@@ -82,10 +82,10 @@ BidirectionalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_m
 
     Features result;
 
-    const FlowDataCollector::AggregatedFlowData flow_data =
-        FlowDataCollector::collect(graph_manager, src, dst);
+    const FlowDataCollector::FlowData flow_data =
+        FlowDataCollector::collect_all(graph_manager, src, dst);
 
-    const std::size_t total_flows = flow_data.total_flow_count();
+    const std::size_t total_flows = flow_data.total_count();
 
     // Response time: average time between request end and response start
     if (config.flow_response_time && flow_data.has_flows()) {
@@ -94,14 +94,14 @@ BidirectionalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_m
 
     // Request ratio: proportion of forward flows vs total
     if (config.flow_request_ratio && flow_data.has_flows()) {
-        result.request_ratio = static_cast<double>(flow_data.forward_flow_count()) /
+        result.request_ratio = static_cast<double>(flow_data.forward_count()) /
                                static_cast<double>(total_flows);
     }
 
     // Direction asymmetry: (forward - reverse) / total
     if (config.flow_direction_asymmetry && flow_data.has_flows()) {
-        double diff = static_cast<double>(flow_data.forward_flow_count()) -
-                      static_cast<double>(flow_data.reverse_flow_count());
+        double diff = static_cast<double>(flow_data.forward_count()) -
+                      static_cast<double>(flow_data.reverse_count());
         result.direction_asymmetry = diff / static_cast<double>(total_flows);
     }
 
