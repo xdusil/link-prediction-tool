@@ -81,8 +81,8 @@ public:
     // =========================================================================
 
     bool flow_response_time = true;       // average response latency
-    bool flow_request_ratio = true;       // forward_count / reverse_count
-    bool flow_direction_asymmetry = true; // combined count + duration asymmetry
+    bool flow_request_ratio = true;       // forward_count / total_count
+    bool flow_direction_asymmetry = true; // (forward - reverse) / total asymmetry
     bool flow_causality_score = true;     // temporal ordering pattern score
 
     // =========================================================================

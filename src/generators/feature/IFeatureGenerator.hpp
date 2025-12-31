@@ -5,10 +5,10 @@
 #include <concepts>
 #include <torch/torch.h>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <type_traits>
 
 /**
  * @brief Concept to ensure Container has contains() method.
@@ -17,7 +17,7 @@
  * @tparam KeyType The key type for the container.
  */
 template <typename Container>
-concept HasContains = requires(const std::remove_cvref_t<Container> &c,
+concept HasContains = requires(const std::remove_cvref_t<Container>& c,
                                typename std::remove_cvref_t<Container>::value_type v) {
     { c.contains(v) } -> std::convertible_to<bool>;
 };

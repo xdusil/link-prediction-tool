@@ -34,11 +34,10 @@ public:
      * its value will be std::nullopt.
      */
     template <typename GraphTraits>
-    static Features extract(
-        const IGraphManager<GraphTraits>& graph_manager,
-        const typename GraphTraits::Vertex& src,
-        const typename GraphTraits::Vertex& dst,
-        const FeatureConfig& config);
+    static Features extract(const IGraphManager<GraphTraits>& graph_manager,
+                            const typename GraphTraits::Vertex& src,
+                            const typename GraphTraits::Vertex& dst,
+                            const FeatureConfig& config);
 
 private:
     // Well-known ports threshold
@@ -57,12 +56,12 @@ private:
 // ====================================================================================================
 
 template <typename GraphTraits>
-ProtocolFeatureExtractor::Features ProtocolFeatureExtractor::extract(
-    const IGraphManager<GraphTraits>& graph_manager,
-    const typename GraphTraits::Vertex& src,
-    const typename GraphTraits::Vertex& dst,
-    const FeatureConfig& config) {
-    
+ProtocolFeatureExtractor::Features
+ProtocolFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_manager,
+                                  const typename GraphTraits::Vertex& src,
+                                  const typename GraphTraits::Vertex& dst,
+                                  const FeatureConfig& config) {
+
     Features result;
 
     std::unordered_map<uint8_t, std::size_t> protocol_counts;
@@ -117,7 +116,8 @@ ProtocolFeatureExtractor::Features ProtocolFeatureExtractor::extract(
         }
     }
 
-    if (total_edges == 0) return result;
+    if (total_edges == 0)
+        return result;
 
     // Protocol role
     if (config.net_protocol_role) {
@@ -144,8 +144,10 @@ ProtocolFeatureExtractor::Features ProtocolFeatureExtractor::extract(
             dst_total += count;
         }
 
-        if (src_total > 0) src_role /= static_cast<double>(src_total);
-        if (dst_total > 0) dst_role /= static_cast<double>(dst_total);
+        if (src_total > 0)
+            src_role /= static_cast<double>(src_total);
+        if (dst_total > 0)
+            dst_role /= static_cast<double>(dst_total);
 
         // Port role difference: positive = dst acts as server, negative = src acts
         // as server
@@ -165,23 +167,23 @@ ProtocolFeatureExtractor::Features ProtocolFeatureExtractor::extract(
 
 inline double ProtocolFeatureExtractor::classify_port_role(uint16_t port) {
     if (port < WELL_KNOWN_PORT_MAX) {
-        return 1.0;  // Strong server indicator
+        return 1.0; // Strong server indicator
     } else if (port < REGISTERED_PORT_MAX) {
-        return 0.5;  // Weak server indicator
+        return 0.5; // Weak server indicator
     } else {
-        return 0.0;  // Client indicator
+        return 0.0; // Client indicator
     }
 }
 
 inline double ProtocolFeatureExtractor::classify_protocol_role(uint8_t protocol) {
     switch (protocol) {
     case PROTO_TCP:
-        return 1.0;  // Connection-oriented, session-based, typical server protocol
+        return 1.0; // Connection-oriented, session-based, typical server protocol
     case PROTO_UDP:
-        return 0.5;  // Connectionless, used for both client/server patterns
+        return 0.5; // Connectionless, used for both client/server patterns
     case PROTO_ICMP:
-        return 0.25;  // Control/diagnostic, not a typical dependency indicator
+        return 0.25; // Control/diagnostic, not a typical dependency indicator
     default:
-        return 0.0;  // Unknown protocol
+        return 0.0; // Unknown protocol
     }
 }

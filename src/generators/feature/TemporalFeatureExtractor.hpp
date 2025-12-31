@@ -110,7 +110,7 @@ TemporalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_manage
         needs |= Fields::StartTimesOnly;
     }
     if (config.time_spike_score) {
-        needs |= Fields::ResponseTiming;  // ForwardEndTimes | ReverseStartTimes
+        needs |= Fields::ResponseTiming; // ForwardEndTimes | ReverseStartTimes
     }
 
     const FlowDataCollector::FlowData flow_data =
