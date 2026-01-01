@@ -8,8 +8,8 @@
 
 // Constructor
 template <typename Key, typename Value>
-CapacityLimitedReservoir<Key, Value>::CapacityLimitedReservoir(std::size_t capacity)
-    : m_capacity(capacity), m_rng(std::random_device{}()) {
+CapacityLimitedReservoir<Key, Value>::CapacityLimitedReservoir(std::size_t capacity, int seed /*= 0*/)
+    : m_capacity(capacity), m_rng(seed) {
     if (m_capacity == 0) {
         throw std::invalid_argument("Capacity must be greater than 0");
     }

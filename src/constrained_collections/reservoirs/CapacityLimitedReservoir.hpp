@@ -32,8 +32,9 @@ public:
      * @brief Constructs a reservoir with a fixed capacity for each key.
      *
      * @param capacity The maximum number of values allowed per key.
+     * @param seed     Seed for the random number generator (default is 0).
      */
-    explicit CapacityLimitedReservoir(std::size_t capacity);
+    explicit CapacityLimitedReservoir(std::size_t capacity, int seed = 0);
 
     /**
      * @brief Adds a value associated with a key to the reservoir.
