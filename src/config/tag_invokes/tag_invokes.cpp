@@ -336,6 +336,7 @@ Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
     set_validated<int>(obj, "NUM_NEGATIVE_SAMPLES", config.NUM_NEGATIVE_SAMPLES,
                        is_non_negative{});
     set_validated<int>(obj, "EPOCHS", config.EPOCHS, is_positive{});
+    set_validated<std::uint32_t>(obj, "SEED", config.SEED, always_true{});
     set_validated_opt<int>(obj, "NUM_THREADS", config.NUM_THREADS, is_positive{});
 
     // Double parameters
@@ -390,6 +391,7 @@ void tag_invoke(json::value_from_tag, json::value &jv, const Config &config) {
     obj["CONTEXT_SIZE"] = json::value_from(config.CONTEXT_SIZE);
     obj["NUM_NEGATIVE_SAMPLES"] = json::value_from(config.NUM_NEGATIVE_SAMPLES);
     obj["EPOCHS"] = json::value_from(config.EPOCHS);
+    obj["SEED"] = json::value_from(config.SEED);
     obj["NUM_THREADS"] = json::value_from(config.NUM_THREADS);
     obj["LEARNING_RATE"] = json::value_from(config.LEARNING_RATE);
     obj["USE_WEIGHTS"] = json::value_from(config.USE_WEIGHTS);

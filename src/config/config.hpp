@@ -29,6 +29,7 @@ struct Config {
     int NUM_NEGATIVE_SAMPLES = 1;
     int EPOCHS = 15;
     double LEARNING_RATE = 0.01;
+    std::uint32_t SEED = 123;
     std::optional<int> NUM_THREADS;
     std::optional<double> CLASSIFIER_THRESHOLD;
     std::string METRIC_TO_OPTIMIZE = "f1";
