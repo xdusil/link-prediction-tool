@@ -2,6 +2,8 @@
 
 #include "exceptions/exceptions.hpp"
 #include <boost/json.hpp>
+#include <cstdint>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -226,7 +228,15 @@ inline bool JsonHelper::is_type<std::size_t>(const json::value& val) {
 
 template <>
 inline bool JsonHelper::is_type<uint16_t>(const json::value& val) {
-    return val.is_int64() && val.as_int64() >= 0 && val.as_int64() <= 65535;
+    return val.is_int64() && val.as_int64() >= 0 &&
+           val.as_int64() <= std::numeric_limits<uint16_t>::max();
+}
+
+template <>
+inline bool JsonHelper::is_type<std::uint32_t>(const json::value& val) {
+    return val.is_int64() && val.as_int64() >= 0 &&
+           static_cast<std::uint64_t>(val.as_int64()) <=
+               std::numeric_limits<std::uint32_t>::max();
 }
 
 template <>
