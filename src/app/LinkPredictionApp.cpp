@@ -217,14 +217,16 @@ void LinkPredictionApp::generate_predictions(
         throw ComponentNotInitializedException("Dependency analyzer not initialized.");
 
     BoostGraphAnalytics analytics{*m_graph_manager};
-    FeatureGenerator<NetworkGraphManager::Base, decltype(m_model->get_embeddings()),
-                     decltype(m_dependency_analyzer->get_dependencies())>
-        feature_generator{analytics, m_model->get_embeddings(),
-                          m_config.FEATURE_CONFIG};
+    
+    const auto &all_deps = m_dependency_analyzer->get_dependencies();
+    DirectionalEmbeddings embeddings = m_model->get_embeddings();
+    FeatureGenerator<BoostGraphTraits<Graph>, DirectionalEmbeddings,
+                     decltype(all_deps)>
+        feature_generator{analytics, embeddings, m_config.FEATURE_CONFIG};
 
     torch::Tensor combined;
     std::vector<std::pair<std::string, std::string>> vertex_pairs;
-    std::optional<arma::Row<size_t>> labels = std::nullopt;
+    std::optional<arma::Row<std::size_t>> labels = std::nullopt;
 
     if (ground_truth_path) {
         m_dependency_analyzer->load_dependencies(*ground_truth_path);
@@ -253,12 +255,21 @@ void LinkPredictionApp::generate_predictions(
 
     // Write predictions to file
     FileWriter writer(output_path);
-    writer.write_line("ip1,ip2");
+    
+    // Header depends on whether service classification is enabled
+    if (m_config.SERVICE_CONFIG.enabled) {
+        writer.write_line("dependent_ip,dependency_ip,score,service,service_conf,service_topk");
+    } else {
+        writer.write_line("dependent_ip,dependency_ip");
+}
+    
+    const auto& ip_to_vertex = m_graph_manager->get_ip_to_vertex();
+    
     int positive_count = 0;
-    for (size_t i = 0; i < predictions.size(); ++i) {
+    for (std::size_t i = 0; i < predictions.size(); ++i) {
         const auto &pair = vertex_pairs[i];
-        const auto &ip1 = pair.first;
-        const auto &ip2 = pair.second;
+        const auto &dependent_ip = pair.first;   // ip1 depends on ip2
+        const auto &dependency_ip = pair.second;
         const auto &prediction = predictions[i];
 
         if (prediction == 1) {
@@ -275,6 +286,9 @@ void LinkPredictionApp::generate_predictions(
     if (labels.has_value()) {
         auto metrics = m_classifier->evaluate(arma_features, *labels);
         utils::print_classifier_metrics(metrics);
+        const auto [optimal_threshold, optimal_metrics] = m_classifier->find_optimal_threshold(arma_features, *labels, m_config.METRIC_TO_OPTIMIZE);
+        std::cout << "Optimal threshold: " << optimal_threshold << std::endl;
+        utils::print_classifier_metrics(optimal_metrics);
     }
 }
 
