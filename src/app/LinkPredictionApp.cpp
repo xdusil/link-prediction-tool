@@ -254,7 +254,7 @@ void LinkPredictionApp::generate_predictions(
     auto [arma_features, ref] =
         utils::conv_2d_tensor_to_arma<float>(combined, false, true);
 
-    const auto &predictions = m_classifier->predict(arma_features);
+    const auto [predictions, probabilities] = m_classifier->predict_proba(arma_features);
 
     // Write predictions to file
     FileWriter writer(output_path);
