@@ -180,7 +180,7 @@ inline T apply_z_score(T value, T mean, T std) {
  * @return Percentile rank in range [0, 1]
  */
 template <typename T, typename U = double>
-    requires std::is_floating_point_v<T>
+    requires std::is_floating_point_v<T> && std::totally_ordered<U>
 inline T get_percentile_rank(U value, const std::vector<U>& sorted_values) {
     if (sorted_values.empty()) {
         return static_cast<T>(0);
