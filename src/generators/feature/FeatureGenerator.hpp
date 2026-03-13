@@ -106,6 +106,18 @@ private:
     mutable FeatureCache<Vertex, std::size_t> m_shortest_path_cache;
     mutable FeatureCache<Vertex, std::size_t> m_transitive_path_cache;
 
+    // Graph statistics for normalization
+    struct GraphStatistics {
+        // Degree statistics (sorted for percentile computation)
+        std::vector<double> sorted_degrees;
+        
+        // Embedding norm statistics
+        std::vector<double> sorted_embedding_norms;
+        
+        bool is_initialized = false;
+    };
+    mutable GraphStatistics m_graph_stats;
+
     /**
      * @brief Core implementation for feature generation.
      *
@@ -158,6 +170,18 @@ private:
         const std::unordered_map<IPAddress, Vertex>& vertex_to_index) const;
 
     void precompute_expensive_features(const std::vector<Vertex>& vertices) const;
+
+    /**
+     * @brief Compute graph statistics for feature normalization.
+     * 
+     * @param vertex_to_index Mapping from IP addresses to vertex indices.
+     * @param source_embeddings Source node embeddings.
+     * @param dest_embeddings Destination node embeddings.
+     */
+    void compute_graph_statistics(
+        const std::unordered_map<IPAddress, Vertex>& vertex_to_index,
+        const torch::Tensor& source_embeddings,
+        const torch::Tensor& dest_embeddings) const;
 
     // ========================================================================
     // Feature Writers

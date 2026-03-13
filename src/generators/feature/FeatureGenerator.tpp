@@ -118,6 +118,9 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::generat
         dest_embeddings = m_embedding_module.forward_dst(indices_tensor);
     }
 
+    // Compute graph statistics for normalization
+    compute_graph_statistics(vertex_to_index, source_embeddings, dest_embeddings);
+
     process_all_pairs<WithLabels, WithPairs>(vertex_ips, source_embeddings,
                                              dest_embeddings, vertex_to_index,
                                              ground_truth, features, labels, pairs);
@@ -311,11 +314,13 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
     if (m_config.emb_src_norm) {
         PROFILE_FEATURE(m_profiler, "emb_src_norm");
-        accessor[row][col++] = src_norm;
+        T percentile = math::get_percentile_rank<T, double>(src_norm, m_graph_stats.sorted_embedding_norms);
+        accessor[row][col++] = percentile;
     }
     if (m_config.emb_dst_norm) {
         PROFILE_FEATURE(m_profiler, "emb_dst_norm");
-        accessor[row][col++] = dst_norm;
+        T percentile = math::get_percentile_rank<T, double>(dst_norm, m_graph_stats.sorted_embedding_norms);
+        accessor[row][col++] = percentile;
     }
     if (m_config.emb_norm_ratio) {
         PROFILE_FEATURE(m_profiler, "emb_norm_ratio");
@@ -362,19 +367,27 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
     // Degree features
     if (m_config.struct_in_degree_src) {
         PROFILE_FEATURE(m_profiler, "struct_in_degree_src");
-        accessor[row][col++] = static_cast<T>(m_graph_analytics.in_degree(src));
+        T log_degree = std::log1p(static_cast<T>(m_graph_analytics.in_degree(src)));
+        T percentile = math::get_percentile_rank<T, double>(log_degree, m_graph_stats.sorted_degrees);
+        accessor[row][col++] = percentile;
     }
     if (m_config.struct_out_degree_src) {
         PROFILE_FEATURE(m_profiler, "struct_out_degree_src");
-        accessor[row][col++] = static_cast<T>(m_graph_analytics.out_degree(src));
+        T log_degree = std::log1p(static_cast<T>(m_graph_analytics.out_degree(src)));
+        T percentile = math::get_percentile_rank<T, double>(log_degree, m_graph_stats.sorted_degrees);
+        accessor[row][col++] = percentile;
     }
     if (m_config.struct_in_degree_dst) {
         PROFILE_FEATURE(m_profiler, "struct_in_degree_dst");
-        accessor[row][col++] = static_cast<T>(m_graph_analytics.in_degree(dst));
+        T log_degree = std::log1p(static_cast<T>(m_graph_analytics.in_degree(dst)));
+        T percentile = math::get_percentile_rank<T, double>(log_degree, m_graph_stats.sorted_degrees);
+        accessor[row][col++] = percentile;
     }
     if (m_config.struct_out_degree_dst) {
         PROFILE_FEATURE(m_profiler, "struct_out_degree_dst");
-        accessor[row][col++] = static_cast<T>(m_graph_analytics.out_degree(dst));
+        T log_degree = std::log1p(static_cast<T>(m_graph_analytics.out_degree(dst)));
+        T percentile = math::get_percentile_rank<T, double>(log_degree, m_graph_stats.sorted_degrees);
+        accessor[row][col++] = percentile;
     }
     if (m_config.struct_degree_ratio) {
         PROFILE_FEATURE(m_profiler, "struct_degree_ratio");
@@ -425,14 +438,14 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
                 score += 1.0 / std::log(static_cast<double>(out_deg_w));
             }
         }
-        accessor[row][col++] = static_cast<T>(score);
+        accessor[row][col++] = static_cast<T>(std::log1p(score));
     }
 
     // Preferential attachment
     if (m_config.struct_preferential_attachment) {
         PROFILE_FEATURE(m_profiler, "struct_preferential_attachment");
-        accessor[row][col++] =
-            static_cast<T>(m_graph_analytics.preferential_attachment(src, dst));
+        double pa_value = static_cast<double>(m_graph_analytics.preferential_attachment(src, dst));
+        accessor[row][col++] = static_cast<T>(std::log1p(pa_value));
     }
 
     // Resource allocation index
@@ -446,21 +459,26 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
                 score += 1.0 / out_deg_w;
             }
         }
-        accessor[row][col++] = static_cast<T>(score);
+        accessor[row][col++] = static_cast<T>(std::log1p(score));
     }
 
     // Transitive reachability (2-hop paths)
     if (m_config.struct_transitive_reachability) {
         PROFILE_FEATURE(m_profiler, "struct_transitive_reachability");
         std::size_t count = m_transitive_path_cache.get(src, dst).value_or(0);
-        accessor[row][col++] = static_cast<T>(count);
+        accessor[row][col++] = static_cast<T>(std::log1p(static_cast<double>(count)));
     }
 
-    // Shortest path (excluding direct edge)
+    // Shortest path (inverse distance, 0 for unreachable)
     if (m_config.struct_shortest_path) {
         PROFILE_FEATURE(m_profiler, "struct_shortest_path");
         std::size_t dist = m_shortest_path_cache.get(src, dst).value_or(999);
-        accessor[row][col++] = static_cast<T>(dist);
+        // Transform to inverse distance: closer = higher value, unreachable = 0
+        if (dist == 999) {
+            accessor[row][col++] = static_cast<T>(0);
+        } else {
+            accessor[row][col++] = static_cast<T>(1.0 / static_cast<double>(dist));
+        }
     }
 
     // Hierarchy difference
@@ -503,11 +521,13 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
     if (m_config.time_avg_duration) {
         PROFILE_FEATURE(m_profiler, "time_avg_duration");
-        accessor[row][col++] = static_cast<T>(features.avg_duration.value_or(0.0));
+        double duration = features.avg_duration.value_or(0.0);
+        accessor[row][col++] = static_cast<T>(std::log1p(duration));
     }
     if (m_config.time_avg_interarrival) {
         PROFILE_FEATURE(m_profiler, "time_avg_interarrival");
-        accessor[row][col++] = static_cast<T>(features.avg_interarrival.value_or(0.0));
+        double interarrival = features.avg_interarrival.value_or(0.0);
+        accessor[row][col++] = static_cast<T>(std::log1p(interarrival));
     }
     if (m_config.time_regularity) {
         PROFILE_FEATURE(m_profiler, "time_regularity");
@@ -556,7 +576,8 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
 
     if (m_config.flow_response_time) {
         PROFILE_FEATURE(m_profiler, "flow_response_time");
-        accessor[row][col++] = static_cast<T>(features.response_time.value_or(0.0));
+        double response_time = features.response_time.value_or(0.0);
+        accessor[row][col++] = static_cast<T>(std::log1p(response_time));
     }
     if (m_config.flow_request_ratio) {
         PROFILE_FEATURE(m_profiler, "flow_request_ratio");
@@ -711,3 +732,75 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     std::cout << "[FeatureGenerator] Pre-computation complete: " << total_elapsed
               << "ms total" << std::endl;
 }
+
+// ============================================================================
+// Graph Statistics for Normalization
+// ============================================================================
+
+template <typename GraphTraits, typename EmbeddingModule,
+          typename GroundTruthDependencies>
+    requires HasContains<GroundTruthDependencies> && HasDirectionalForward<EmbeddingModule>
+void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
+    compute_graph_statistics(
+        const std::unordered_map<IPAddress, Vertex>& vertex_to_index,
+        const torch::Tensor& source_embeddings,
+        const torch::Tensor& dest_embeddings) const {
+
+    if (m_graph_stats.is_initialized) {
+        return; // Already computed
+    }
+
+    std::cout << "[FeatureGenerator] Computing graph statistics for normalization..." << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Collect all degrees (for degree feature normalization)
+    bool need_degree_stats = m_config.struct_in_degree_src || m_config.struct_out_degree_src ||
+                             m_config.struct_in_degree_dst || m_config.struct_out_degree_dst;
+    
+    if (need_degree_stats) {
+        std::vector<double> all_degrees;
+        all_degrees.reserve(vertex_to_index.size() * 2); // in + out degrees
+        
+        for (const auto& [ip, vertex] : vertex_to_index) {
+            all_degrees.push_back(std::log1p(static_cast<double>(m_graph_analytics.in_degree(vertex))));
+            all_degrees.push_back(std::log1p(static_cast<double>(m_graph_analytics.out_degree(vertex))));
+        }
+        
+        std::sort(all_degrees.begin(), all_degrees.end());
+        m_graph_stats.sorted_degrees = std::move(all_degrees);
+    }
+
+    // Collect all embedding norms (for embedding norm normalization)
+    bool need_emb_stats = m_config.emb_src_norm || m_config.emb_dst_norm;
+    
+    if (need_emb_stats && m_config.are_embedding_features_enabled()) {
+        std::vector<double> all_norms;
+        all_norms.reserve(source_embeddings.size(0) + dest_embeddings.size(0));
+        
+        auto src_accessor = source_embeddings.accessor<float, 2>();
+        auto dst_accessor = dest_embeddings.accessor<float, 2>();
+        
+        for (int64_t i = 0; i < source_embeddings.size(0); ++i) {
+            double src_norm = 0.0;
+            double dst_norm = 0.0;
+            
+            for (int64_t j = 0; j < source_embeddings.size(1); ++j) {
+                src_norm += src_accessor[i][j] * src_accessor[i][j];
+                dst_norm += dst_accessor[i][j] * dst_accessor[i][j];
+            }
+            
+            all_norms.push_back(std::sqrt(src_norm));
+            all_norms.push_back(std::sqrt(dst_norm));
+        }
+        
+        std::sort(all_norms.begin(), all_norms.end());
+        m_graph_stats.sorted_embedding_norms = std::move(all_norms);
+    }
+
+    m_graph_stats.is_initialized = true;
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "[FeatureGenerator] Statistics computed in " << elapsed << "ms" << std::endl;
+}
+
