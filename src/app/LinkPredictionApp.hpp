@@ -214,9 +214,6 @@ private:
     std::unique_ptr<ground_truth::IDependencyAnalyzer<ground_truth::DependencySet>>
         m_dependency_analyzer;
 
-    // Random seed
-    unsigned int m_seed = 42;
-
     // Verbose logging
     bool m_verbose = false;
 };

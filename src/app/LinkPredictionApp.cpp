@@ -48,13 +48,16 @@ LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_pa
 
     log_verbose("Loaded configuration: \n", "  - ", utils::to_string(m_config));
 
+    utils::set_global_seed(m_config.SEED);
+    log_verbose("Using random seed: ", m_config.SEED);
+
     // Initialize components
     m_internal_counter =
         std::make_unique<EvictingCounter<IPAddress>>(m_config.COUNT_INTERNAL);
     m_external_counter =
         std::make_unique<EvictingCounter<IPAddress>>(m_config.COUNT_EXTERNAL);
     m_reservoir =
-        std::make_unique<CapacityLimitedReservoir<IPAddress, IPEdge>>(m_config.MAX_EDGES, m_seed);
+        std::make_unique<CapacityLimitedReservoir<IPAddress, IPEdge>>(m_config.MAX_EDGES, m_config.SEED);
     m_graph_manager = std::make_unique<NetworkGraphManager>();
 
     // Set threads
@@ -364,13 +367,13 @@ void LinkPredictionApp::generate_embeddings() {
     // Create random walk manager
     RandomWalkManager<NetworkGraphManager::Base> walk_manager(
         *m_graph_manager, m_config.NUM_THREADS.value(), walk_logic, 
-        m_config.WALK_LENGTH, m_config.WALKS_PER_VERTEX, m_seed);
+        m_config.WALK_LENGTH, m_config.WALKS_PER_VERTEX, m_config.SEED);
 
     // Set up context and dependency generators
     SlidingWindowContextGenerator<Vertex> context_generator(m_config.CONTEXT_SIZE);
     CandidateDependencyGenerator<Vertex> dependency_generator(
         m_graph_manager->get_vertex_count(), [](Vertex vertex) { return vertex; },
-        m_config.NUM_NEGATIVE_SAMPLES, m_seed);
+        m_config.NUM_NEGATIVE_SAMPLES, m_config.SEED);
 
     // Create data loader with batching support
     DataLoader<Vertex> data_loader(walk_manager, context_generator, dependency_generator,
