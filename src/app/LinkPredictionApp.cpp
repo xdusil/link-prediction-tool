@@ -54,13 +54,10 @@ LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_pa
     m_external_counter =
         std::make_unique<EvictingCounter<IPAddress>>(m_config.COUNT_EXTERNAL);
     m_reservoir =
-        std::make_unique<CapacityLimitedReservoir<IPAddress, IPEdge>>(m_config.MAX_EDGES);
+        std::make_unique<CapacityLimitedReservoir<IPAddress, IPEdge>>(m_config.MAX_EDGES, m_seed);
     m_graph_manager = std::make_unique<NetworkGraphManager>();
 
-    // set seed
-    m_seed = std::chrono::system_clock::now().time_since_epoch().count();
-
-    // set threads
+    // Set threads
     m_config.NUM_THREADS = m_config.NUM_THREADS.value_or(std::thread::hardware_concurrency());
     if (*m_config.NUM_THREADS <= 0)
         m_config.NUM_THREADS = 1;
@@ -97,7 +94,7 @@ void LinkPredictionApp::common_training_or_prediction(
     } else {
         std::cout << "Skipping embedding generation (no embedding features enabled)" << std::endl;
         // Create a minimal model with 1 dimension to satisfy interface requirements
-        m_model = std::make_unique<SkipGramModel>(m_graph_manager->get_vertex_count(), 1);
+        m_model = std::make_unique<DirectionalSkipGramModel>(m_graph_manager->get_vertex_count(), 1);
     }
 }
 
@@ -148,12 +145,12 @@ void LinkPredictionApp::run_training_mode(
     }
 
     const auto &all_deps = m_dependency_analyzer->get_dependencies();
+    DirectionalEmbeddings embeddings = m_model->get_embeddings();
 
     BoostGraphAnalytics analytics{*m_graph_manager};
-    FeatureGenerator<BoostGraphTraits<Graph>, decltype(m_model->get_embeddings()),
+    FeatureGenerator<BoostGraphTraits<Graph>, DirectionalEmbeddings,
                      decltype(all_deps)>
-        feature_generator{analytics, m_model->get_embeddings(),
-            m_config.FEATURE_CONFIG};
+        feature_generator{analytics, embeddings, m_config.FEATURE_CONFIG};
 
     auto [combined, arma_labels] = feature_generator.generate_labeled_features(
         m_graph_manager->get_ip_to_vertex(), all_deps);
@@ -167,7 +164,7 @@ void LinkPredictionApp::run_training_mode(
               << "\n  Labels: " << arma_labels.n_elem << std::endl;
     
     log_verbose("Using features: ");
-    log_verbose("  - ", utils::join(m_config.FEATURE_CONFIG.get_feature_names(m_config.EMBEDDING_DIM), ", "));
+    log_verbose("  - ", utils::join(m_config.FEATURE_CONFIG.get_feature_names(), ", "));
 
     // Train the classifier
     train_classifier(arma_features, arma_labels, m_config.USE_GRID_SEARCH, feature_importance);
@@ -193,7 +190,7 @@ void LinkPredictionApp::run_prediction_mode(
 
     // Load classifier
     m_classifier =
-        std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>();
+        std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<std::size_t>>>();
     m_classifier->load(classifier_path);
 
     if (m_config.CLASSIFIER_THRESHOLD) {
@@ -352,25 +349,31 @@ void LinkPredictionApp::generate_embeddings() {
 
     // Create random walk manager
     RandomWalkManager<NetworkGraphManager::Base> walk_manager(
-        *m_graph_manager, m_config.NUM_THREADS.value(), walk_logic, m_config.WALK_LENGTH, m_seed);
+        *m_graph_manager, m_config.NUM_THREADS.value(), walk_logic, 
+        m_config.WALK_LENGTH, m_config.WALKS_PER_VERTEX, m_seed);
 
     // Set up context and dependency generators
     SlidingWindowContextGenerator<Vertex> context_generator(m_config.CONTEXT_SIZE);
     CandidateDependencyGenerator<Vertex> dependency_generator(
-        [](const std::vector<Vertex> &context) { return context[0]; },
         m_graph_manager->get_vertex_count(), [](Vertex vertex) { return vertex; },
-        m_config.NUM_NEGATIVE_SAMPLES);
+        m_config.NUM_NEGATIVE_SAMPLES, m_seed);
 
-    // Create data loader
-    DataLoader<Vertex> data_loader(walk_manager, context_generator, dependency_generator);
+    // Create data loader with batching support
+    DataLoader<Vertex> data_loader(walk_manager, context_generator, dependency_generator,
+                                    m_config.BATCH_SIZE, m_verbose);
+
 
     // Create and train the Skip-Gram model
-    m_model = std::make_unique<SkipGramModel>(m_graph_manager->get_vertex_count(),
+    m_model = std::make_unique<DirectionalSkipGramModel>(m_graph_manager->get_vertex_count(),
                                               m_config.EMBEDDING_DIM);
 
     // Train model
     Optimizer optimizer(*m_model, m_config.LEARNING_RATE);
-    SkipGramTrainer trainer(*m_model, data_loader, optimizer);
+    
+    using BatchType = std::tuple<torch::Tensor, torch::Tensor, torch::Tensor>;
+    GenericTrainer<DirectionalSkipGramModel, BatchType> trainer(
+        *m_model, data_loader, optimizer, m_verbose);
+    
     trainer.train(m_config.EPOCHS);
 
     std::cout << "Embedding generation complete." << std::endl;
@@ -385,12 +388,12 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
         // Perform grid search
         RandomForestParams best_params = perform_grid_search(features, labels);
         m_classifier =
-            std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>(
+            std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<std::size_t>>>(
                 best_params, m_config.USE_SCALING);
     } else {
         // Create classifier
         m_classifier =
-            std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>>>(m_config.RF_PARAMS, m_config.USE_SCALING);
+            std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<std::size_t>>>(m_config.RF_PARAMS, m_config.USE_SCALING);
     }
 
     if (m_config.CLASSIFIER_THRESHOLD) {
@@ -412,12 +415,12 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     // Calculate feature importance
     if (feature_importance) {
         std::cout << "\n=== Feature Importance Analysis ===" << std::endl;
-        auto feature_names = m_config.FEATURE_CONFIG.get_feature_names(m_config.EMBEDDING_DIM);
+        auto feature_names = m_config.FEATURE_CONFIG.get_feature_names();
         auto importance = m_classifier->calculate_feature_importance(
             features, labels, feature_names, m_config.METRIC_TO_OPTIMIZE, 5);
         
         std::cout << "\nTop 20 Most Important Features:" << std::endl;
-        for (size_t i = 0; i < std::min(size_t(20), importance.size()); ++i) {
+        for (std::size_t i = 0; i < std::min(std::size_t(20), importance.size()); ++i) {
             std::cout << "  " << (i + 1) << ". " << importance[i].first 
                      << ": " << importance[i].second << std::endl;
         }
