@@ -1,6 +1,8 @@
 #pragma once
 
 #include <armadillo>
+#include <cstdint>
+#include <mlpack/core/math/random.hpp>
 #include <torch/torch.h>
 #ifdef USE_OPENMP
     #include <omp.h>
@@ -163,6 +165,18 @@ inline void set_global_threads_count(int threads) {
     #ifdef USE_OPENMP
         omp_set_num_threads(threads);
     #endif
+}
+
+/**
+ * @brief Set the global random seed for stochastic libraries.
+ *
+ * This function synchronizes the seed used by mlpack/Armadillo and LibTorch.
+ *
+ * @param seed The seed to set.
+ */
+inline void set_global_seed(std::uint32_t seed) {
+    mlpack::RandomSeed(seed);
+    torch::manual_seed(static_cast<std::uint64_t>(seed));
 }
 
 /**
