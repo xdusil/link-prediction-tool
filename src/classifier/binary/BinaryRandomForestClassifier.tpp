@@ -44,10 +44,9 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::train_with_calibrat
 }
 
 template <typename Features, typename Labels, typename Scaler>
-Labels BinaryRandomForestClassifier<Features, Labels, Scaler>::predict(
+std::tuple<Labels, arma::mat>
+BinaryRandomForestClassifier<Features, Labels, Scaler>::predict_proba(
     const Features &features) const {
-
-    // Get probabilities for each class
     auto [_, probabilities] = Base::predict_proba(features);
     Labels predictions(probabilities.n_cols);
 
@@ -56,6 +55,13 @@ Labels BinaryRandomForestClassifier<Features, Labels, Scaler>::predict(
         predictions[i] = (probabilities(1, i) > m_binary_threshold) ? 1 : 0;
     }
 
+    return {std::move(predictions), std::move(probabilities)};
+}
+
+template <typename Features, typename Labels, typename Scaler>
+Labels BinaryRandomForestClassifier<Features, Labels, Scaler>::predict(
+    const Features &features) const {
+    auto [predictions, _] = predict_proba(features);
     std::cout << "Binary classifier: Using optimized binary threshold: " << m_binary_threshold
               << std::endl;
     return predictions;
@@ -65,15 +71,7 @@ template <typename Features, typename Labels, typename Scaler>
 statistics::Metrics
 BinaryRandomForestClassifier<Features, Labels, Scaler>::evaluate(const Features &features,
                                                                  const Labels &labels) const {
-
-    // Get probabilities for each class
-    auto [_, probabilities] = Base::predict_proba(features);
-    Labels predictions(probabilities.n_cols);
-
-    // Apply binary threshold to the positive class probability
-    for (size_t i = 0; i < predictions.n_elem; ++i) {
-        predictions[i] = (probabilities(1, i) > m_binary_threshold) ? 1 : 0;
-    }
+    auto [predictions, probabilities] = predict_proba(features);
 
     // Calculate metrics including ROC AUC
     const arma::rowvec positive_scores = probabilities.row(1);

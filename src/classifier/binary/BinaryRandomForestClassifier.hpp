@@ -79,6 +79,17 @@ public:
     Labels predict(const Features& features) const override;
 
     /**
+     * @brief Predict labels and probabilities using the binary threshold.
+     *
+     * Unlike the base implementation, the returned labels respect the
+     * configured binary threshold instead of the default Random Forest decision.
+     *
+     * @param features The features.
+     * @return A tuple containing thresholded labels and class probabilities.
+     */
+    std::tuple<Labels, arma::mat> predict_proba(const Features& features) const override;
+
+    /**
      * @brief Evaluate model using the calibrated threshold.
      *
      * @param features The features.
