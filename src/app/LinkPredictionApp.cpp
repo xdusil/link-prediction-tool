@@ -432,7 +432,7 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     // Calculate feature importance
     if (feature_importance) {
         std::cout << "\n=== Feature Importance Analysis ===" << std::endl;
-        auto feature_names = m_config.FEATURE_CONFIG.get_feature_names();
+        std::vector<std::string> feature_names = m_config.FEATURE_CONFIG.get_feature_names();
         auto importance = m_classifier->calculate_feature_importance(
             features, labels, feature_names, m_config.METRIC_TO_OPTIMIZE, 5);
         
@@ -444,55 +444,92 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
         
         // Group analysis
         std::cout << "\nFeature Group Analysis:" << std::endl;
-        double emb_importance = 0.0, topo_importance = 0.0, temporal_importance = 0.0,
-               bidir_importance = 0.0, port_importance = 0.0;
-        int emb_count = 0, topo_count = 0, temporal_count = 0, bidir_count = 0, port_count = 0;
+        double uncategorized_importance = 0.0;
+        int uncategorized_count = 0;
+        std::vector<std::string> uncategorized_features;
+
+        struct GroupSummary {
+            const char *name;
+            const char *prefix;
+            double total;
+            int count;
+        };
+
+        std::array<GroupSummary, 5> groups = {{
+            {"Embedding", "emb_", 0.0, 0},
+            {"Topology", "struct_", 0.0, 0},
+            {"Temporal", "time_", 0.0, 0},
+            {"Bidirectional", "flow_", 0.0, 0},
+            {"Network", "net_", 0.0, 0}
+        }};
+
+        auto has_prefix = [](const std::string &name, const char *prefix) {
+            return name.rfind(prefix, 0) == 0;
+        };
         
         for (const auto &[name, score] : importance) {
-            if (name.find("embedding") != std::string::npos || 
-                name.find("cosine") != std::string::npos ||
-                name.find("dot_product") != std::string::npos ||
-                name.find("l1_distance") != std::string::npos ||
-                name.find("l2_distance") != std::string::npos ||
-                name.find("hadamard") != std::string::npos ||
-                name.find("std") != std::string::npos ||
-                name.find("abs_mean") != std::string::npos ||
-                name.find("norm_ratio") != std::string::npos) {
-                emb_importance += score;
-                emb_count++;
-            } else if (name.find("common_neighbors") != std::string::npos ||
-                      name.find("jaccard") != std::string::npos ||
-                      name.find("adamic") != std::string::npos ||
-                      name.find("preferential") != std::string::npos ||
-                      name.find("resource") != std::string::npos ||
-                      name.find("degree") != std::string::npos) {
-                topo_importance += score;
-                topo_count++;
-            } else if (name.find("temporal") != std::string::npos) {
-                temporal_importance += score;
-                temporal_count++;
-            } else if (name.find("bidirectional") != std::string::npos) {
-                bidir_importance += score;
-                bidir_count++;
-            } else if (name.find("port") != std::string::npos) {
-                port_importance += score;
-                port_count++;
+            bool matched = false;
+            for (auto &group : groups) {
+                if (has_prefix(name, group.prefix)) {
+                    group.total += score;
+                    ++group.count;
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (!matched) {
+                uncategorized_importance += score;
+                uncategorized_count++;
+                uncategorized_features.push_back(name);
             }
         }
         
         auto calc_avg = [](double total, int count) { return count > 0 ? total / count : 0.0; };
-        
-        std::cout << "  Embedding features:      total=" << emb_importance 
-                  << " count=" << emb_count << " avg=" << calc_avg(emb_importance, emb_count) << "\n"
-                  << "  Topology features:       total=" << topo_importance 
-                  << " count=" << topo_count << " avg=" << calc_avg(topo_importance, topo_count) << "\n"
-                  << "  Temporal features:       total=" << temporal_importance 
-                  << " count=" << temporal_count << " avg=" << calc_avg(temporal_importance, temporal_count) << "\n"
-                  << "  Bidirectional features:  total=" << bidir_importance 
-                  << " count=" << bidir_count << " avg=" << calc_avg(bidir_importance, bidir_count) << "\n"
-                  << "  Port features:           total=" << port_importance 
-                  << " count=" << port_count << " avg=" << calc_avg(port_importance, port_count) << "\n"
+        double grand_total = 0.0;
+        int total_features = 0;
+        for (const auto &group : groups) {
+            grand_total += group.total;
+            total_features += group.count;
+        }
+
+        auto calc_share = [](double total, double overall) {
+            return overall > 0.0 ? (100.0 * total / overall) : 0.0;
+        };
+
+        std::cout << "\n"
+                  << "  " << std::left << std::setw(15) << "Group"
+                  << std::right << std::setw(8) << "Count"
+                  << std::setw(14) << "Total"
+                  << std::setw(14) << "Avg"
+                  << std::setw(12) << "Share(%)" << "\n"
+                  << "  " << std::string(63, '-') << "\n";
+
+        std::cout << std::fixed << std::setprecision(6);
+        for (const auto& group : groups) {
+            std::cout << "  " << std::left << std::setw(15) << group.name
+                      << std::right << std::setw(8) << group.count
+                      << std::setw(14) << group.total
+                      << std::setw(14) << calc_avg(group.total, group.count)
+                      << std::setw(12) << calc_share(group.total, grand_total)
+                      << "\n";
+        }
+
+        std::cout << "  " << std::string(63, '-') << "\n"
+                  << "  " << std::left << std::setw(15) << "Total"
+                  << std::right << std::setw(8) << total_features
+                  << std::setw(14) << grand_total
+                  << std::setw(14) << calc_avg(grand_total, total_features)
+                  << std::setw(12) << 100.0 << "\n"
                   << "\n=== End Feature Importance ===" << std::endl;
+
+        if (uncategorized_count > 0) {
+            std::cout << "WARNING: " << uncategorized_count
+                      << " feature(s) could not be assigned to any known group prefix."
+                      << " Uncategorized total importance=" << uncategorized_importance
+                      << "\n  Uncategorized features: "
+                      << utils::join(uncategorized_features, ", ") << std::endl;
+        }
     }
 }
 
