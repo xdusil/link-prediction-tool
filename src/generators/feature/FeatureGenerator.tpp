@@ -118,6 +118,8 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::generat
         dest_embeddings = m_embedding_module.forward_dst(indices_tensor);
     }
 
+    m_graph_stats.is_initialized = false;
+
     // Compute graph statistics for normalization
     compute_graph_statistics(vertex_to_index, source_embeddings, dest_embeddings);
 
@@ -674,9 +676,10 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
                 }
             }
 
-            // Batch insert: store only indirect paths (dist > 1)
+            // Batch insert: store all reachable non-self paths, including
+            // direct edges (dist == 1).
             for (const auto& [dst, dist] : distances) {
-                if (dst != src && dist > 1) { // Exclude self and direct edges
+                if (dst != src) { // Exclude self
                     m_shortest_path_cache.put(src, dst, dist);
                     ++total_paths;
                 }
@@ -746,12 +749,12 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
         const torch::Tensor& source_embeddings,
         const torch::Tensor& dest_embeddings) const {
 
-    if (m_graph_stats.is_initialized) {
-        return; // Already computed
-    }
-
     std::cout << "[FeatureGenerator] Computing graph statistics for normalization..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
+
+    // Always recompute from the currently processed graph/embeddings.
+    m_graph_stats.sorted_degrees.clear();
+    m_graph_stats.sorted_embedding_norms.clear();
 
     // Collect all degrees (for degree feature normalization)
     bool need_degree_stats = m_config.struct_in_degree_src || m_config.struct_out_degree_src ||
