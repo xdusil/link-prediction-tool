@@ -15,13 +15,17 @@
 #include "graph/network/NetworkGraphDefinition.hpp"
 #include "graph/network/NetworkGraphManager.hpp"
 #include "io/FileReader.hpp"
-#include "model/trainer/SkipGramTrainer.hpp"
-#include "model/optimizer/Optimizer.hpp"
+#include "model/DirectionalEmbeddings.hpp"
 #include "model/data/DataLoader.hpp"
+#include "model/trainer/GenericTrainer.hpp"
+#include "model/optimizer/Optimizer.hpp"
+#include "model/DirectionalSkipGramModel.hpp"
 #include "random_walk/logic/custom/CustomRandomWalkLogic.hpp"
 #include "random_walk/manager/RandomWalkManager.hpp"
 #include "io/FileWriter.hpp"
 #include "mlpack/core/data/scaler_methods/min_max_scaler.hpp"
+#include "service/EdgeServiceClassifier.hpp"
+#include "service/ServicePortConfig.hpp"
 #include "statistics/metrics.hpp"
 #include "utils/ip/AllowedIPChecker.hpp"
 #include "utils/ip/BoostIPHandler.hpp"
@@ -29,9 +33,13 @@
 #include "utils/timers/timers.hpp"
 #include <cstddef>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <array>
 #include <optional>
+#include <sstream>
 #include <thread>
+#include <vector>
 
 LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_path /*= std::nullopt*/,
                                      bool verbose /*= false*/) : m_verbose(verbose) {
@@ -255,6 +263,26 @@ void LinkPredictionApp::generate_predictions(
         utils::conv_2d_tensor_to_arma<float>(combined, false, true);
 
     const auto [predictions, probabilities] = m_classifier->predict_proba(arma_features);
+    const arma::rowvec positive_scores = probabilities.row(1);
+
+    std::optional<service::ServicePortConfig> service_port_config;
+    std::optional<service::EdgeServiceClassifier<BoostGraphTraits<Graph>>> service_classifier;
+    
+    if (m_config.SERVICE_CONFIG.enabled) {
+        service_port_config.emplace();
+        service_port_config->load(m_config.SERVICE_CONFIG.port_config_path);
+        
+        service::ServiceClassificationConfig svc_config;
+        svc_config.ephemeral_port_min = m_config.SERVICE_CONFIG.ephemeral_port_min;
+        svc_config.min_flows = m_config.SERVICE_CONFIG.min_flows;
+        svc_config.min_confidence = m_config.SERVICE_CONFIG.min_confidence;
+        svc_config.smoothing_alpha = m_config.SERVICE_CONFIG.smoothing_alpha;
+        svc_config.top_k = m_config.SERVICE_CONFIG.top_k;
+        
+        service_classifier.emplace(*service_port_config, svc_config);
+        std::cout << "Service classification enabled with " 
+                  << service_port_config->port_count() << " port mappings" << std::endl;
+    }
 
     // Write predictions to file
     FileWriter writer(output_path);
@@ -264,7 +292,7 @@ void LinkPredictionApp::generate_predictions(
         writer.write_line("dependent_ip,dependency_ip,score,service,service_conf,service_topk");
     } else {
         writer.write_line("dependent_ip,dependency_ip");
-}
+    }
     
     const auto& ip_to_vertex = m_graph_manager->get_ip_to_vertex();
     
@@ -277,7 +305,31 @@ void LinkPredictionApp::generate_predictions(
 
         if (prediction == 1) {
             ++positive_count;
-            writer.write_line(ip1 + "," + ip2);
+            const double score = positive_scores[i];
+            
+            if (m_config.SERVICE_CONFIG.enabled) {
+                // Classify service type
+                auto src_it = ip_to_vertex.find(dependent_ip);
+                auto dst_it = ip_to_vertex.find(dependency_ip);
+                
+                service::ServiceClassificationResult svc_result;
+                if (src_it != ip_to_vertex.end() && dst_it != ip_to_vertex.end()) {
+                    svc_result = service_classifier->classify(
+                        *m_graph_manager, src_it->second, dst_it->second);
+                }
+                
+                // Format output line
+                std::ostringstream oss;
+                oss << dependent_ip << ","
+                    << dependency_ip << ","
+                    << std::fixed << std::setprecision(4) << score << ","
+                    << service::ServiceType::to_string(svc_result.service) << ","
+                    << std::fixed << std::setprecision(4) << svc_result.confidence << ","
+                    << "\"" << svc_result.top_k_string << "\"";
+                writer.write_line(oss.str());
+            } else {
+                writer.write_line(dependent_ip + "," + dependency_ip);
+            }
         }
     }
 
