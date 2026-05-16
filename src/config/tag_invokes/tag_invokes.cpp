@@ -324,6 +324,10 @@ Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
     set_validated<int>(obj, "COUNT_EXTERNAL", config.COUNT_EXTERNAL, is_positive{});
     set_validated<int>(obj, "COUNT_INTERNAL", config.COUNT_INTERNAL, is_positive{});
     set_validated<int>(obj, "MAX_EDGES", config.MAX_EDGES, is_positive{});
+    set_validated<int>(obj, "MAX_EDGES_PER_BUCKET", config.MAX_EDGES_PER_BUCKET,
+                       is_positive{});
+    set_validated<int>(obj, "TEMPORAL_BUCKETS", config.TEMPORAL_BUCKETS,
+                       is_positive{});
     set_validated<int>(obj, "N_OCCURRENCES", config.N_OCCURRENCES, is_positive{});
     set_validated<int>(obj, "EPSILON", config.EPSILON, is_positive{});
     set_validated<int>(obj, "N_APPEARANCES", config.N_APPEARANCES, is_positive{});
@@ -380,6 +384,8 @@ void tag_invoke(json::value_from_tag, json::value &jv, const Config &config) {
     obj["COUNT_EXTERNAL"] = json::value_from(config.COUNT_EXTERNAL);
     obj["COUNT_INTERNAL"] = json::value_from(config.COUNT_INTERNAL);
     obj["MAX_EDGES"] = json::value_from(config.MAX_EDGES);
+    obj["MAX_EDGES_PER_BUCKET"] = json::value_from(config.MAX_EDGES_PER_BUCKET);
+    obj["TEMPORAL_BUCKETS"] = json::value_from(config.TEMPORAL_BUCKETS);
     obj["N_OCCURRENCES"] = json::value_from(config.N_OCCURRENCES);
     obj["EPSILON"] = json::value_from(config.EPSILON);
     obj["N_APPEARANCES"] = json::value_from(config.N_APPEARANCES);

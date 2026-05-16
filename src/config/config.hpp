@@ -17,6 +17,8 @@ struct Config {
     int COUNT_EXTERNAL = 100;
     int COUNT_INTERNAL = 50;
     int MAX_EDGES = 500;
+    int MAX_EDGES_PER_BUCKET = 4;
+    int TEMPORAL_BUCKETS = 4;
     int N_OCCURRENCES = 10;
     int EPSILON = 1000;
     int N_APPEARANCES = 10;
