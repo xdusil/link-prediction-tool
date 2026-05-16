@@ -64,8 +64,10 @@ LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_pa
         std::make_unique<EvictingCounter<IPAddress>>(m_config.COUNT_INTERNAL);
     m_external_counter =
         std::make_unique<EvictingCounter<IPAddress>>(m_config.COUNT_EXTERNAL);
-    m_reservoir =
-        std::make_unique<CapacityLimitedReservoir<IPAddress, IPEdge>>(m_config.MAX_EDGES, m_config.SEED);
+const std::size_t structured_bucket_cap =
+        static_cast<std::size_t>(std::min(m_config.MAX_EDGES, m_config.MAX_EDGES_PER_BUCKET));
+    m_reservoir = std::make_unique<CapacityLimitedReservoir<IPAddress, IPEdge>>(
+        structured_bucket_cap, m_config.SEED);
     m_graph_manager = std::make_unique<NetworkGraphManager>();
 
     // Set threads
@@ -362,7 +364,15 @@ void LinkPredictionApp::process_data(const std::string &data_path) {
         throw ComponentNotInitializedException("Reservoir not initialized.");
 
     FlowProcessor processor(*m_internal_counter, *m_external_counter, *m_reservoir,
-                            *m_allowed_ip_checker, *m_internal_ip_checker);
+                            *m_allowed_ip_checker, *m_internal_ip_checker,
+                            static_cast<std::size_t>(m_config.TEMPORAL_BUCKETS));
+
+    std::cout << "Structured sampling:\n"
+              << "  Endpoint retention: top internal/external endpoints by exact score\n"
+              << "  Temporal buckets: " << m_config.TEMPORAL_BUCKETS << "\n"
+              << "  Max edges per pair bucket: "
+              << std::min(m_config.MAX_EDGES, m_config.MAX_EDGES_PER_BUCKET)
+              << std::endl;
 
     // Process flow file
     processor.process_flow_file(data_path);      // fill internal and external counters
