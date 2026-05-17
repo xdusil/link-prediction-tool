@@ -158,6 +158,7 @@ std::unordered_set<IPAddress> FlowProcessor::select_top_endpoints(
 
     std::sort(ranked_endpoints.begin(), ranked_endpoints.end(),
               [](const RankedEndpoint &lhs, const RankedEndpoint &rhs) {
+                  // Rank endpoint statistics descending, then IP ascending.
                   return std::tie(lhs.peer_count, lhs.flow_count, lhs.protocol_count,
                                   lhs.temporal_span, rhs.ip) >
                          std::tie(rhs.peer_count, rhs.flow_count, rhs.protocol_count,
@@ -214,10 +215,10 @@ IPEdge FlowProcessor::parse_rev_flow_from_json(const boost::json::object &data) 
         static_cast<int>(data.at("protocolIdentifier").as_int64()),
         std::chrono::milliseconds{data.contains("flowStartMilliseconds_Rev")
                                       ? data.at("flowStartMilliseconds_Rev").as_int64()
-                                      : data.at("biFlowStartMilliseconds").as_int64()},
+                                      : data.at("biFlowStartMilliseconds_Rev").as_int64()},
         std::chrono::milliseconds{data.contains("flowEndMilliseconds_Rev")
                                       ? data.at("flowEndMilliseconds_Rev").as_int64()
-                                      : data.at("biFlowEndMilliseconds").as_int64()}};
+                                      : data.at("biFlowEndMilliseconds_Rev").as_int64()}};
 }
 
 std::pair<std::chrono::milliseconds, std::chrono::milliseconds>
@@ -265,13 +266,13 @@ std::size_t FlowProcessor::get_temporal_bucket(
 }
 
 bool FlowProcessor::has_reverse_flow_data(const boost::json::object &data) {
-    if (data.contains("flowStartMilliseconds_Rev") ||
+    if (data.contains("flowStartMilliseconds_Rev") &&
         data.contains("flowEndMilliseconds_Rev")) {
         return true;
     }
 
-    if (data.contains("biFlowStartMilliseconds") ||
-        data.contains("biFlowEndMilliseconds")) {
+    if (data.contains("biFlowStartMilliseconds_Rev") &&
+        data.contains("biFlowEndMilliseconds_Rev")) {
         return true;
     }
 
