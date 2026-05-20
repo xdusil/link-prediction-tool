@@ -1,14 +1,141 @@
 #include "metrics.hpp"
 #include "exceptions/exceptions.hpp"
 #include "mlpack/core/cv/metrics/roc_auc_score.hpp"
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <numeric>
+#include <vector>
 
 namespace statistics {
+
+namespace {
+
+constexpr std::array<std::size_t, 3> DEFAULT_RANKING_CUTOFFS = {10, 50, 100};
+
+std::vector<std::size_t> sorted_score_indices_desc(const arma::rowvec &scores) {
+    std::vector<std::size_t> indices(scores.n_elem);
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(), [&scores](std::size_t lhs, std::size_t rhs) {
+        if (scores[lhs] == scores[rhs]) {
+            return lhs < rhs;
+        }
+        return scores[lhs] > scores[rhs];
+    });
+    return indices;
+}
+
+std::optional<double> precision_at_k(const std::vector<std::size_t> &ranked_indices,
+                                     const arma::Row<size_t> &labels,
+                                     std::size_t k) {
+    const std::size_t limit = std::min(k, ranked_indices.size());
+    if (limit == 0) {
+        return std::nullopt;
+    }
+
+    std::size_t positives = 0;
+    for (std::size_t i = 0; i < limit; ++i) {
+        const std::size_t index = ranked_indices[i];
+        assert(index < labels.n_elem);
+        positives += labels[index] == 1 ? 1 : 0;
+    }
+
+    return static_cast<double>(positives) / static_cast<double>(limit);
+}
+
+std::optional<double> recall_at_k(const std::vector<std::size_t> &ranked_indices,
+                                  const arma::Row<size_t> &labels, std::size_t k) {
+    const std::size_t total_positives = arma::sum(labels == 1);
+    const std::size_t limit = std::min(k, ranked_indices.size());
+    if (limit == 0 || total_positives == 0) {
+        return std::nullopt;
+    }
+
+    std::size_t positives = 0;
+    for (std::size_t i = 0; i < limit; ++i) {
+        const std::size_t index = ranked_indices[i];
+        assert(index < labels.n_elem);
+        positives += labels[index] == 1 ? 1 : 0;
+    }
+
+    return static_cast<double>(positives) / static_cast<double>(total_positives);
+}
+
+std::optional<double> average_precision(
+    const std::vector<std::size_t> &ranked_indices,
+    const arma::Row<size_t> &labels) {
+    const std::size_t total_positives = arma::sum(labels == 1);
+    if (ranked_indices.empty() || total_positives == 0) {
+        return std::nullopt;
+    }
+
+    double precision_sum = 0.0;
+    std::size_t true_positives = 0;
+
+    for (std::size_t rank = 0; rank < ranked_indices.size(); ++rank) {
+        const std::size_t index = ranked_indices[rank];
+        assert(index < labels.n_elem);
+        if (labels[index] != 1) {
+            continue;
+        }
+
+        ++true_positives;
+        precision_sum += static_cast<double>(true_positives) /
+                         static_cast<double>(rank + 1);
+    }
+
+    return precision_sum / static_cast<double>(total_positives);
+}
+
+std::optional<double> reciprocal_rank(
+    const std::vector<std::size_t>& ranked_indices,
+    const arma::Row<std::size_t>& labels) {
+    for (std::size_t rank = 0; rank < ranked_indices.size(); ++rank) {
+        const std::size_t index = ranked_indices[rank];
+        assert(index < labels.n_elem);
+        if (labels[index] == 1) {
+            return 1.0 / static_cast<double>(rank + 1);
+        }
+    }
+
+    return std::nullopt;
+}
+
+void fill_score_based_metrics(Metrics &metrics, const arma::rowvec &scores,
+                              const arma::Row<size_t> &labels) {
+    if (scores.is_empty() || scores.n_elem != labels.n_elem) {
+        return;
+    }
+
+    const std::size_t total_positives = arma::sum(labels == 1);
+    const std::size_t total_negatives = labels.n_elem - total_positives;
+
+    if (total_positives > 0 && total_negatives > 0) {
+        metrics.roc_auc = calculate_roc_auc(scores, labels);
+    }
+
+    const auto ranked_indices = sorted_score_indices_desc(scores);
+    metrics.average_precision = average_precision(ranked_indices, labels);
+    metrics.mean_reciprocal_rank = reciprocal_rank(ranked_indices, labels);
+    metrics.ranking_at_k.reserve(DEFAULT_RANKING_CUTOFFS.size());
+    for (const std::size_t k : DEFAULT_RANKING_CUTOFFS) {
+        metrics.ranking_at_k.push_back(
+            {k, precision_at_k(ranked_indices, labels, k),
+             recall_at_k(ranked_indices, labels, k)});
+    }
+}
+
+} // namespace
+
 Metrics calculate_metrics(const arma::Row<size_t> &predictions,
                           const arma::Row<size_t> &labels,
                           const arma::rowvec &positive_scores /*= arma::rowvec()*/,
                           AverageType avg_type /*= AverageType::BINARY*/,
                           size_t num_classes /*= 2*/) {
     Metrics metrics{};
+    if (labels.is_empty() || predictions.n_elem != labels.n_elem) {
+        return metrics;
+    }
 
     // Handle simple binary case with direct calculation
     if (avg_type == AverageType::BINARY && num_classes == 2) {
@@ -25,9 +152,7 @@ Metrics calculate_metrics(const arma::Row<size_t> &predictions,
                                      (metrics.precision + metrics.recall)
                                : 0.0;
 
-        if (!positive_scores.is_empty()) {
-            metrics.roc_auc = calculate_roc_auc(positive_scores, labels);
-        }
+        fill_score_based_metrics(metrics, positive_scores, labels);
         return metrics;
     }
 
@@ -105,6 +230,12 @@ Metrics calculate_metrics(const arma::Row<size_t> &predictions,
 }
 
 double calculate_roc_auc(const arma::rowvec &scores, const arma::Row<size_t> &labels) {
+    const std::size_t positives = arma::sum(labels == 1);
+    if (scores.is_empty() || scores.n_elem != labels.n_elem || positives == 0 ||
+        positives == labels.n_elem) {
+        return 0.0;
+    }
     return mlpack::ROCAUCScore<>::Evaluate(labels, scores);
 }
+
 } // namespace statistics

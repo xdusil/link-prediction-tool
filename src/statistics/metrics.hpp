@@ -1,9 +1,17 @@
 #pragma once
 
 #include <armadillo>
+#include <cstddef>
 #include <optional>
+#include <vector>
 
 namespace statistics {
+
+struct RankingAtK {
+    std::size_t k = 0;
+    std::optional<double> precision;
+    std::optional<double> recall;
+};
 
 struct Metrics {
     double accuracy;
@@ -11,6 +19,9 @@ struct Metrics {
     double recall;
     double f1_score;
     std::optional<double> roc_auc;
+    std::optional<double> average_precision;
+    std::optional<double> mean_reciprocal_rank;
+    std::vector<RankingAtK> ranking_at_k;
 };
 
 enum class AverageType {
@@ -23,9 +34,8 @@ enum class AverageType {
  * @brief Calculate classification metrics.
  *
  * Metrics like accuracy, precision, recall, and F1 score are calculated.
- * This function can also calculate ROC-AUC score if positive_scores are provided. But it
- * is only applicable for binary classification. For multiclass classification, it will
- * ignore the positive_scores and not calculate ROC-AUC.
+ * This function can also calculate ranking metrics if positive_scores are provided.
+ * Score-based metrics are only applicable for binary classification.
  *
  * @param predictions Predicted labels
  * @param labels True labels
