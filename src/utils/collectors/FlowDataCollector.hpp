@@ -30,8 +30,12 @@ public:
         ReverseStartTimes = 1 << 2,
         ReverseEndTimes = 1 << 3,
         Duration = 1 << 4,
+        // Count fields avoid timestamp-vector allocation when only edge counts are needed.
+        ForwardCount = 1 << 5,
+        ReverseCount = 1 << 6,
 
         // Common combinations
+        CountsOnly = ForwardCount | ReverseCount,
         StartTimesOnly = ForwardStartTimes | ReverseStartTimes,
         ResponseTiming = ForwardEndTimes | ReverseStartTimes,
         StartTimesAndResponseTiming = StartTimesOnly | ResponseTiming,
@@ -39,7 +43,7 @@ public:
         ResponseTimingAndDuration = ResponseTiming | Duration,
         AllWithoutReverseEnd = StartTimesOnly | ResponseTiming | Duration,
         All = ForwardStartTimes | ForwardEndTimes | ReverseStartTimes | ReverseEndTimes |
-              Duration
+              Duration | CountsOnly
     };
 
     /**
@@ -81,14 +85,23 @@ public:
             return m_reverse_end_times.has_value();
         }
         bool has_duration() const noexcept { return m_total_duration_ms.has_value(); }
+        bool has_forward_count() const noexcept { return m_forward_count.has_value(); }
+        bool has_reverse_count() const noexcept { return m_reverse_count.has_value(); }
 
-        // Counts (derived from collected vectors)
+        // Counts (stored directly when requested, otherwise derived from collected vectors)
 
         /**
-         * @brief Forward count - derived from any forward vector that was collected.
-         * @throws std::bad_optional_access if no forward data was collected.
+         * @brief Number of forward flows from src to dst.
+         *
+         * Uses the explicit forward count when collected. Otherwise derives the
+         * count from a collected forward timestamp vector.
+         *
+         * @throws std::bad_optional_access if no forward count or timestamp data
+         * was collected.
          */
         std::size_t forward_count() const {
+            if (m_forward_count)
+                return *m_forward_count;
             if (m_forward_start_times)
                 return m_forward_start_times->size();
             if (m_forward_end_times)
@@ -97,10 +110,17 @@ public:
         }
 
         /**
-         * @brief Reverse count - derived from any reverse vector that was collected.
-         * @throws std::bad_optional_access if no reverse data was collected.
+         * @brief Number of reverse flows from dst to src.
+         *
+         * Uses the explicit reverse count when collected. Otherwise derives the
+         * count from a collected reverse timestamp vector.
+         *
+         * @throws std::bad_optional_access if no reverse count or timestamp data
+         * was collected.
          */
         std::size_t reverse_count() const {
+            if (m_reverse_count)
+                return *m_reverse_count;
             if (m_reverse_start_times)
                 return m_reverse_start_times->size();
             if (m_reverse_end_times)
@@ -134,6 +154,8 @@ public:
         std::optional<Timestamps> m_reverse_start_times;
         std::optional<Timestamps> m_reverse_end_times;
         std::optional<double> m_total_duration_ms;
+        std::optional<std::size_t> m_forward_count;
+        std::optional<std::size_t> m_reverse_count;
     };
 
     /**
@@ -212,13 +234,21 @@ FlowDataCollector::collect(const IGraphManager<GraphTraits>& graph,
         data.m_reverse_end_times.emplace();
     if constexpr (has_field(F, Fields::Duration))
         data.m_total_duration_ms = 0.0;
+    if constexpr (has_field(F, Fields::ForwardCount))
+        data.m_forward_count = 0;
+    if constexpr (has_field(F, Fields::ReverseCount))
+        data.m_reverse_count = 0;
 
-    constexpr bool traverse_forward = has_field(F, Fields::ForwardStartTimes) ||
-                                      has_field(F, Fields::ForwardEndTimes) ||
-                                      has_field(F, Fields::Duration);
-    constexpr bool traverse_reverse = has_field(F, Fields::ReverseStartTimes) ||
-                                      has_field(F, Fields::ReverseEndTimes) ||
-                                      has_field(F, Fields::Duration);
+    constexpr bool needs_forward_properties =
+        has_field(F, Fields::ForwardStartTimes) ||
+        has_field(F, Fields::ForwardEndTimes) || has_field(F, Fields::Duration);
+    constexpr bool needs_reverse_properties =
+        has_field(F, Fields::ReverseStartTimes) ||
+        has_field(F, Fields::ReverseEndTimes) || has_field(F, Fields::Duration);
+    constexpr bool traverse_forward =
+        needs_forward_properties || has_field(F, Fields::ForwardCount);
+    constexpr bool traverse_reverse =
+        needs_reverse_properties || has_field(F, Fields::ReverseCount);
 
     // Forward flows (src -> dst)
     if constexpr (traverse_forward) {
@@ -227,15 +257,19 @@ FlowDataCollector::collect(const IGraphManager<GraphTraits>& graph,
             if (graph.get_target_vertex(*it) != dst)
                 continue;
 
-            const auto& props = graph.get_edge_properties(*it);
+            if constexpr (has_field(F, Fields::ForwardCount))
+                ++(*data.m_forward_count);
+            if constexpr (needs_forward_properties) {
+                const auto& props = graph.get_edge_properties(*it);
 
-            if constexpr (has_field(F, Fields::ForwardStartTimes))
-                data.m_forward_start_times->push_back(props.start_timestamp);
-            if constexpr (has_field(F, Fields::ForwardEndTimes))
-                data.m_forward_end_times->push_back(props.end_timestamp);
-            if constexpr (has_field(F, Fields::Duration)) {
-                *data.m_total_duration_ms += static_cast<double>(
-                    (props.end_timestamp - props.start_timestamp).count());
+                if constexpr (has_field(F, Fields::ForwardStartTimes))
+                    data.m_forward_start_times->push_back(props.start_timestamp);
+                if constexpr (has_field(F, Fields::ForwardEndTimes))
+                    data.m_forward_end_times->push_back(props.end_timestamp);
+                if constexpr (has_field(F, Fields::Duration)) {
+                    *data.m_total_duration_ms += static_cast<double>(
+                        (props.end_timestamp - props.start_timestamp).count());
+                }
             }
         }
     }
@@ -247,15 +281,19 @@ FlowDataCollector::collect(const IGraphManager<GraphTraits>& graph,
             if (graph.get_target_vertex(*it) != src)
                 continue;
 
-            const auto& props = graph.get_edge_properties(*it);
+            if constexpr (has_field(F, Fields::ReverseCount))
+                ++(*data.m_reverse_count);
+            if constexpr (needs_reverse_properties) {
+                const auto& props = graph.get_edge_properties(*it);
 
-            if constexpr (has_field(F, Fields::ReverseStartTimes))
-                data.m_reverse_start_times->push_back(props.start_timestamp);
-            if constexpr (has_field(F, Fields::ReverseEndTimes))
-                data.m_reverse_end_times->push_back(props.end_timestamp);
-            if constexpr (has_field(F, Fields::Duration)) {
-                *data.m_total_duration_ms += static_cast<double>(
-                    (props.end_timestamp - props.start_timestamp).count());
+                if constexpr (has_field(F, Fields::ReverseStartTimes))
+                    data.m_reverse_start_times->push_back(props.start_timestamp);
+                if constexpr (has_field(F, Fields::ReverseEndTimes))
+                    data.m_reverse_end_times->push_back(props.end_timestamp);
+                if constexpr (has_field(F, Fields::Duration)) {
+                    *data.m_total_duration_ms += static_cast<double>(
+                        (props.end_timestamp - props.start_timestamp).count());
+                }
             }
         }
     }
@@ -272,6 +310,8 @@ FlowDataCollector::collect(const IGraphManager<GraphTraits>& graph,
     switch (fields) {
     case Fields::None:
         return collect<Fields::None>(graph, src, dst);
+    case Fields::CountsOnly:
+        return collect<Fields::CountsOnly>(graph, src, dst);
     case Fields::StartTimesOnly:
         return collect<Fields::StartTimesOnly>(graph, src, dst);
     case Fields::ResponseTiming:
