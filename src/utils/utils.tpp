@@ -161,6 +161,22 @@ void print_classifier_metrics(const Metrics &metrics) {
     if (metrics.roc_auc.has_value()) {
         std::cout << "  ROC AUC: " << metrics.roc_auc.value() << "\n";
     }
+    if (metrics.average_precision.has_value()) {
+        std::cout << "  Average Precision: " << metrics.average_precision.value() << "\n";
+    }
+    if (metrics.mean_reciprocal_rank.has_value()) {
+        std::cout << "  MRR: " << metrics.mean_reciprocal_rank.value() << "\n";
+    }
+    for (const auto &ranking_metric : metrics.ranking_at_k) {
+        if (ranking_metric.precision.has_value()) {
+            std::cout << "  Precision@" << ranking_metric.k << ": "
+                      << ranking_metric.precision.value() << "\n";
+        }
+        if (ranking_metric.recall.has_value()) {
+            std::cout << "  Recall@" << ranking_metric.k << ": "
+                      << ranking_metric.recall.value() << "\n";
+        }
+    }
 }
 
 } // namespace utils
