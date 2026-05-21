@@ -8,11 +8,11 @@
 template <typename T>
 DataLoader<T>::DataLoader(IRandomWalkManager<T>& rw_manager,
                           IContextGenerator<T>& context_generator,
-                          IDependencyGenerator<T>& dependency_generator,
+                          IEmbeddingTrainingPairGenerator<T>& pair_generator,
                           std::optional<std::size_t> batch_size /*= std::nullopt*/,
                           bool verbose /*= false*/)
     : m_rw_manager(rw_manager), m_context_generator(context_generator),
-      m_dependency_generator(dependency_generator), m_batch_size(batch_size),
+      m_pair_generator(pair_generator), m_batch_size(batch_size),
       m_current_batch_idx(0), m_total_batches(0), m_verbose(verbose) {
     if (batch_size.has_value() && *batch_size == 0) {
         throw DataLoaderException("Batch size cannot be zero.");
@@ -34,11 +34,10 @@ std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> DataLoader<T>::next_batc
     std::vector<std::vector<T>> batch_contexts(m_contexts.begin() + start_idx,
                                                m_contexts.begin() + end_idx);
 
-    // Generate dependencies from this batch of contexts
-    auto dependencies = m_dependency_generator.generate_dependencies(batch_contexts);
+    auto training_pairs = m_pair_generator.generate_training_pairs(batch_contexts);
 
     ++m_current_batch_idx;
-    return dependencies;
+    return training_pairs;
 }
 
 template <typename T>

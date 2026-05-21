@@ -1,6 +1,6 @@
 #pragma once
 #include "../../generators/context/IContextGenerator.hpp"
-#include "../../generators/dependency/IDependencyGenerator.hpp"
+#include "../../generators/embedding/IEmbeddingTrainingPairGenerator.hpp"
 #include "../../random_walk/manager/IRandomWalkManager.hpp"
 #include "IDataLoader.hpp"
 #include <optional>
@@ -14,8 +14,8 @@
  * 1. Generate random walks using a RandomWalkManager @see IRandomWalkManager.
  * 2. Generate contexts from the random walks using a ContextGenerator @see
  * IContextGenerator.
- * 3. Generate dependencies from the contexts using a DependencyGenerator @see
- * IDependencyGenerator.
+ * 3. Generate embedding training pairs from the contexts using
+ * IEmbeddingTrainingPairGenerator.
  *
  * Supports batching: processes contexts in batches of configurable size.
  *
@@ -30,12 +30,12 @@ public:
      *
      * @param rw_manager The RandomWalkManager used to generate random walks.
      * @param context_generator The ContextGenerator used to create contexts.
-     * @param dependency_generator The DependencyGenerator for generating dependencies.
+     * @param pair_generator Generator for embedding source/target/negative samples.
      * @param batch_size Number of contexts to process per batch (nullopt = all contexts).
      * @param verbose Enable verbose logging output.
      */
     DataLoader(IRandomWalkManager<T>& rw_manager, IContextGenerator<T>& context_generator,
-               IDependencyGenerator<T>& dependency_generator,
+               IEmbeddingTrainingPairGenerator<T>& pair_generator,
                std::optional<std::size_t> batch_size = std::nullopt,
                bool verbose = false);
 
@@ -65,8 +65,8 @@ public:
 private:
     IRandomWalkManager<T>& m_rw_manager;       // RWManager used to generate random walks
     IContextGenerator<T>& m_context_generator; // ContextGenerator used to create contexts
-    IDependencyGenerator<T>&
-        m_dependency_generator; // DependencyGenerator for generating dependencies
+    IEmbeddingTrainingPairGenerator<T>&
+        m_pair_generator; // Generates tensors for embedding training
 
     std::optional<std::size_t>
         m_batch_size; // Number of contexts per batch (nullopt = all)
