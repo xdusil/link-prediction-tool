@@ -15,6 +15,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #define UDP_PROTOCOL 17
@@ -23,6 +24,67 @@
 namespace ground_truth {
 
 namespace {
+
+struct RawTimestamps {
+    int64_t start;
+    int64_t end;
+};
+
+std::optional<RawTimestamps>
+extract_timestamps(const json::object &data, const std::string &start_key,
+                   const std::string &end_key) {
+    const std::optional<int64_t> start =
+        JsonHelper::extract_value<int64_t>(data, start_key);
+    const std::optional<int64_t> end =
+        JsonHelper::extract_value<int64_t>(data, end_key);
+
+    if (!start || !end) {
+        return std::nullopt;
+    }
+
+    return RawTimestamps{*start, *end};
+}
+
+std::optional<RawTimestamps>
+extract_forward_timestamps(const json::object &data) {
+    if (const auto timestamps =
+            extract_timestamps(data, "flowStartMilliseconds", "flowEndMilliseconds")) {
+        return timestamps;
+    }
+
+    return extract_timestamps(data, "biFlowStartMilliseconds", "biFlowEndMilliseconds");
+}
+
+std::optional<RawTimestamps>
+extract_reverse_timestamps(const json::object &data) {
+    if (const auto timestamps = extract_timestamps(
+            data, "flowStartMilliseconds_Rev", "flowEndMilliseconds_Rev")) {
+        return timestamps;
+    }
+
+    return extract_timestamps(data, "biFlowStartMilliseconds_Rev",
+                              "biFlowEndMilliseconds_Rev");
+}
+
+EdgeProperties make_edge_properties(const RawTimestamps &forward_timestamps,
+                                    std::optional<RawTimestamps> reverse_timestamps,
+                                    int protocol) {
+    const std::optional<Timestamp> reverse_start =
+        reverse_timestamps
+            ? std::make_optional(std::chrono::milliseconds(reverse_timestamps->start))
+            : std::nullopt;
+    const std::optional<Timestamp> reverse_end =
+        reverse_timestamps
+            ? std::make_optional(std::chrono::milliseconds(reverse_timestamps->end))
+            : std::nullopt;
+
+    return {
+        std::chrono::milliseconds(forward_timestamps.start),
+        std::chrono::milliseconds(forward_timestamps.end),
+        reverse_start,
+        reverse_end,
+        protocol};
+}
 
 DependencyType parse_dependency_type(const std::string &value) {
     if (value == "DD") {
@@ -69,41 +131,17 @@ void DependencyAnalyzer::parse_flow_data(const std::string &filename) {
             continue;
         }
 
-        auto start_forward =
-            data.contains("flowStartMilliseconds")
-                ? JsonHelper::extract_value<int64_t>(data, "flowStartMilliseconds")
-                : JsonHelper::extract_value<int64_t>(data, "biFlowStartMilliseconds");
-        auto end_forward =
-            data.contains("flowEndMilliseconds")
-                ? JsonHelper::extract_value<int64_t>(data, "flowEndMilliseconds")
-                : JsonHelper::extract_value<int64_t>(data, "biFlowEndMilliseconds");
+        const std::optional<RawTimestamps> forward_timestamps =
+            extract_forward_timestamps(data);
+        const std::optional<RawTimestamps> reverse_timestamps =
+            extract_reverse_timestamps(data);
 
-        auto start_reverse =
-            data.contains("flowStartMilliseconds_Rev")
-                ? JsonHelper::extract_value<int64_t>(data, "flowStartMilliseconds_Rev")
-                : (data.contains("biFlowStartMilliseconds_Rev")
-                       ? JsonHelper::extract_value<int64_t>(data,
-                                                            "biFlowStartMilliseconds_Rev")
-                       : start_forward); // Fallback to forward timestamp
-
-        auto end_reverse =
-            data.contains("flowEndMilliseconds_Rev")
-                ? JsonHelper::extract_value<int64_t>(data, "flowEndMilliseconds_Rev")
-                : (data.contains("biFlowEndMilliseconds_Rev")
-                       ? JsonHelper::extract_value<int64_t>(data,
-                                                            "biFlowEndMilliseconds_Rev")
-                       : end_forward); // Fallback to forward timestamp
-
-        if (!src_ip || !dst_ip || !start_forward || !end_forward || !start_reverse ||
-            !end_reverse) {
+        if (!src_ip || !dst_ip || !forward_timestamps) {
             continue;
         }
 
-        m_ip_dict[*src_ip][*dst_ip].push_back({std::chrono::milliseconds(*start_forward),
-                                               std::chrono::milliseconds(*end_forward),
-                                               std::chrono::milliseconds(*start_reverse),
-                                               std::chrono::milliseconds(*end_reverse),
-                                               static_cast<int>(*protocol)});
+        m_ip_dict[*src_ip][*dst_ip].push_back(make_edge_properties(
+            *forward_timestamps, reverse_timestamps, static_cast<int>(*protocol)));
     }
 }
 
@@ -278,12 +316,22 @@ void DependencyAnalyzer::register_dependency(const IPAddress &src_ip,
 }
 
 int DependencyAnalyzer::count_appearances_of_LR_dependency(
-    Timestamp start_forward, Timestamp end_forward, Timestamp start_reverse,
-    Timestamp end_reverse, const std::vector<EdgeProperties> &edge_properties) const {
+    Timestamp start_forward, Timestamp end_forward,
+    std::optional<Timestamp> start_reverse,
+    std::optional<Timestamp> end_reverse,
+    const std::vector<EdgeProperties> &edge_properties) const {
+    if (!start_reverse || !end_reverse) {
+        return 0;
+    }
+
     int count = 0;
     for (const auto &edge : edge_properties) {
+        if (!edge.start_reverse || !edge.end_reverse) {
+            continue;
+        }
+
         if (start_forward <= edge.start_forward && edge.end_forward <= end_forward &&
-            start_reverse <= edge.start_reverse && edge.end_reverse <= end_reverse) {
+            *start_reverse <= *edge.start_reverse && *edge.end_reverse <= *end_reverse) {
             count++;
         }
     }
@@ -291,13 +339,22 @@ int DependencyAnalyzer::count_appearances_of_LR_dependency(
 }
 
 int DependencyAnalyzer::count_appearances_of_RR_dependency(
-    Timestamp start_forward, Timestamp start_reverse, Timestamp end_reverse,
+    Timestamp start_forward, std::optional<Timestamp> start_reverse,
+    std::optional<Timestamp> end_reverse,
     const std::vector<EdgeProperties> &edge_properties) const {
+    if (!start_reverse || !end_reverse) {
+        return 0;
+    }
+
     int count = 0;
     for (const auto &edge : edge_properties) {
-        if (start_forward <= start_reverse && end_reverse <= edge.start_forward &&
-            edge.start_forward <= edge.start_reverse &&
-            edge.start_forward - end_reverse <= std::chrono::milliseconds(m_epsilon)) {
+        if (!edge.start_reverse) {
+            continue;
+        }
+
+        if (start_forward <= *start_reverse && *end_reverse <= edge.start_forward &&
+            edge.start_forward <= *edge.start_reverse &&
+            edge.start_forward - *end_reverse <= std::chrono::milliseconds(m_epsilon)) {
             count++;
         }
     }

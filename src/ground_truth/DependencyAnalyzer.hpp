@@ -3,6 +3,7 @@
 #include "ground_truth/IDependencyAnalyzer.hpp"
 #include "utils/ip/IIPChecker.hpp"
 #include <chrono>
+#include <optional>
 #include <ostream>
 #include <set>
 #include <sstream>
@@ -27,8 +28,8 @@ using IPAddress = std::string;
 struct EdgeProperties {
     Timestamp start_forward;
     Timestamp end_forward;
-    Timestamp start_reverse;
-    Timestamp end_reverse;
+    std::optional<Timestamp> start_reverse;
+    std::optional<Timestamp> end_reverse;
     int protocol;
 };
 
@@ -189,8 +190,10 @@ private:
      * @return The number of appearances of the LR dependency.
      */
     int count_appearances_of_LR_dependency(
-        Timestamp start_forward, Timestamp end_forward, Timestamp start_reverse,
-        Timestamp end_reverse, const std::vector<EdgeProperties> &edge_properties) const;
+        Timestamp start_forward, Timestamp end_forward,
+        std::optional<Timestamp> start_reverse,
+        std::optional<Timestamp> end_reverse,
+        const std::vector<EdgeProperties> &edge_properties) const;
 
     /**
      * @brief Count the number of appearances of a RR dependency.
@@ -203,7 +206,8 @@ private:
      * @return The number of appearances of the RR dependency.
      */
     int count_appearances_of_RR_dependency(
-        Timestamp start_forward, Timestamp start_reverse, Timestamp end_reverse,
+        Timestamp start_forward, std::optional<Timestamp> start_reverse,
+        std::optional<Timestamp> end_reverse,
         const std::vector<EdgeProperties> &edge_properties) const;
 
     /**
