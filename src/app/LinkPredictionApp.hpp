@@ -176,6 +176,14 @@ private:
         const std::optional<std::string>& scores_output_path);
 
     /**
+     * @brief Calculate reference coverage for the currently retained graph.
+     *
+     * The result is used only for reporting. Labels are still generated from the
+     * full loaded/calculated dependency set over the retained graph pairs.
+     */
+    ground_truth::ProjectionStats calculate_reference_projection_stats() const;
+
+    /**
      * @brief Helper function to log messages when verbose mode is enabled
      *
      * @tparam Args The types of the arguments

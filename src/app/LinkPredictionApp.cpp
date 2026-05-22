@@ -37,6 +37,8 @@
 #include <optional>
 #include <thread>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_path /*= std::nullopt*/,
@@ -171,6 +173,8 @@ void LinkPredictionApp::run_training_mode(
     if (m_config.WRITE_RUN_MANIFESTS) {
         const std::optional<std::string> reference_path =
             ground_truth_input_path ? ground_truth_input_path : ground_truth_output_path;
+        const ground_truth::ProjectionStats projection_stats =
+            calculate_reference_projection_stats();
         reporting::write_run_manifest({
             .path = classifier_path + ".run_manifest.json",
             .mode = "training",
@@ -179,6 +183,7 @@ void LinkPredictionApp::run_training_mode(
             .classifier_path = classifier_path,
             .output_path = classifier_path,
             .reference_path = reference_path,
+            .reference_projection_stats = projection_stats,
             .config = m_config,
             .graph_manager = *m_graph_manager,
             .evaluated_pair_count = arma_labels.n_elem,
@@ -233,6 +238,11 @@ void LinkPredictionApp::run_prediction_mode(
         generate_predictions(predictions_output_path, ground_truth_path,
                              scores_output_path);
     if (m_config.WRITE_RUN_MANIFESTS) {
+        std::optional<ground_truth::ProjectionStats> projection_stats;
+        if (ground_truth_path) {
+            projection_stats = calculate_reference_projection_stats();
+        }
+
         reporting::write_run_manifest({
             .path = predictions_output_path + ".run_manifest.json",
             .mode = "prediction",
@@ -241,6 +251,7 @@ void LinkPredictionApp::run_prediction_mode(
             .classifier_path = classifier_path,
             .output_path = predictions_output_path,
             .reference_path = ground_truth_path,
+            .reference_projection_stats = projection_stats,
             .config = m_config,
             .graph_manager = *m_graph_manager,
             .evaluated_pair_count = evaluated_pair_count,
@@ -355,6 +366,27 @@ std::size_t LinkPredictionApp::generate_predictions(
     }
 
     return evaluated_pairs.size();
+}
+
+ground_truth::ProjectionStats
+LinkPredictionApp::calculate_reference_projection_stats() const {
+    if (!m_dependency_analyzer)
+        throw ComponentNotInitializedException("Dependency analyzer not initialized.");
+    if (!m_graph_manager)
+        throw ComponentNotInitializedException("Graph manager not initialized.");
+
+    using Vertex = BoostGraphTraits<Graph>::Vertex;
+
+    const std::unordered_map<IPAddress, Vertex>& ip_to_vertex =
+        m_graph_manager->get_ip_to_vertex();
+
+    std::unordered_set<IPAddress> retained_ips;
+    retained_ips.reserve(ip_to_vertex.size());
+    for (const std::pair<const IPAddress, Vertex>& entry : ip_to_vertex) {
+        retained_ips.insert(entry.first);
+    }
+
+    return m_dependency_analyzer->calculate_projection_stats(retained_ips);
 }
 
 void LinkPredictionApp::process_data(const std::string &data_path) {
