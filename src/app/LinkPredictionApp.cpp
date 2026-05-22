@@ -9,12 +9,11 @@
 #include "constrained_collections/counters/EvictingCounter.hpp"
 #include "generators/context/SlidingWindowContextGenerator.hpp"
 #include "exceptions/exceptions.hpp"
-#include "generators/dependency/CandidateDependencyGenerator.hpp"
+#include "generators/embedding/EmbeddingTrainingPairGenerator.hpp"
 #include "generators/feature/FeatureGenerator.hpp"
 #include "graph/boost/analytics/BoostGraphAnalytics.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
 #include "graph/network/NetworkGraphManager.hpp"
-#include "io/FileReader.hpp"
 #include "model/DirectionalEmbeddings.hpp"
 #include "model/data/DataLoader.hpp"
 #include "model/trainer/GenericTrainer.hpp"
@@ -22,28 +21,28 @@
 #include "model/DirectionalSkipGramModel.hpp"
 #include "random_walk/logic/custom/CustomRandomWalkLogic.hpp"
 #include "random_walk/manager/RandomWalkManager.hpp"
-#include "io/FileWriter.hpp"
-#include "mlpack/core/data/scaler_methods/min_max_scaler.hpp"
+#include "reporting/PredictionReporter.hpp"
 #include "service/EdgeServiceClassifier.hpp"
 #include "service/ServicePortConfig.hpp"
-#include "statistics/metrics.hpp"
 #include "utils/ip/AllowedIPChecker.hpp"
 #include "utils/ip/BoostIPHandler.hpp"
+#include "utils/stream/OstreamFormatGuard.hpp"
 #include "utils/utils.hpp"
 #include "utils/timers/timers.hpp"
+#include <algorithm>
+#include <array>
 #include <cstddef>
-#include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <array>
 #include <optional>
-#include <sstream>
 #include <thread>
+#include <tuple>
 #include <vector>
 
 LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_path /*= std::nullopt*/,
                                      bool verbose /*= false*/) : m_verbose(verbose) {
     utils::VerboseTimer::set_verbose(verbose);
+    m_config_path = config_path;
     log_verbose("Verbose mode enabled");
     log_verbose("Configuration path: ", config_path ? *config_path : "using defaults");
 
@@ -105,7 +104,8 @@ void LinkPredictionApp::common_training_or_prediction(
     } else {
         std::cout << "Skipping embedding generation (no embedding features enabled)" << std::endl;
         // Create a minimal model with 1 dimension to satisfy interface requirements
-        m_model = std::make_unique<DirectionalSkipGramModel>(m_graph_manager->get_vertex_count(), 1);
+        m_model = std::make_unique<DirectionalSkipGramModel>(
+            m_graph_manager->get_vertex_count(), 1);
     }
 }
 
@@ -155,12 +155,28 @@ void LinkPredictionApp::run_training_mode(
                                                       ground_truth_output_path);
     }
 
-    const auto &all_deps = m_dependency_analyzer->get_dependencies();
+    const ground_truth::DependencySet &ground_truth_dependencies =
+        m_dependency_analyzer->get_dependencies();
     DirectionalEmbeddings embeddings = m_model->get_embeddings();
 
     BoostGraphAnalytics analytics{*m_graph_manager};
+    if (m_config.WRITE_RUN_MANIFESTS) {
+        reporting::write_run_manifest({
+            .path = classifier_path + ".run_manifest.json",
+            .mode = "training",
+            .config_path = m_config_path,
+            .data_path = data_path,
+            .classifier_path = classifier_path,
+            .output_path = classifier_path,
+            .reference_path = reference_path,
+            .config = m_config,
+            .graph_manager = *m_graph_manager,
+            .evaluated_pair_count = evaluated_pair_count,
+        });
+    }
+
     FeatureGenerator<BoostGraphTraits<Graph>, DirectionalEmbeddings,
-                     decltype(all_deps)>
+                     ground_truth::DependencySet>
         feature_generator{analytics, embeddings, m_config.FEATURE_CONFIG};
 
     auto [combined, arma_labels] = feature_generator.generate_labeled_features(
@@ -209,13 +225,29 @@ void LinkPredictionApp::run_prediction_mode(
     }
 
     // Generate predictions
-    generate_predictions(predictions_output_path, ground_truth_path);
+    const std::size_t evaluated_pair_count =
+        generate_predictions(predictions_output_path, ground_truth_path);
+    if (m_config.WRITE_RUN_MANIFESTS) {
+        reporting::write_run_manifest({
+            .path = predictions_output_path + ".run_manifest.json",
+            .mode = "prediction",
+            .config_path = m_config_path,
+            .data_path = data_path,
+            .classifier_path = classifier_path,
+            .output_path = predictions_output_path,
+            .reference_path = ground_truth_path,
+            .config = m_config,
+            .graph_manager = *m_graph_manager,
+            .evaluated_pair_count = evaluated_pair_count,
+        });
+    }
 
     std::cout << "Prediction completed successfully." << std::endl;
 }
 
-void LinkPredictionApp::generate_predictions(
-    const std::string &output_path, const std::optional<std::string> &ground_truth_path) {
+std::size_t LinkPredictionApp::generate_predictions(
+    const std::string &output_path,
+    const std::optional<std::string> &ground_truth_path) {
     std::cout << "Generating predictions..." << std::endl;
 
     if (!m_classifier)
@@ -228,34 +260,31 @@ void LinkPredictionApp::generate_predictions(
         throw ComponentNotInitializedException("Dependency analyzer not initialized.");
 
     BoostGraphAnalytics analytics{*m_graph_manager};
-    
-    const auto &all_deps = m_dependency_analyzer->get_dependencies();
     DirectionalEmbeddings embeddings = m_model->get_embeddings();
     FeatureGenerator<BoostGraphTraits<Graph>, DirectionalEmbeddings,
-                     decltype(all_deps)>
+                     ground_truth::DependencySet>
         feature_generator{analytics, embeddings, m_config.FEATURE_CONFIG};
 
     torch::Tensor combined;
-    std::vector<std::pair<std::string, std::string>> vertex_pairs;
     std::optional<arma::Row<std::size_t>> labels = std::nullopt;
+    std::vector<std::pair<IPAddress, IPAddress>> evaluated_pairs;
 
     if (ground_truth_path) {
         m_dependency_analyzer->load_dependencies(*ground_truth_path);
-        auto [combined_val, labels_val, vertex_pairs_val] =
+        auto [combined_val, labels_val, pairs_val] =
             feature_generator.generate_labeled_features_with_pairs(
                 m_graph_manager->get_ip_to_vertex(),
                 m_dependency_analyzer->get_dependencies());
 
         combined = std::move(combined_val);
         labels = std::move(labels_val);
-        vertex_pairs = std::move(vertex_pairs_val);
+        evaluated_pairs = std::move(pairs_val);
     } else {
-        auto [combined_val, vertex_pairs_val] =
+        auto [combined_val, pairs_val] =
             feature_generator.generate_unlabeled_features_with_pairs(
                 m_graph_manager->get_ip_to_vertex());
-
         combined = std::move(combined_val);
-        vertex_pairs = std::move(vertex_pairs_val);
+        evaluated_pairs = std::move(pairs_val);
     }
 
     // Convert to Armadillo matrix - no copy mem => ref needs to live
@@ -284,67 +313,37 @@ void LinkPredictionApp::generate_predictions(
                   << service_port_config->port_count() << " port mappings" << std::endl;
     }
 
-    // Write predictions to file
-    FileWriter writer(output_path);
-    
-    // Header depends on whether service classification is enabled
-    if (m_config.SERVICE_CONFIG.enabled) {
-        writer.write_line("dependent_ip,dependency_ip,score,service,service_conf,service_topk");
-    } else {
-        writer.write_line("dependent_ip,dependency_ip");
-    }
-    
-    const auto& ip_to_vertex = m_graph_manager->get_ip_to_vertex();
-    
-    int positive_count = 0;
-    for (std::size_t i = 0; i < predictions.size(); ++i) {
-        const auto &pair = vertex_pairs[i];
-        const auto &dependent_ip = pair.first;   // ip1 depends on ip2
-        const auto &dependency_ip = pair.second;
-        const auto &prediction = predictions[i];
-
-        if (prediction == 1) {
-            ++positive_count;
-            const double score = positive_scores[i];
-            
-            if (m_config.SERVICE_CONFIG.enabled) {
-                // Classify service type
-                auto src_it = ip_to_vertex.find(dependent_ip);
-                auto dst_it = ip_to_vertex.find(dependency_ip);
-                
-                service::ServiceClassificationResult svc_result;
-                if (src_it != ip_to_vertex.end() && dst_it != ip_to_vertex.end()) {
-                    svc_result = service_classifier->classify(
-                        *m_graph_manager, src_it->second, dst_it->second);
-                }
-                
-                // Format output line
-                std::ostringstream oss;
-                oss << dependent_ip << ","
-                    << dependency_ip << ","
-                    << std::fixed << std::setprecision(4) << score << ","
-                    << service::ServiceType::to_string(svc_result.service) << ","
-                    << std::fixed << std::setprecision(4) << svc_result.confidence << ","
-                    << "\"" << svc_result.top_k_string << "\"";
-                writer.write_line(oss.str());
-            } else {
-                writer.write_line(dependent_ip + "," + dependency_ip);
-            }
-        }
-    }
+    const service::EdgeServiceClassifier<BoostGraphTraits<Graph>>* service_classifier_ptr =
+        service_classifier.has_value() ? &service_classifier.value() : nullptr;
+    const reporting::PredictionWriteSummary prediction_summary =
+        reporting::write_positive_predictions(output_path, evaluated_pairs, predictions,
+                                              positive_scores, *m_graph_manager,
+                                              service_classifier_ptr);
 
     std::cout << "Positive predictions written to " << output_path << "\n";
-    std::cout << "Positive predictions: " << positive_count << "\n";
-    std::cout << "Total predictions: " << predictions.size() << std::endl;
+    std::cout << "Positive predictions: "
+              << prediction_summary.positive_predictions << "\n";
+    std::cout << "Total predictions: " << prediction_summary.total_predictions
+              << std::endl;
 
     // Evaluate against ground truth if available
     if (labels.has_value()) {
         auto metrics = m_classifier->evaluate(arma_features, *labels);
         utils::print_classifier_metrics(metrics);
-        const auto [optimal_threshold, optimal_metrics] = m_classifier->find_optimal_threshold(arma_features, *labels, m_config.METRIC_TO_OPTIMIZE);
+        const auto metrics_path = output_path + ".metrics.json";
+        reporting::write_metrics_report(
+            metrics_path, metrics,
+            prediction_summary.positive_predictions,
+            prediction_summary.total_predictions);
+        std::cout << "Metrics report written to " << metrics_path << std::endl;
+        const auto [optimal_threshold, optimal_metrics] =
+            m_classifier->find_optimal_threshold(
+                arma_features, *labels, m_config.METRIC_TO_OPTIMIZE);
         std::cout << "Optimal threshold: " << optimal_threshold << std::endl;
         utils::print_classifier_metrics(optimal_metrics);
     }
+
+    return evaluated_pairs.size();
 }
 
 void LinkPredictionApp::process_data(const std::string &data_path) {
@@ -391,9 +390,11 @@ void LinkPredictionApp::build_graph() {
     if (!m_graph_manager)
         throw ComponentNotInitializedException("Graph manager not initialized.");
 
-    // Build graph from reservoir
-    for (const auto &[ip, data] : *m_reservoir) {
-        const auto &edges = data.first;
+    auto reservoir_keys = m_reservoir->get_keys();
+    std::sort(reservoir_keys.begin(), reservoir_keys.end());
+
+    for (const auto &key : reservoir_keys) {
+        const std::vector<IPEdge> &edges = m_reservoir->get(key);
         for (const auto &edge : edges) {
             if (!m_graph_manager->add_edge_and_vertex_if_not_exists(
                     VertexProperties(edge.src_ip), VertexProperties(edge.dst_ip),
@@ -429,14 +430,14 @@ void LinkPredictionApp::generate_embeddings() {
         *m_graph_manager, m_config.NUM_THREADS.value(), walk_logic, 
         m_config.WALK_LENGTH, m_config.WALKS_PER_VERTEX, m_config.SEED);
 
-    // Set up context and dependency generators
+    // Set up context and embedding training-pair generators
     SlidingWindowContextGenerator<Vertex> context_generator(m_config.CONTEXT_SIZE);
-    CandidateDependencyGenerator<Vertex> dependency_generator(
+    EmbeddingTrainingPairGenerator<Vertex> pair_generator(
         m_graph_manager->get_vertex_count(), [](Vertex vertex) { return vertex; },
         m_config.NUM_NEGATIVE_SAMPLES, m_config.SEED);
 
     // Create data loader with batching support
-    DataLoader<Vertex> data_loader(walk_manager, context_generator, dependency_generator,
+    DataLoader<Vertex> data_loader(walk_manager, context_generator, pair_generator,
                                     m_config.BATCH_SIZE, m_verbose);
 
 
@@ -470,7 +471,9 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     } else {
         // Create classifier
         m_classifier =
-            std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<std::size_t>>>(m_config.RF_PARAMS, m_config.USE_SCALING);
+            std::make_unique<
+                BinaryRandomForestClassifier<arma::fmat, arma::Row<std::size_t>>>(
+                m_config.RF_PARAMS, m_config.USE_SCALING);
     }
 
     if (m_config.CLASSIFIER_THRESHOLD) {
@@ -479,7 +482,8 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
 
     // Train classifier
     if (m_config.USE_THRESHOLD_CALIBRATION) {
-        m_classifier->train_with_calibration(features, labels, m_config.USE_WEIGHTS, m_config.METRIC_TO_OPTIMIZE);
+        m_classifier->train_with_calibration(
+            features, labels, m_config.USE_WEIGHTS, m_config.METRIC_TO_OPTIMIZE);
     } else {
         m_classifier->train(features, labels, m_config.USE_WEIGHTS);
     }
@@ -491,6 +495,7 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     
     // Calculate feature importance
     if (feature_importance) {
+        const utils::OstreamFormatGuard format_guard(std::cout);
         std::cout << "\n=== Feature Importance Analysis ===" << std::endl;
         std::vector<std::string> feature_names = m_config.FEATURE_CONFIG.get_feature_names();
         auto importance = m_classifier->calculate_feature_importance(
@@ -519,7 +524,7 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
             {"Embedding", "emb_", 0.0, 0},
             {"Topology", "struct_", 0.0, 0},
             {"Temporal", "time_", 0.0, 0},
-            {"Bidirectional", "flow_", 0.0, 0},
+            {"Observed Flow", "flow_", 0.0, 0},
             {"Network", "net_", 0.0, 0}
         }};
 

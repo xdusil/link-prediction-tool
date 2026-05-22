@@ -164,10 +164,12 @@ private:
      *
      * @param output_path Path to save the predicted dependencies
      * @param ground_truth_path Path to the ground truth file for evaluation (optional)
+     * @return Number of directed pairs evaluated by the classifier.
      */
 
-    void generate_predictions(const std::string& output_path,
-                              const std::optional<std::string>& ground_truth_path);
+    std::size_t generate_predictions(
+        const std::string& output_path,
+        const std::optional<std::string>& ground_truth_path);
 
     /**
      * @brief Helper function to log messages when verbose mode is enabled
@@ -189,6 +191,7 @@ private:
 
     // Configuration
     config::Config m_config;
+    std::optional<std::string> m_config_path;
 
     // IP Addressing
     std::unique_ptr<IIPChecker> m_allowed_ip_checker;
