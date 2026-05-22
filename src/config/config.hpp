@@ -40,10 +40,10 @@ struct Config {
     bool USE_GRID_SEARCH = false;
     bool USE_THRESHOLD_CALIBRATION = false;
 
-    RandomForestParams RF_PARAMS = {50, 1, 0.0, 30};
+    RandomForestParams RF_PARAMS = {200, 5, 1e-7, 0};
 
     GridSearchParams GRID_PARAMS = {
-        {10, 20, 50, 100}, {1, 3, 5}, {0.0, 1e-7, 1e-5}, {0, 10, 20, 30}, 0.25};
+        {70, 200, 500}, {3, 5, 10}, {0.0, 1e-7, 1e-5}, {0, 30, 45}, 0.25};
 
     FeatureConfig FEATURE_CONFIG{};
 
