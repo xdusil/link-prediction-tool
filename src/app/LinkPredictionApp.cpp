@@ -171,16 +171,9 @@ void LinkPredictionApp::run_training_mode(
             .reference_path = reference_path,
             .config = m_config,
             .graph_manager = *m_graph_manager,
-            .evaluated_pair_count = evaluated_pair_count,
+            .evaluated_pair_count = arma_labels.n_elem,
         });
     }
-
-    FeatureGenerator<BoostGraphTraits<Graph>, DirectionalEmbeddings,
-                     ground_truth::DependencySet>
-        feature_generator{analytics, embeddings, m_config.FEATURE_CONFIG};
-
-    auto [combined, arma_labels] = feature_generator.generate_labeled_features(
-        m_graph_manager->get_ip_to_vertex(), all_deps);
 
     // Convert to Armadillo matrix - no copy mem => ref needs to live
     auto [arma_features, ref] =
@@ -249,7 +242,8 @@ void LinkPredictionApp::run_prediction_mode(
 
 std::size_t LinkPredictionApp::generate_predictions(
     const std::string &output_path,
-    const std::optional<std::string> &ground_truth_path) {
+    const std::optional<std::string> &ground_truth_path,
+    const std::optional<std::string> &scores_output_path) {
     std::cout << "Generating predictions..." << std::endl;
 
     if (!m_classifier)
