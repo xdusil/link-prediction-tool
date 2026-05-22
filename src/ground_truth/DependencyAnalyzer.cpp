@@ -42,6 +42,10 @@ extract_timestamps(const json::object &data, const std::string &start_key,
         return std::nullopt;
     }
 
+    if (*end < *start) {
+        return std::nullopt;
+    }
+
     return RawTimestamps{*start, *end};
 }
 
