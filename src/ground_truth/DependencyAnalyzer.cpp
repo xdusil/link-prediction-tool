@@ -3,11 +3,11 @@
 #include "../json/JsonHelper.hpp"
 #include "io/FileReader.hpp"
 #include "io/FileWriter.hpp"
+#include "utils/flow/FlowTimestampExtractor.hpp"
 #include "utils/ip/AllowedIPChecker.hpp"
 #include "utils/ip/IIPChecker.hpp"
 #include "utils/string/StringUtils.hpp"
 #include <chrono>
-#include <cstddef>
 #include <fstream>
 #include <functional>
 #include <optional>
@@ -15,7 +15,6 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 #define UDP_PROTOCOL 17
@@ -25,66 +24,19 @@ namespace ground_truth {
 
 namespace {
 
-struct RawTimestamps {
-    int64_t start;
-    int64_t end;
-};
-
-std::optional<RawTimestamps>
-extract_timestamps(const json::object &data, const std::string &start_key,
-                   const std::string &end_key) {
-    const std::optional<int64_t> start =
-        JsonHelper::extract_value<int64_t>(data, start_key);
-    const std::optional<int64_t> end =
-        JsonHelper::extract_value<int64_t>(data, end_key);
-
-    if (!start || !end) {
-        return std::nullopt;
-    }
-
-    if (*end < *start) {
-        return std::nullopt;
-    }
-
-    return RawTimestamps{*start, *end};
-}
-
-std::optional<RawTimestamps>
-extract_forward_timestamps(const json::object &data) {
-    if (const auto timestamps =
-            extract_timestamps(data, "flowStartMilliseconds", "flowEndMilliseconds")) {
-        return timestamps;
-    }
-
-    return extract_timestamps(data, "biFlowStartMilliseconds", "biFlowEndMilliseconds");
-}
-
-std::optional<RawTimestamps>
-extract_reverse_timestamps(const json::object &data) {
-    if (const auto timestamps = extract_timestamps(
-            data, "flowStartMilliseconds_Rev", "flowEndMilliseconds_Rev")) {
-        return timestamps;
-    }
-
-    return extract_timestamps(data, "biFlowStartMilliseconds_Rev",
-                              "biFlowEndMilliseconds_Rev");
-}
-
-EdgeProperties make_edge_properties(const RawTimestamps &forward_timestamps,
-                                    std::optional<RawTimestamps> reverse_timestamps,
+EdgeProperties make_edge_properties(const utils::flow::FlowTimestamps &forward_timestamps,
+                                    std::optional<utils::flow::FlowTimestamps> reverse_timestamps,
                                     int protocol) {
     const std::optional<Timestamp> reverse_start =
-        reverse_timestamps
-            ? std::make_optional(std::chrono::milliseconds(reverse_timestamps->start))
-            : std::nullopt;
+        reverse_timestamps ? std::make_optional(reverse_timestamps->start)
+                           : std::nullopt;
     const std::optional<Timestamp> reverse_end =
-        reverse_timestamps
-            ? std::make_optional(std::chrono::milliseconds(reverse_timestamps->end))
-            : std::nullopt;
+        reverse_timestamps ? std::make_optional(reverse_timestamps->end)
+                           : std::nullopt;
 
     return {
-        std::chrono::milliseconds(forward_timestamps.start),
-        std::chrono::milliseconds(forward_timestamps.end),
+        forward_timestamps.start,
+        forward_timestamps.end,
         reverse_start,
         reverse_end,
         protocol};
@@ -135,10 +87,10 @@ void DependencyAnalyzer::parse_flow_data(const std::string &filename) {
             continue;
         }
 
-        const std::optional<RawTimestamps> forward_timestamps =
-            extract_forward_timestamps(data);
-        const std::optional<RawTimestamps> reverse_timestamps =
-            extract_reverse_timestamps(data);
+        const std::optional<utils::flow::FlowTimestamps> forward_timestamps =
+            utils::flow::extract_forward_timestamps(data);
+        const std::optional<utils::flow::FlowTimestamps> reverse_timestamps =
+            utils::flow::extract_reverse_timestamps(data);
 
         if (!src_ip || !dst_ip || !forward_timestamps) {
             continue;
