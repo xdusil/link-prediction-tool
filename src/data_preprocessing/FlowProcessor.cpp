@@ -201,6 +201,17 @@ IPEdge FlowProcessor::parse_flow_from_json(const boost::json::object &data) {
 }
 
 IPEdge FlowProcessor::parse_rev_flow_from_json(const boost::json::object &data) {
+    const bool has_flow_reverse_window =
+        data.contains("flowStartMilliseconds_Rev") &&
+        data.contains("flowEndMilliseconds_Rev");
+
+    const std::chrono::milliseconds start_timestamp{
+        has_flow_reverse_window ? data.at("flowStartMilliseconds_Rev").as_int64()
+                                : data.at("biFlowStartMilliseconds_Rev").as_int64()};
+    const std::chrono::milliseconds end_timestamp{
+        has_flow_reverse_window ? data.at("flowEndMilliseconds_Rev").as_int64()
+                                : data.at("biFlowEndMilliseconds_Rev").as_int64()};
+
     return {
         data.at("destinationIPv4Address").as_string().c_str(),
         data.at("sourceIPv4Address").as_string().c_str(),
@@ -213,12 +224,8 @@ IPEdge FlowProcessor::parse_rev_flow_from_json(const boost::json::object &data) 
                   data.at("sourceTransportPort").as_int64())}
             : std::nullopt,
         static_cast<int>(data.at("protocolIdentifier").as_int64()),
-        std::chrono::milliseconds{data.contains("flowStartMilliseconds_Rev")
-                                      ? data.at("flowStartMilliseconds_Rev").as_int64()
-                                      : data.at("biFlowStartMilliseconds_Rev").as_int64()},
-        std::chrono::milliseconds{data.contains("flowEndMilliseconds_Rev")
-                                      ? data.at("flowEndMilliseconds_Rev").as_int64()
-                                      : data.at("biFlowEndMilliseconds_Rev").as_int64()}};
+        start_timestamp,
+        end_timestamp};
 }
 
 std::pair<std::chrono::milliseconds, std::chrono::milliseconds>
