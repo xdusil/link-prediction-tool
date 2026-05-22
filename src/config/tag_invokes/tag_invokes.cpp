@@ -203,11 +203,15 @@ FeatureConfig tag_invoke(json::value_to_tag<FeatureConfig>, const json::value &j
     set_validated<bool>(obj, "time_crosscorr_peak", config.time_crosscorr_peak, always_true{});
     set_validated<bool>(obj, "time_spike_score", config.time_spike_score, always_true{});
 
-    // 6. Bidirectional Flow
+    // 6. Observed Flow
     set_validated<bool>(obj, "flow_response_time", config.flow_response_time, always_true{});
     set_validated<bool>(obj, "flow_request_ratio", config.flow_request_ratio, always_true{});
     set_validated<bool>(obj, "flow_direction_asymmetry", config.flow_direction_asymmetry, always_true{});
     set_validated<bool>(obj, "flow_causality_score", config.flow_causality_score, always_true{});
+    set_validated<bool>(obj, "flow_src_out_share", config.flow_src_out_share,
+                        always_true{});
+    set_validated<bool>(obj, "flow_dst_in_share", config.flow_dst_in_share,
+                        always_true{});
 
     // 7. Protocol/Port Role
     set_validated<bool>(obj, "net_protocol_role", config.net_protocol_role, always_true{});
@@ -259,11 +263,13 @@ void tag_invoke(json::value_from_tag, json::value &jv, const FeatureConfig &conf
     obj["time_crosscorr_peak"] = json::value_from(config.time_crosscorr_peak);
     obj["time_spike_score"] = json::value_from(config.time_spike_score);
 
-    // 6. Bidirectional Flow
+    // 6. Observed Flow
     obj["flow_response_time"] = json::value_from(config.flow_response_time);
     obj["flow_request_ratio"] = json::value_from(config.flow_request_ratio);
     obj["flow_direction_asymmetry"] = json::value_from(config.flow_direction_asymmetry);
     obj["flow_causality_score"] = json::value_from(config.flow_causality_score);
+    obj["flow_src_out_share"] = json::value_from(config.flow_src_out_share);
+    obj["flow_dst_in_share"] = json::value_from(config.flow_dst_in_share);
 
     // 7. Protocol/Port Role
     obj["net_protocol_role"] = json::value_from(config.net_protocol_role);
