@@ -39,7 +39,8 @@ void print_help() {
         << "    -F, --feature-importance    Calculate feature importance analysis\n"
         << "  Prediction mode:\n"
         << "    -g, --ground-truth-in PATH  Path to ground truth for evaluation\n"
-        << "    -s, --scores-out PATH       Path to save all evaluated pair scores\n"
+        << "    -s, --scores                Write <predictions-out>.scores.csv\n"
+        << "    -e, --explanations          Write <predictions-out>.explanations.csv\n"
         << "    -b, --blocked-ips PATH      Path to list of IPs to ignore\n"
         << "    -i, --internal-ips PATH     Path to list of internal network IPs\n"
         << "  Ground truth mode:\n"
@@ -56,13 +57,14 @@ static struct option long_options[] = {
     {"config", required_argument, nullptr, 'f'},
     {"data", required_argument, nullptr, 'd'},
     {"extract", no_argument, nullptr, 'x'},
+    {"explanations", no_argument, nullptr, 'e'},
     {"ground-truth-in", required_argument, nullptr, 'g'},
     {"ground-truth-out", required_argument, nullptr, 'G'},
     {"help", no_argument, nullptr, 'h'},
     {"internal-ips", required_argument, nullptr, 'i'},
     {"prediction", no_argument, nullptr, 'p'},
     {"predictions-out", required_argument, nullptr, 'o'},
-    {"scores-out", required_argument, nullptr, 's'},
+    {"scores", no_argument, nullptr, 's'},
     {"training", no_argument, nullptr, 't'},
     {"verbose", no_argument, nullptr, 'v'},
     {"feature-importance", no_argument, nullptr, 'F'},
@@ -87,8 +89,13 @@ void check_training_mode(const cmd_args &args) {
         throw CliValidationException("Missing required argument --data");
     }
 
-    if (args.scores_output_path) {
+    if (args.write_scores) {
         throw CliValidationException("Scores output is only used in prediction mode");
+    }
+
+    if (args.write_explanations) {
+        throw CliValidationException(
+            "Explanations output is only used in prediction mode");
     }
 }
 
@@ -143,9 +150,14 @@ void check_ground_truth_mode(const cmd_args &args) {
             "Predictions output not used in ground-truth-only mode");
     }
 
-    if (args.scores_output_path) {
+    if (args.write_scores) {
         throw CliValidationException(
             "Scores output not used in ground-truth-only mode");
+    }
+
+    if (args.write_explanations) {
+        throw CliValidationException(
+            "Explanations output not used in ground-truth-only mode");
     }
 
     if (args.ground_truth_input_path) {
@@ -177,7 +189,7 @@ cmd_args parse_args(int argc, char *argv[]) {
     cmd_args args{}; // Initialize all fields
     int opt;
 
-    const char *short_opts = ":b:c:f:d:g:G:hi:po:s:txvF";
+    const char *short_opts = ":b:c:ef:d:g:G:hi:po:stxvF";
 
     while ((opt = getopt_long(argc, argv, short_opts, long_options, nullptr)) != -1) {
         switch (opt) {
@@ -208,6 +220,9 @@ cmd_args parse_args(int argc, char *argv[]) {
         case 'd':
             args.data_path = optarg;
             break;
+        case 'e':
+            args.write_explanations = true;
+            break;
         case 'g':
             args.ground_truth_input_path = optarg;
             break;
@@ -221,7 +236,7 @@ cmd_args parse_args(int argc, char *argv[]) {
             args.predictions_output_path = optarg;
             break;
         case 's':
-            args.scores_output_path = optarg;
+            args.write_scores = true;
             break;
         case 'v':
             args.verbose = true;

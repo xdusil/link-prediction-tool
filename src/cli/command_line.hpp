@@ -19,6 +19,8 @@ struct cmd_args {
     bool ground_truth_mode;
     bool verbose;
     bool feature_importance;
+    bool write_scores;
+    bool write_explanations;
     bool help;
 
     // Paths
@@ -33,8 +35,6 @@ struct cmd_args {
     std::optional<std::string> internal_ips_path; // Path to internal IPs file
     std::optional<std::string>
         predictions_output_path; // File to save predicted dependencies
-    std::optional<std::string>
-        scores_output_path; // File to save all evaluated pair scores
 };
 
 /**
