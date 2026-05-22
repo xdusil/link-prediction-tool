@@ -192,23 +192,6 @@ private:
         const boost::json::object &data);
 
     /**
-     * @brief Extracts the start and end timestamps from a flow JSON object.
-     *
-     * @param data JSON flow object.
-     * @param start_key Preferred start timestamp key.
-     * @param end_key Preferred end timestamp key.
-     * @param fallback_start_key Fallback start timestamp key.
-     * @param fallback_end_key Fallback end timestamp key.
-     * @return Start and end timestamps, or std::nullopt if timestamps are missing
-     * or invalid.
-     */
-    static std::optional<
-        std::pair<std::chrono::milliseconds, std::chrono::milliseconds>>
-    extract_time_window(const boost::json::object &data, const char *start_key,
-                        const char *end_key, const char *fallback_start_key,
-                        const char *fallback_end_key);
-
-    /**
      * @brief Adds an edge to the reservoir.
      *
      * This method adds an edge to the reservoir for the source and destination

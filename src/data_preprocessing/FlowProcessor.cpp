@@ -1,5 +1,6 @@
 #include "FlowProcessor.hpp"
 #include "exceptions/exceptions.hpp"
+#include "utils/flow/FlowTimestampExtractor.hpp"
 #include "utils/ip/IIPChecker.hpp"
 #include <algorithm>
 #include <exception>
@@ -38,20 +39,19 @@ void FlowProcessor::process_flow_file(const std::string &filename) {
             const bool src_allowed = m_allowed_ips_checker.check_ip(*src_ip);
             const bool dst_allowed = m_allowed_ips_checker.check_ip(*dst_ip);
             if (src_allowed && dst_allowed) {
-                const auto time_window = extract_time_window(
-                    data, "flowStartMilliseconds", "flowEndMilliseconds",
-                    "biFlowStartMilliseconds", "biFlowEndMilliseconds");
-                if (!time_window) {
+                const std::optional<utils::flow::FlowTimestamps> timestamps =
+                    utils::flow::extract_forward_timestamps(data);
+                if (!timestamps) {
                     continue;
                 }
 
                 update_endpoint_stats(*src_ip, *dst_ip, static_cast<int>(*protocol),
-                                      time_window->first, time_window->second);
+                                      timestamps->start, timestamps->end);
                 update_endpoint_stats(*dst_ip, *src_ip, static_cast<int>(*protocol),
-                                      time_window->first, time_window->second);
+                                      timestamps->start, timestamps->end);
 
-                m_observation_start = std::min(m_observation_start, time_window->first);
-                m_observation_end = std::max(m_observation_end, time_window->second);
+                m_observation_start = std::min(m_observation_start, timestamps->start);
+                m_observation_end = std::max(m_observation_end, timestamps->end);
             }
 
             ++m_total_flows;
@@ -196,10 +196,9 @@ bool FlowProcessor::is_retained_endpoint(const std::string &ip) const {
 
 std::optional<IPEdge>
 FlowProcessor::parse_flow_from_json(const boost::json::object &data) {
-    const auto time_window =
-        extract_time_window(data, "flowStartMilliseconds", "flowEndMilliseconds",
-                            "biFlowStartMilliseconds", "biFlowEndMilliseconds");
-    if (!time_window) {
+    const std::optional<utils::flow::FlowTimestamps> timestamps =
+        utils::flow::extract_forward_timestamps(data);
+    if (!timestamps) {
         return std::nullopt;
     }
 
@@ -215,16 +214,15 @@ FlowProcessor::parse_flow_from_json(const boost::json::object &data) {
                   data.at("destinationTransportPort").as_int64())}
             : std::nullopt,
         static_cast<int>(data.at("protocolIdentifier").as_int64()),
-        time_window->first,
-        time_window->second};
+        timestamps->start,
+        timestamps->end};
 }
 
 std::optional<IPEdge>
 FlowProcessor::parse_rev_flow_from_json(const boost::json::object &data) {
-    const auto time_window = extract_time_window(
-        data, "flowStartMilliseconds_Rev", "flowEndMilliseconds_Rev",
-        "biFlowStartMilliseconds_Rev", "biFlowEndMilliseconds_Rev");
-    if (!time_window) {
+    const std::optional<utils::flow::FlowTimestamps> timestamps =
+        utils::flow::extract_reverse_timestamps(data);
+    if (!timestamps) {
         return std::nullopt;
     }
 
@@ -240,33 +238,8 @@ FlowProcessor::parse_rev_flow_from_json(const boost::json::object &data) {
                   data.at("sourceTransportPort").as_int64())}
             : std::nullopt,
         static_cast<int>(data.at("protocolIdentifier").as_int64()),
-        time_window->first,
-        time_window->second};
-}
-
-std::optional<std::pair<std::chrono::milliseconds, std::chrono::milliseconds>>
-FlowProcessor::extract_time_window(const boost::json::object &data,
-                                   const char *start_key, const char *end_key,
-                                   const char *fallback_start_key,
-                                   const char *fallback_end_key) {
-    if ((!data.contains(start_key) || !data.contains(end_key)) &&
-        (!data.contains(fallback_start_key) || !data.contains(fallback_end_key))) {
-        return std::nullopt;
-    }
-
-    const std::pair<std::chrono::milliseconds, std::chrono::milliseconds> time_window{
-        std::chrono::milliseconds{data.contains(start_key)
-                                      ? data.at(start_key).as_int64()
-                                      : data.at(fallback_start_key).as_int64()},
-        std::chrono::milliseconds{data.contains(end_key)
-                                      ? data.at(end_key).as_int64()
-                                      : data.at(fallback_end_key).as_int64()}};
-
-    if (time_window.second < time_window.first) {
-        return std::nullopt;
-    }
-
-    return time_window;
+        timestamps->start,
+        timestamps->end};
 }
 
 void FlowProcessor::add_edge_to_reservoir(const std::string &src_ip,
