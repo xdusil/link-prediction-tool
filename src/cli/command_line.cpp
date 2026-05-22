@@ -142,6 +142,7 @@ void check_ground_truth_mode(const cmd_args &args) {
         throw CliValidationException(
             "Predictions output not used in ground-truth-only mode");
     }
+
     if (args.scores_output_path) {
         throw CliValidationException(
             "Scores output not used in ground-truth-only mode");
