@@ -16,7 +16,7 @@
  *   3. Hadamard Aggregates - multiplicative interactions without dimension explosion
  *   4. Structural Graph Features - topology and hierarchy signals
  *   5. Temporal Causality - request-response timing patterns
- *   6. Bidirectional Flow - communication asymmetry
+ *   6. Observed Flow - pair direction, concentration, and causality
  *   7. Protocol/Port Role - network-layer dependency signals
  */
 class FeatureConfig {
@@ -77,13 +77,15 @@ public:
     bool time_spike_score = true;      // delay distribution sharpness (tight causality)
 
     // =========================================================================
-    // 6. Bidirectional Flow Asymmetry Features
+    // 6. Observed Flow Features
     // =========================================================================
 
     bool flow_response_time = true;       // average response latency
     bool flow_request_ratio = true;       // forward_count / total_count
     bool flow_direction_asymmetry = true; // (forward - reverse) / total asymmetry
     bool flow_causality_score = true;     // temporal ordering pattern score
+    bool flow_src_out_share = true;       // share of src outgoing flows going to dst
+    bool flow_dst_in_share = true;        // share of dst incoming flows coming from src
 
     // =========================================================================
     // 7. Protocol / Port Role Features
@@ -120,7 +122,7 @@ public:
 
     constexpr bool are_flow_features_enabled() const noexcept {
         return flow_response_time || flow_request_ratio || flow_direction_asymmetry ||
-               flow_causality_score;
+               flow_causality_score || flow_src_out_share || flow_dst_in_share;
     }
 
     constexpr bool are_network_features_enabled() const noexcept {
@@ -175,11 +177,13 @@ public:
         dim += time_crosscorr_peak ? 2 : 0; // max_corr + lag
         dim += time_spike_score ? 1 : 0;
 
-        // 6. Bidirectional Flow (4 features)
+        // 6. Observed Flow (6 features)
         dim += flow_response_time ? 1 : 0;
         dim += flow_request_ratio ? 1 : 0;
         dim += flow_direction_asymmetry ? 1 : 0;
         dim += flow_causality_score ? 1 : 0;
+        dim += flow_src_out_share ? 1 : 0;
+        dim += flow_dst_in_share ? 1 : 0;
 
         // 7. Protocol/Port Role (3 features)
         dim += net_protocol_role ? 1 : 0;
@@ -263,7 +267,7 @@ public:
         if (time_spike_score)
             names.push_back("time_spike_score");
 
-        // 6. Bidirectional Flow
+        // 6. Observed Flow
         if (flow_response_time)
             names.push_back("flow_response_time");
         if (flow_request_ratio)
@@ -272,6 +276,10 @@ public:
             names.push_back("flow_direction_asymmetry");
         if (flow_causality_score)
             names.push_back("flow_causality_score");
+        if (flow_src_out_share)
+            names.push_back("flow_src_out_share");
+        if (flow_dst_in_share)
+            names.push_back("flow_dst_in_share");
 
         // 7. Protocol/Port Role
         if (net_protocol_role)

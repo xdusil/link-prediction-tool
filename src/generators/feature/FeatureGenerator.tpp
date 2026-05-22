@@ -72,7 +72,8 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::generat
     const GroundTruthDependencies& ground_truth) {
 
     const std::size_t num_vertices = vertex_to_index.size();
-    const std::size_t num_pairs = num_vertices * (num_vertices - 1);
+    const std::size_t num_pairs =
+        num_vertices < 2 ? 0 : num_vertices * (num_vertices - 1);
     const std::size_t feature_dim = m_config.get_dimension();
 
     if (num_pairs == 0)
@@ -123,11 +124,10 @@ FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::generat
     // Compute graph statistics for normalization
     compute_graph_statistics(vertex_to_index, source_embeddings, dest_embeddings);
 
-    process_all_pairs<WithLabels, WithPairs>(vertex_ips, source_embeddings,
-                                             dest_embeddings, vertex_to_index,
-                                             ground_truth, features, labels, pairs);
+    process_all_pairs<WithLabels, WithPairs>(
+        vertex_ips, source_embeddings, dest_embeddings, vertex_to_index,
+        ground_truth, features, labels, pairs);
 
-    // Print profiling results
     m_profiler.print_results();
     m_profiler.reset();
 
@@ -177,7 +177,8 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
                       const GroundTruthDependencies& ground_truth,
                       torch::Tensor& features, arma::Row<std::size_t>& labels,
                       std::vector<std::pair<IPAddress, IPAddress>>& pairs) {
-    const std::size_t directed_pairs = vertex_ips.size() * (vertex_ips.size() - 1);
+    const std::size_t directed_pairs =
+        vertex_ips.size() < 2 ? 0 : vertex_ips.size() * (vertex_ips.size() - 1);
     if (WithLabels && labels.n_elem != directed_pairs) {
         throw FeatureGeneratorException(
             "Labels size does not match number of vertex pairs.");
@@ -186,7 +187,7 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
         throw FeatureGeneratorException(
             "Pairs size does not match number of vertex pairs.");
     }
-    if (features.size(0) != directed_pairs) {
+    if (features.size(0) != static_cast<int64_t>(directed_pairs)) {
         throw FeatureGeneratorException(
             "Features size does not match number of vertex pairs.");
     }
@@ -594,6 +595,16 @@ std::size_t FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependenci
         accessor[row][col++] = static_cast<T>(features.causality_score.value_or(0.0));
     }
 
+    if (m_config.flow_src_out_share) {
+        PROFILE_FEATURE(m_profiler, "flow_src_out_share");
+        accessor[row][col++] =
+            static_cast<T>(features.src_out_share.value_or(0.0));
+    }
+    if (m_config.flow_dst_in_share) {
+        PROFILE_FEATURE(m_profiler, "flow_dst_in_share");
+        accessor[row][col++] =
+            static_cast<T>(features.dst_in_share.value_or(0.0));
+    }
     return col;
 }
 
@@ -806,4 +817,3 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "[FeatureGenerator] Statistics computed in " << elapsed << "ms" << std::endl;
 }
-

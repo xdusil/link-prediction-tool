@@ -10,9 +10,10 @@
 #include <vector>
 
 /**
- * @brief Extractor for bidirectional flow asymmetry features.
+ * @brief Extractor for directly observed flow-pair features.
  *
- * Analyzes request-response patterns and flow asymmetry between node pairs.
+ * Analyzes request-response timing, flow asymmetry, and direct pair support
+ * between two endpoints.
  */
 class BidirectionalFeatureExtractor {
 public:
@@ -24,6 +25,8 @@ public:
         std::optional<double> request_ratio;
         std::optional<double> direction_asymmetry;
         std::optional<double> causality_score;
+        std::optional<double> src_out_share;
+        std::optional<double> dst_in_share;
     };
 
     /**
@@ -88,14 +91,17 @@ BidirectionalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_m
     if (config.flow_response_time || config.flow_causality_score) {
         needs |= Fields::ResponseTiming; // ForwardEndTimes | ReverseStartTimes
     }
-    if (config.flow_request_ratio || config.flow_direction_asymmetry) {
-        needs |= Fields::StartTimesOnly; // ForwardStartTimes | ReverseStartTimes
+    if (config.flow_request_ratio || config.flow_direction_asymmetry ||
+        config.flow_src_out_share || config.flow_dst_in_share) {
+        needs |= Fields::CountsOnly;
     }
 
     const FlowDataCollector::FlowData flow_data =
         FlowDataCollector::collect(graph_manager, src, dst, needs);
 
-    const std::size_t total_flows = flow_data.total_count();
+    const std::size_t forward_count = flow_data.forward_count();
+    const std::size_t reverse_count = flow_data.reverse_count();
+    const std::size_t total_flows = forward_count + reverse_count;
 
     // Response time: average time between request end and response start
     if (config.flow_response_time && flow_data.has_flows()) {
@@ -104,20 +110,38 @@ BidirectionalFeatureExtractor::extract(const IGraphManager<GraphTraits>& graph_m
 
     // Request ratio: proportion of forward flows vs total
     if (config.flow_request_ratio && flow_data.has_flows()) {
-        result.request_ratio = static_cast<double>(flow_data.forward_count()) /
+        result.request_ratio = static_cast<double>(forward_count) /
                                static_cast<double>(total_flows);
     }
 
     // Direction asymmetry: (forward - reverse) / total
     if (config.flow_direction_asymmetry && flow_data.has_flows()) {
-        double diff = static_cast<double>(flow_data.forward_count()) -
-                      static_cast<double>(flow_data.reverse_count());
+        double diff = static_cast<double>(forward_count) -
+                      static_cast<double>(reverse_count);
         result.direction_asymmetry = diff / static_cast<double>(total_flows);
     }
 
     // Causality score: temporal ordering pattern strength
     if (config.flow_causality_score && flow_data.has_flows()) {
         result.causality_score = compute_causality(flow_data);
+    }
+
+    if (config.flow_src_out_share) {
+        const std::size_t src_out_degree = graph_manager.get_out_degree(src);
+        result.src_out_share =
+            src_out_degree == 0
+                ? 0.0
+                : static_cast<double>(forward_count) /
+                      static_cast<double>(src_out_degree);
+    }
+
+    if (config.flow_dst_in_share) {
+        const std::size_t dst_in_degree = graph_manager.get_in_degree(dst);
+        result.dst_in_share =
+            dst_in_degree == 0
+                ? 0.0
+                : static_cast<double>(forward_count) /
+                      static_cast<double>(dst_in_degree);
     }
 
     return result;
