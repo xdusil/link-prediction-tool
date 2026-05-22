@@ -1,9 +1,63 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_set>
 
 namespace ground_truth {
+
+enum class DependencyType : std::uint8_t {
+    DD = 0,
+    TD2,
+    RR2,
+    TD3,
+    RR3,
+    Unknown
+};
+
+constexpr std::size_t DEPENDENCY_TYPE_COUNT = 6;
+
+using DependencyTypeCounts = std::array<std::size_t, DEPENDENCY_TYPE_COUNT>;
+
+struct ProjectionStats {
+    std::size_t total_dependencies = 0;
+    std::size_t retained_dependencies = 0;
+    DependencyTypeCounts total_by_type{};
+    DependencyTypeCounts retained_by_type{};
+};
+
+inline constexpr std::array<DependencyType, DEPENDENCY_TYPE_COUNT>
+all_dependency_types() {
+    return {DependencyType::DD,      DependencyType::TD2, DependencyType::RR2,
+            DependencyType::TD3,     DependencyType::RR3,
+            DependencyType::Unknown};
+}
+
+inline std::size_t to_index(DependencyType type) {
+    return static_cast<std::size_t>(type);
+}
+
+inline const char *to_string(DependencyType type) {
+    switch (type) {
+    case DependencyType::DD:
+        return "DD";
+    case DependencyType::TD2:
+        return "TD2";
+    case DependencyType::RR2:
+        return "RR2";
+    case DependencyType::TD3:
+        return "TD3";
+    case DependencyType::RR3:
+        return "RR3";
+    case DependencyType::Unknown:
+        return "Unknown";
+    }
+
+    return "Unknown";
+}
 
 /**
  * @brief Interface for dependency analyzis.

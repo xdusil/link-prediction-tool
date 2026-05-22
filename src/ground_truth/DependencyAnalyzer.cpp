@@ -5,7 +5,9 @@
 #include "io/FileWriter.hpp"
 #include "utils/ip/AllowedIPChecker.hpp"
 #include "utils/ip/IIPChecker.hpp"
+#include "utils/string/StringUtils.hpp"
 #include <chrono>
+#include <cstddef>
 #include <fstream>
 #include <functional>
 #include <optional>
@@ -19,6 +21,30 @@
 #define TCP_PROTOCOL 6
 
 namespace ground_truth {
+
+namespace {
+
+DependencyType parse_dependency_type(const std::string &value) {
+    if (value == "DD") {
+        return DependencyType::DD;
+    }
+    if (value == "TD2") {
+        return DependencyType::TD2;
+    }
+    if (value == "RR2") {
+        return DependencyType::RR2;
+    }
+    if (value == "TD3") {
+        return DependencyType::TD3;
+    }
+    if (value == "RR3") {
+        return DependencyType::RR3;
+    }
+
+    return DependencyType::Unknown;
+}
+
+} // namespace
 
 DependencyAnalyzer::DependencyAnalyzer(int n_occurrences, int epsilon,
                                        IIPChecker &allowed_ips_checker)
@@ -92,7 +118,7 @@ ProjectionStats DependencyAnalyzer::calculate_projection_stats(
     for (const auto &[dependency, types] : m_dependency_types) {
         ++stats.total_dependencies;
         for (const auto type : types) {
-            ++stats.total_by_type[dependency_type_index(type)];
+            ++stats.total_by_type[to_index(type)];
         }
 
         if (!retained_ips.contains(dependency.first) ||
@@ -102,7 +128,7 @@ ProjectionStats DependencyAnalyzer::calculate_projection_stats(
 
         ++stats.retained_dependencies;
         for (const auto type : types) {
-            ++stats.retained_by_type[dependency_type_index(type)];
+            ++stats.retained_by_type[to_index(type)];
         }
     }
 
@@ -195,7 +221,10 @@ const DependencySet &DependencyAnalyzer::load_dependencies(const std::string &fi
 }
 
 bool DependencyAnalyzer::process_dependency_line(const std::string &line) {
-    std::string src_ip, dst_ip;
+    std::string src_ip;
+    std::string dst_ip;
+    std::string dependency_type_token;
+    auto dependency_type = DependencyType::Unknown;
 
     // Find the first comma
     size_t first_comma = line.find(',');
@@ -205,18 +234,19 @@ bool DependencyAnalyzer::process_dependency_line(const std::string &line) {
 
     // Find the second comma
     size_t second_comma = line.find(',', first_comma + 1);
-    if (second_comma == std::string::npos) {
-        return false; // Invalid line
-    }
 
     src_ip = line.substr(0, first_comma);
-    dst_ip = line.substr(first_comma + 1, second_comma - first_comma - 1);
+    if (second_comma == std::string::npos) {
+        dst_ip = line.substr(first_comma + 1);
+    } else {
+        dst_ip = line.substr(first_comma + 1, second_comma - first_comma - 1);
+        dependency_type_token = line.substr(second_comma + 1);
+    }
 
     // Trim whitespace
-    src_ip.erase(0, src_ip.find_first_not_of(" \t"));
-    src_ip.erase(src_ip.find_last_not_of(" \t") + 1);
-    dst_ip.erase(0, dst_ip.find_first_not_of(" \t"));
-    dst_ip.erase(dst_ip.find_last_not_of(" \t") + 1);
+    utils::trim_in_place(src_ip);
+    utils::trim_in_place(dst_ip);
+    utils::trim_in_place(dependency_type_token);
 
     // Validate IP addresses
     if (!AllowedIPChecker::is_valid_ipv4(src_ip) ||
@@ -224,7 +254,11 @@ bool DependencyAnalyzer::process_dependency_line(const std::string &line) {
         return false; // Invalid IP address
     }
 
-    m_all_dependencies.insert({src_ip, dst_ip});
+    if (!dependency_type_token.empty()) {
+        dependency_type = parse_dependency_type(dependency_type_token);
+    }
+
+    register_dependency(src_ip, dst_ip, dependency_type);
     return true;
 }
 
@@ -232,7 +266,17 @@ void DependencyAnalyzer::reset() {
     m_ip_dict.clear();
     m_oss.str("");
     m_all_dependencies.clear();
+    m_dependency_types.clear();
 }
+
+void DependencyAnalyzer::register_dependency(const IPAddress &src_ip,
+                                             const IPAddress &dst_ip,
+                                             DependencyType type) {
+    const auto dependency = std::make_pair(src_ip, dst_ip);
+    m_all_dependencies.insert(dependency);
+    m_dependency_types[dependency].insert(type);
+}
+
 int DependencyAnalyzer::count_appearances_of_LR_dependency(
     Timestamp start_forward, Timestamp end_forward, Timestamp start_reverse,
     Timestamp end_reverse, const std::vector<EdgeProperties> &edge_properties) const {
@@ -267,7 +311,7 @@ DependencyList DependencyAnalyzer::determine_direct_dependencies() {
         for (const auto &[target_ip, edge_properties] : target_map) {
             if (edge_properties.size() > m_n_occurrences) {
                 dependencies.emplace_back(src_ip, target_ip);
-                m_all_dependencies.insert({src_ip, target_ip});
+                register_dependency(src_ip, target_ip, DependencyType::DD);
                 m_oss << src_ip << "," << target_ip << ",DD\n";
             }
         }
@@ -306,7 +350,7 @@ TD2DependencyMap DependencyAnalyzer::determine_TD2_dependencies(
 
                 if (count_appereances > m_n_occurrences) {
                     dependencies[src_ip].push_back({dst_ip, mid_ip});
-                    m_all_dependencies.insert({src_ip, dst_ip});
+                    register_dependency(src_ip, dst_ip, DependencyType::TD2);
                     m_oss << src_ip << "," << dst_ip << ",TD2\n";
                     break;
                 }
@@ -350,7 +394,7 @@ RR2DependencyMap DependencyAnalyzer::determine_RR2_dependencies(
 
                 if (count_appearances > m_n_occurrences) {
                     dependencies[dst_ip].push_back({mid_ip, src_ip});
-                    m_all_dependencies.insert({dst_ip, mid_ip});
+                    register_dependency(dst_ip, mid_ip, DependencyType::RR2);
                     m_oss << dst_ip << "," << mid_ip << ",RR2\n";
                     break;
                 }
@@ -407,7 +451,7 @@ DependencyAnalyzer::determine_TD3_dependencies(const DependencyList &direct_depe
 
                     if (count_appearances_inner > m_n_occurrences) {
                         dependencies[src_ip].push_back({dst_ip, mid_ip, mid_ip2});
-                        m_all_dependencies.insert({src_ip, dst_ip});
+                        register_dependency(src_ip, dst_ip, DependencyType::TD3);
                         m_oss << src_ip << "," << dst_ip << ",TD3\n";
                         break;
                     }
@@ -458,7 +502,7 @@ DependencyAnalyzer::determine_RR3_dependencies(const DependencyList &direct_depe
 
                     if (count_appearances > m_n_occurrences) {
                         dependencies[dst_ip].push_back({mid_ip, src_ip, mid_ip2});
-                        m_all_dependencies.insert({dst_ip, mid_ip});
+                        register_dependency(dst_ip, mid_ip, DependencyType::RR3);
                         m_oss << dst_ip << "," << mid_ip << ",RR3\n";
                         break;
                     }

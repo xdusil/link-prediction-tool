@@ -79,6 +79,8 @@ using TD3DependencyMap = std::unordered_map<IPAddress, std::vector<TD3Dependency
 using RR3DependencyMap = std::unordered_map<IPAddress, std::vector<RR3Dependency>>;
 using DependencySet = std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>;
 using DependencyTypeSet = std::set<DependencyType>;
+using DependencyTypeMap =
+    std::unordered_map<std::pair<IPAddress, IPAddress>, DependencyTypeSet, pair_hash>;
 
 // Main class for analyzing dependencies in network flows
 class DependencyAnalyzer : public IDependencyAnalyzer<DependencySet> {
@@ -232,6 +234,16 @@ private:
      */
     bool process_dependency_line(const std::string &line);
 
+    /**
+     * @brief Register a dependency between two IP addresses.
+     *
+     * @param src_ip The source IP address.
+     * @param dst_ip The destination IP address.
+     * @param type The type of the dependency.
+     */
+    void register_dependency(const IPAddress &src_ip, const IPAddress &dst_ip,
+                             DependencyType type);
+
     const int
         m_n_occurrences; // Minimum number of occurrences required to confirm a dependency
     const int
@@ -240,6 +252,7 @@ private:
     std::ostringstream m_oss;                // Output stream for logging
     std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>
         m_all_dependencies; // Set of all dependencies
+    DependencyTypeMap m_dependency_types;
     IPDict m_ip_dict;       // Dictionary of IP addresses and their corresponding flows
 };
 
