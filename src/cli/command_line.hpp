@@ -33,6 +33,8 @@ struct cmd_args {
     std::optional<std::string> internal_ips_path; // Path to internal IPs file
     std::optional<std::string>
         predictions_output_path; // File to save predicted dependencies
+    std::optional<std::string>
+        scores_output_path; // File to save all evaluated pair scores
 };
 
 /**

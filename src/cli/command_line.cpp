@@ -39,6 +39,7 @@ void print_help() {
         << "    -F, --feature-importance    Calculate feature importance analysis\n"
         << "  Prediction mode:\n"
         << "    -g, --ground-truth-in PATH  Path to ground truth for evaluation\n"
+        << "    -s, --scores-out PATH       Path to save all evaluated pair scores\n"
         << "    -b, --blocked-ips PATH      Path to list of IPs to ignore\n"
         << "    -i, --internal-ips PATH     Path to list of internal network IPs\n"
         << "  Ground truth mode:\n"
@@ -61,6 +62,7 @@ static struct option long_options[] = {
     {"internal-ips", required_argument, nullptr, 'i'},
     {"prediction", no_argument, nullptr, 'p'},
     {"predictions-out", required_argument, nullptr, 'o'},
+    {"scores-out", required_argument, nullptr, 's'},
     {"training", no_argument, nullptr, 't'},
     {"verbose", no_argument, nullptr, 'v'},
     {"feature-importance", no_argument, nullptr, 'F'},
@@ -83,6 +85,10 @@ void check_training_mode(const cmd_args &args) {
 
     if (!args.data_path) {
         throw CliValidationException("Missing required argument --data");
+    }
+
+    if (args.scores_output_path) {
+        throw CliValidationException("Scores output is only used in prediction mode");
     }
 }
 
@@ -136,6 +142,10 @@ void check_ground_truth_mode(const cmd_args &args) {
         throw CliValidationException(
             "Predictions output not used in ground-truth-only mode");
     }
+    if (args.scores_output_path) {
+        throw CliValidationException(
+            "Scores output not used in ground-truth-only mode");
+    }
 
     if (args.ground_truth_input_path) {
         throw CliValidationException(
@@ -166,7 +176,7 @@ cmd_args parse_args(int argc, char *argv[]) {
     cmd_args args{}; // Initialize all fields
     int opt;
 
-    const char *short_opts = ":b:c:f:d:g:G:hi:po:txvF";
+    const char *short_opts = ":b:c:f:d:g:G:hi:po:s:txvF";
 
     while ((opt = getopt_long(argc, argv, short_opts, long_options, nullptr)) != -1) {
         switch (opt) {
@@ -208,6 +218,9 @@ cmd_args parse_args(int argc, char *argv[]) {
             break;
         case 'o':
             args.predictions_output_path = optarg;
+            break;
+        case 's':
+            args.scores_output_path = optarg;
             break;
         case 'v':
             args.verbose = true;
