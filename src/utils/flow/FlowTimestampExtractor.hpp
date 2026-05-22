@@ -14,19 +14,11 @@ struct FlowTimestamps {
 };
 
 inline std::optional<FlowTimestamps>
-extract_timestamps(const boost::json::object &data, const char *start_key,
-                   const char *end_key, const char *fallback_start_key,
-                   const char *fallback_end_key) {
+extract_timestamp_pair(const boost::json::object &data, const char *start_key,
+                       const char *end_key) {
     std::optional<int64_t> start =
         JsonHelper::extract_value<int64_t>(data, start_key);
-    if (!start) {
-        start = JsonHelper::extract_value<int64_t>(data, fallback_start_key);
-    }
-
     std::optional<int64_t> end = JsonHelper::extract_value<int64_t>(data, end_key);
-    if (!end) {
-        end = JsonHelper::extract_value<int64_t>(data, fallback_end_key);
-    }
 
     if (!start || !end || *end < *start) {
         return std::nullopt;
@@ -34,6 +26,19 @@ extract_timestamps(const boost::json::object &data, const char *start_key,
 
     return FlowTimestamps{std::chrono::milliseconds(*start),
                           std::chrono::milliseconds(*end)};
+}
+
+inline std::optional<FlowTimestamps>
+extract_timestamps(const boost::json::object &data, const char *start_key,
+                   const char *end_key, const char *fallback_start_key,
+                   const char *fallback_end_key) {
+    std::optional<FlowTimestamps> preferred =
+        extract_timestamp_pair(data, start_key, end_key);
+    if (preferred) {
+        return preferred;
+    }
+
+    return extract_timestamp_pair(data, fallback_start_key, fallback_end_key);
 }
 
 inline std::optional<FlowTimestamps>
