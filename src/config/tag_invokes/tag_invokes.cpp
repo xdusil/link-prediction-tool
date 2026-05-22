@@ -369,6 +369,8 @@ Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
     set_validated<bool>(obj, "USE_GRID_SEARCH", config.USE_GRID_SEARCH, always_true{});
     set_validated<bool>(obj, "USE_THRESHOLD_CALIBRATION",
                         config.USE_THRESHOLD_CALIBRATION, always_true{});
+    set_validated<bool>(obj, "WRITE_RUN_MANIFESTS", config.WRITE_RUN_MANIFESTS,
+                        always_true{});
 
     // Nested objects
     set_validated<RandomForestParams>(obj, "RF_PARAMS", config.RF_PARAMS, always_true{});
@@ -410,6 +412,7 @@ void tag_invoke(json::value_from_tag, json::value &jv, const Config &config) {
     obj["USE_SCALING"] = json::value_from(config.USE_SCALING);
     obj["USE_GRID_SEARCH"] = json::value_from(config.USE_GRID_SEARCH);
     obj["USE_THRESHOLD_CALIBRATION"] = json::value_from(config.USE_THRESHOLD_CALIBRATION);
+    obj["WRITE_RUN_MANIFESTS"] = json::value_from(config.WRITE_RUN_MANIFESTS);
     obj["CLASSIFIER_THRESHOLD"] = json::value_from(config.CLASSIFIER_THRESHOLD);
     obj["METRIC_TO_OPTIMIZE"] = json::value_from(config.METRIC_TO_OPTIMIZE);
 

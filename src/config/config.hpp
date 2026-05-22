@@ -39,6 +39,7 @@ struct Config {
     bool USE_SCALING = true;
     bool USE_GRID_SEARCH = false;
     bool USE_THRESHOLD_CALIBRATION = false;
+    bool WRITE_RUN_MANIFESTS = true;
 
     RandomForestParams RF_PARAMS = {200, 5, 1e-7, 0};
 
