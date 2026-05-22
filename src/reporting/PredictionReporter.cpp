@@ -47,6 +47,32 @@ json::value json_value_or_null(const std::optional<double>& value) {
     return value.has_value() ? json::value(*value) : json::value(nullptr);
 }
 
+json::object dependency_type_counts_json(
+    const ground_truth::DependencyTypeCounts& counts) {
+    json::object values;
+    for (const ground_truth::DependencyType type : ground_truth::all_dependency_types()) {
+        values[ground_truth::to_string(type)] =
+            static_cast<std::uint64_t>(counts[ground_truth::to_index(type)]);
+    }
+    return values;
+}
+
+json::object projection_stats_json(const ground_truth::ProjectionStats& stats) {
+    json::object values;
+    values["total_dependencies"] =
+        static_cast<std::uint64_t>(stats.total_dependencies);
+    values["retained_dependencies"] =
+        static_cast<std::uint64_t>(stats.retained_dependencies);
+    values["coverage"] =
+        stats.total_dependencies == 0
+            ? json::value(nullptr)
+            : json::value(static_cast<double>(stats.retained_dependencies) /
+                          static_cast<double>(stats.total_dependencies));
+    values["total_by_type"] = dependency_type_counts_json(stats.total_by_type);
+    values["retained_by_type"] = dependency_type_counts_json(stats.retained_by_type);
+    return values;
+}
+
 json::array ranking_at_k_json(const std::vector<statistics::RankingAtK>& ranking_at_k) {
     json::array values;
     values.reserve(ranking_at_k.size());
@@ -170,6 +196,10 @@ void write_run_manifest(const RunManifest& manifest) {
     report["classifier_path"] = manifest.classifier_path;
     report["output_path"] = manifest.output_path;
     report["reference_path"] = json_value_or_null(manifest.reference_path);
+    report["reference_projection"] =
+        manifest.reference_projection_stats
+            ? json::value(projection_stats_json(*manifest.reference_projection_stats))
+            : json::value(nullptr);
     report["seed"] = manifest.config.SEED;
     report["num_threads"] = manifest.config.NUM_THREADS.value_or(0);
     report["retained_vertices"] =

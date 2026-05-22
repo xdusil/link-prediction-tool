@@ -5,6 +5,7 @@
 #include "graph/boost/BoostGraphTraits.hpp"
 #include "graph/network/INetworkGraphManager.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
+#include "ground_truth/IDependencyAnalyzer.hpp"
 #include "statistics/metrics.hpp"
 #include <armadillo>
 #include <cstddef>
@@ -38,6 +39,7 @@ struct RunManifest {
     std::string classifier_path;
     std::string output_path;
     std::optional<std::string> reference_path;
+    std::optional<ground_truth::ProjectionStats> reference_projection_stats;
     const config::Config& config;
     const INetworkGraphManager<BoostGraphTraits<Graph>>& graph_manager;
     std::size_t evaluated_pair_count = 0;
