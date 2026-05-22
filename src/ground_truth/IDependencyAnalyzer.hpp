@@ -43,5 +43,18 @@ public:
      * @return A set of all dependencies.
      */
     virtual const DependencySet &get_dependencies() const = 0;
+
+    /**
+     * @brief Calculate how much of the reference truth is represented in a
+     * retained vertex universe.
+     *
+     * A dependency is retained when both its source and destination IPs are
+     * present in the retained graph/candidate universe.
+     *
+     * @param retained_ips Set of retained IP addresses.
+     * @return Projection statistics.
+     */
+    virtual ProjectionStats calculate_projection_stats(
+        const std::unordered_set<std::string> &retained_ips) const = 0;
 };
 } // namespace ground_truth

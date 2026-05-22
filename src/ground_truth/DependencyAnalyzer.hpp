@@ -78,6 +78,7 @@ using RR2DependencyMap = std::unordered_map<IPAddress, std::vector<RR2Dependency
 using TD3DependencyMap = std::unordered_map<IPAddress, std::vector<TD3Dependency>>;
 using RR3DependencyMap = std::unordered_map<IPAddress, std::vector<RR3Dependency>>;
 using DependencySet = std::unordered_set<std::pair<IPAddress, IPAddress>, pair_hash>;
+using DependencyTypeSet = std::set<DependencyType>;
 
 // Main class for analyzing dependencies in network flows
 class DependencyAnalyzer : public IDependencyAnalyzer<DependencySet> {
@@ -117,6 +118,15 @@ public:
      * @return A set of all dependencies.
      */
     const DependencySet &get_dependencies() const override;
+
+    /**
+     * @brief Calculate projection statistics for a given set of retained IPs.
+     *
+     * @param retained_ips The set of IP addresses that are retained in the graph.
+     * @return Projection statistics.
+     */
+    ProjectionStats calculate_projection_stats(
+        const std::unordered_set<IPAddress> &retained_ips) const override;
 
 private:
     /**

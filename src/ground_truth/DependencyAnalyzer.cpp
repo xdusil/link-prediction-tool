@@ -85,6 +85,30 @@ const DependencySet &DependencyAnalyzer::get_dependencies() const {
     return m_all_dependencies;
 }
 
+ProjectionStats DependencyAnalyzer::calculate_projection_stats(
+    const std::unordered_set<IPAddress> &retained_ips) const {
+    ProjectionStats stats;
+
+    for (const auto &[dependency, types] : m_dependency_types) {
+        ++stats.total_dependencies;
+        for (const auto type : types) {
+            ++stats.total_by_type[dependency_type_index(type)];
+        }
+
+        if (!retained_ips.contains(dependency.first) ||
+            !retained_ips.contains(dependency.second)) {
+            continue;
+        }
+
+        ++stats.retained_dependencies;
+        for (const auto type : types) {
+            ++stats.retained_by_type[dependency_type_index(type)];
+        }
+    }
+
+    return stats;
+}
+
 const DependencySet &DependencyAnalyzer::calculate_dependencies(
     const std::string &filename,
     const std::optional<std::string> output_filename /*= std::nullopt*/) {
