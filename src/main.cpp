@@ -27,7 +27,8 @@ int main(int argc, char *argv[]) {
             app.run_prediction_mode(*args.classifier_path, *args.predictions_output_path,
                                     *args.data_path, args.ground_truth_input_path,
                                     args.blocked_ips_path, args.internal_ips_path,
-                                    args.scores_output_path);
+                                    args.write_scores,
+                                    args.write_explanations);
         } else {
             app.run_ground_truth_mode(*args.data_path, *args.ground_truth_output_path,
                                            args.blocked_ips_path);
