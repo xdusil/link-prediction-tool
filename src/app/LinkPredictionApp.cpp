@@ -207,7 +207,8 @@ void LinkPredictionApp::run_prediction_mode(
     const std::string &classifier_path, const std::string &predictions_output_path,
     const std::string &data_path, const std::optional<std::string> &ground_truth_path,
     const std::optional<std::string> &blocked_ips_path,
-    const std::optional<std::string> &internal_ips_path) {
+    const std::optional<std::string> &internal_ips_path,
+    const std::optional<std::string> &scores_output_path) {
 
     std::cout << "Starting prediction mode..." << std::endl;
     utils::VerboseTimer timer("Prediction mode");
@@ -226,7 +227,8 @@ void LinkPredictionApp::run_prediction_mode(
 
     // Generate predictions
     const std::size_t evaluated_pair_count =
-        generate_predictions(predictions_output_path, ground_truth_path);
+        generate_predictions(predictions_output_path, ground_truth_path,
+                             scores_output_path);
     if (m_config.WRITE_RUN_MANIFESTS) {
         reporting::write_run_manifest({
             .path = predictions_output_path + ".run_manifest.json",
@@ -293,6 +295,11 @@ std::size_t LinkPredictionApp::generate_predictions(
 
     const auto [predictions, probabilities] = m_classifier->predict_proba(arma_features);
     const arma::rowvec positive_scores = probabilities.row(1);
+    if (scores_output_path) {
+        reporting::write_pair_scores(*scores_output_path, evaluated_pairs, predictions,
+                                     positive_scores, labels);
+        std::cout << "All pair scores written to " << *scores_output_path << std::endl;
+    }
 
     std::optional<service::ServicePortConfig> service_port_config;
     std::optional<service::EdgeServiceClassifier<BoostGraphTraits<Graph>>> service_classifier;

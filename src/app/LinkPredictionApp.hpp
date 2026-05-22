@@ -72,13 +72,15 @@ public:
      * @param ground_truth_path Path to the ground truth file for evaluation (optional)
      * @param blocked_ips_path Path to the blocked IPs file (optional)
      * @param internal_ips_path Path to the internal IPs file (optional)
+     * @param scores_output_path Path to save all evaluated pair scores (optional)
      */
     void run_prediction_mode(
         const std::string& classifier_path, const std::string& predictions_output_path,
         const std::string& data_path,
         const std::optional<std::string>& ground_truth_path = std::nullopt,
         const std::optional<std::string>& blocked_ips_path = std::nullopt,
-        const std::optional<std::string>& internal_ips_path = std::nullopt);
+        const std::optional<std::string>& internal_ips_path = std::nullopt,
+        const std::optional<std::string>& scores_output_path = std::nullopt);
 
     /**
      * @brief Run the ground truth mode
@@ -164,12 +166,14 @@ private:
      *
      * @param output_path Path to save the predicted dependencies
      * @param ground_truth_path Path to the ground truth file for evaluation (optional)
+     * @param scores_output_path Path to save all evaluated pair scores (optional)
      * @return Number of directed pairs evaluated by the classifier.
      */
 
     std::size_t generate_predictions(
         const std::string& output_path,
-        const std::optional<std::string>& ground_truth_path);
+        const std::optional<std::string>& ground_truth_path,
+        const std::optional<std::string>& scores_output_path);
 
     /**
      * @brief Helper function to log messages when verbose mode is enabled
