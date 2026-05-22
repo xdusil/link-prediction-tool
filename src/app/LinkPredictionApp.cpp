@@ -358,11 +358,17 @@ std::size_t LinkPredictionApp::generate_predictions(
             prediction_summary.positive_predictions,
             prediction_summary.total_predictions);
         std::cout << "Metrics report written to " << metrics_path << std::endl;
+
+#ifdef LINK_PREDICTION_ENABLE_PREDICTION_THRESHOLD_DIAGNOSTICS
         const auto [optimal_threshold, optimal_metrics] =
             m_classifier->find_optimal_threshold(
                 arma_features, *labels, m_config.METRIC_TO_OPTIMIZE);
-        std::cout << "Optimal threshold: " << optimal_threshold << std::endl;
+        std::cout
+            << "Prediction-set threshold diagnostics enabled. "
+            << "Optimal threshold on prediction labels: " << optimal_threshold
+            << std::endl;
         utils::print_classifier_metrics(optimal_metrics);
+#endif
     }
 
     return evaluated_pairs.size();
