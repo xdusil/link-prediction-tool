@@ -176,26 +176,37 @@ private:
      * @brief Parses flow data from a JSON object.
      *
      * @param data The JSON object containing flow data.
-     * @return The parsed flow data as an IPEdge object.
+     * @return The parsed flow data as an IPEdge object, or std::nullopt if
+     * timestamps are missing or invalid.
      */
-    static IPEdge parse_flow_from_json(const boost::json::object &data);
+    static std::optional<IPEdge> parse_flow_from_json(const boost::json::object &data);
 
     /**
      * @brief Parses reverse flow data from a JSON object.
      *
      * @param data The JSON object containing reverse flow data.
-     * @return The parsed reverse flow data as an IPEdge object.
+     * @return The parsed reverse flow data as an IPEdge object, or std::nullopt if
+     * timestamps are missing or invalid.
      */
-    static IPEdge parse_rev_flow_from_json(const boost::json::object &data);
+    static std::optional<IPEdge> parse_rev_flow_from_json(
+        const boost::json::object &data);
 
     /**
      * @brief Extracts the start and end timestamps from a flow JSON object.
      *
      * @param data JSON flow object.
-     * @return Start and end timestamps.
+     * @param start_key Preferred start timestamp key.
+     * @param end_key Preferred end timestamp key.
+     * @param fallback_start_key Fallback start timestamp key.
+     * @param fallback_end_key Fallback end timestamp key.
+     * @return Start and end timestamps, or std::nullopt if timestamps are missing
+     * or invalid.
      */
-    static std::pair<std::chrono::milliseconds, std::chrono::milliseconds>
-    extract_time_window(const boost::json::object &data);
+    static std::optional<
+        std::pair<std::chrono::milliseconds, std::chrono::milliseconds>>
+    extract_time_window(const boost::json::object &data, const char *start_key,
+                        const char *end_key, const char *fallback_start_key,
+                        const char *fallback_end_key);
 
     /**
      * @brief Adds an edge to the reservoir.
