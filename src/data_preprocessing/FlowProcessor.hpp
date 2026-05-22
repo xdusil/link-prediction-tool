@@ -9,8 +9,10 @@
 #include "utils/ip/IIPChecker.hpp"
 #include <chrono>
 #include <cstddef>
-#include <unordered_map>
+#include <optional>
+#include <string_view>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -215,10 +217,13 @@ private:
     static bool has_reverse_flow_data(const boost::json::object &data);
 
     /**
-     * @brief Logs a message for missing keys in a JSON object.
+     * @brief Logs a message for a skipped invalid flow JSON line.
      *
      * @param line The JSON object as a string.
      * @param line_no The line number in the file (optional).
+     * @param reason Reason why the flow was skipped.
      */
-    static void log_missing_keys(const std::string &line, std::size_t line_no = 0);
+    static void log_invalid_flow(const std::string &line,
+                                 std::optional<std::size_t> line_no,
+                                 std::string_view reason);
 };

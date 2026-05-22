@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <exception>
 #include <iostream>
+#include <string_view>
 #include <tuple>
 
 FlowProcessor::FlowProcessor(IEvictingCounter<IPAddress> &internal_counter,
@@ -32,7 +33,8 @@ void FlowProcessor::process_flow_file(const std::string &filename) {
             auto protocol = JsonHelper::extract_value<int64_t>(data, "protocolIdentifier");
 
             if (!src_ip || !dst_ip || !protocol) {
-                log_missing_keys(line);
+                log_invalid_flow(line, std::nullopt,
+                                 "missing source, destination, or protocol");
                 continue;
             }
 
@@ -42,6 +44,8 @@ void FlowProcessor::process_flow_file(const std::string &filename) {
                 const std::optional<utils::flow::FlowTimestamps> timestamps =
                     utils::flow::extract_forward_timestamps(data);
                 if (!timestamps) {
+                    log_invalid_flow(line, std::nullopt,
+                                     "missing or invalid forward timestamps");
                     continue;
                 }
 
@@ -80,6 +84,7 @@ void FlowProcessor::process_filtered_flows(const std::string &filename) {
 
             ++line_no;
             if (!src_ip || !dst_ip) {
+                log_invalid_flow(line, line_no, "missing source or destination");
                 continue;
             }
 
@@ -87,6 +92,8 @@ void FlowProcessor::process_filtered_flows(const std::string &filename) {
                 try {
                     const std::optional<IPEdge> edge = parse_flow_from_json(data);
                     if (!edge) {
+                        log_invalid_flow(line, line_no,
+                                         "missing or invalid forward timestamps");
                         continue;
                     }
 
@@ -97,10 +104,13 @@ void FlowProcessor::process_filtered_flows(const std::string &filename) {
                             parse_rev_flow_from_json(data);
                         if (rev_edge) {
                             add_edge_to_reservoir(*dst_ip, *src_ip, *rev_edge);
+                        } else {
+                            log_invalid_flow(line, line_no,
+                                             "missing or invalid reverse timestamps");
                         }
                     }
                 } catch (const std::exception &) {
-                    log_missing_keys(line, line_no);
+                    log_invalid_flow(line, line_no, "malformed retained flow");
                     continue;
                 }
             }
@@ -289,10 +299,12 @@ bool FlowProcessor::has_reverse_flow_data(const boost::json::object &data) {
     return false;
 }
 
-void FlowProcessor::log_missing_keys(const std::string &line,
-                                     std::size_t line_no /*= 0*/) {
-    std::cerr << "Missing keys in JSON data"
-              << (line_no > 0 ? " at line " + std::to_string(line_no) : "")
+void FlowProcessor::log_invalid_flow(const std::string &line,
+                                     std::optional<std::size_t> line_no,
+                                     std::string_view reason) {
+    std::cerr << "Skipping invalid flow"
+              << (line_no ? " at line " + std::to_string(*line_no) : "")
+              << ": " << reason
               << "\nData: " << line << std::endl;
 }
 
