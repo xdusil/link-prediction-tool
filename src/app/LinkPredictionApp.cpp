@@ -160,7 +160,17 @@ void LinkPredictionApp::run_training_mode(
     DirectionalEmbeddings embeddings = m_model->get_embeddings();
 
     BoostGraphAnalytics analytics{*m_graph_manager};
+    FeatureGenerator<BoostGraphTraits<Graph>, DirectionalEmbeddings,
+                     ground_truth::DependencySet>
+        feature_generator{analytics, embeddings, m_config.FEATURE_CONFIG};
+
+    auto [combined, arma_labels] =
+        feature_generator.generate_labeled_features(
+            m_graph_manager->get_ip_to_vertex(), ground_truth_dependencies);
+
     if (m_config.WRITE_RUN_MANIFESTS) {
+        const std::optional<std::string> reference_path =
+            ground_truth_input_path ? ground_truth_input_path : ground_truth_output_path;
         reporting::write_run_manifest({
             .path = classifier_path + ".run_manifest.json",
             .mode = "training",
