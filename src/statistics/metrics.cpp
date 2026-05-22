@@ -5,6 +5,7 @@
 #include <array>
 #include <cassert>
 #include <numeric>
+#include <stdexcept>
 #include <vector>
 
 namespace statistics {
@@ -103,16 +104,16 @@ std::optional<double> reciprocal_rank(
 
 void fill_score_based_metrics(Metrics &metrics, const arma::rowvec &scores,
                               const arma::Row<size_t> &labels) {
-    if (scores.is_empty() || scores.n_elem != labels.n_elem) {
+    if (scores.is_empty()) {
         return;
     }
 
-    const std::size_t total_positives = arma::sum(labels == 1);
-    const std::size_t total_negatives = labels.n_elem - total_positives;
-
-    if (total_positives > 0 && total_negatives > 0) {
-        metrics.roc_auc = calculate_roc_auc(scores, labels);
+    if (scores.n_elem != labels.n_elem) {
+        throw std::invalid_argument(
+            "Positive score count does not match label count.");
     }
+
+    metrics.roc_auc = calculate_roc_auc(scores, labels);
 
     const auto ranked_indices = sorted_score_indices_desc(scores);
     metrics.average_precision = average_precision(ranked_indices, labels);
@@ -229,12 +230,17 @@ Metrics calculate_metrics(const arma::Row<size_t> &predictions,
     return metrics;
 }
 
-double calculate_roc_auc(const arma::rowvec &scores, const arma::Row<size_t> &labels) {
+std::optional<double> calculate_roc_auc(const arma::rowvec &scores,
+                                        const arma::Row<size_t> &labels) {
     const std::size_t positives = arma::sum(labels == 1);
-    if (scores.is_empty() || scores.n_elem != labels.n_elem || positives == 0 ||
-        positives == labels.n_elem) {
-        return 0.0;
+    if (scores.is_empty() || positives == 0 || positives == labels.n_elem) {
+        return std::nullopt;
     }
+
+    if (scores.n_elem != labels.n_elem) {
+        throw std::invalid_argument("Score count does not match label count.");
+    }
+
     return mlpack::ROCAUCScore<>::Evaluate(labels, scores);
 }
 

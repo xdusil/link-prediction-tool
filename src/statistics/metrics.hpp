@@ -35,7 +35,9 @@ enum class AverageType {
  *
  * Metrics like accuracy, precision, recall, and F1 score are calculated.
  * This function can also calculate ranking metrics if positive_scores are provided.
- * Score-based metrics are only applicable for binary classification.
+ * Score-based metrics are only applicable for binary classification and interpret
+ * label 1 as the positive class. Average precision, MRR, precision@K, and recall@K
+ * rank samples by the provided positive-class score in descending order.
  *
  * @param predictions Predicted labels
  * @param labels True labels
@@ -55,8 +57,9 @@ Metrics calculate_metrics(const arma::Row<size_t> &predictions,
  *
  * @param scores Predicted scores
  * @param labels True labels
- * @return ROC-AUC score
+ * @return ROC-AUC score, or std::nullopt when labels contain only one class
  */
-double calculate_roc_auc(const arma::rowvec &scores, const arma::Row<size_t> &labels);
+std::optional<double> calculate_roc_auc(const arma::rowvec &scores,
+                                        const arma::Row<size_t> &labels);
 
 } // namespace statistics
