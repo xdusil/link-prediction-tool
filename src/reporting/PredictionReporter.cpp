@@ -3,14 +3,12 @@
 #include "config/tag_invokes/tag_invokes.hpp"
 #include "io/FileWriter.hpp"
 #include "service/EdgeServiceClassifier.hpp"
-#include <algorithm>
 #include <boost/json.hpp>
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -128,43 +126,53 @@ void write_pair_scores(const std::string& path,
 void write_prediction_explanations(
     const std::string& path, const std::vector<std::pair<IPAddress, IPAddress>>& pairs,
     const arma::Row<std::size_t>& predictions, const arma::rowvec& positive_scores,
-    const arma::fmat& features, const std::vector<std::string>& feature_names,
-    const std::vector<std::pair<std::string, double>>& feature_importance,
-    const std::optional<arma::Row<std::size_t>>& labels, std::size_t top_feature_count) {
+    const std::vector<explainability::GroupAblationResult>& group_results,
+    const std::optional<arma::Row<std::size_t>>& labels) {
     validate_prediction_dimensions(pairs, predictions, positive_scores);
     if (labels.has_value() && labels->n_elem != pairs.size()) {
         throw std::invalid_argument(
             "Explanation report dimensions do not match evaluated pair count.");
     }
-    if (features.n_cols != pairs.size()) {
-        throw std::invalid_argument(
-            "Explanation feature columns do not match evaluated pair count.");
+    for (const explainability::GroupAblationResult& result : group_results) {
+        if (result.score_without_group.n_elem != pairs.size() ||
+            result.contribution.n_elem != pairs.size()) {
+            throw std::invalid_argument(
+                "Explanation group result dimensions do not match pair count.");
+        }
     }
-    if (features.n_rows != feature_names.size()) {
-        throw std::invalid_argument(
-            "Explanation feature names do not match feature rows.");
-    }
+
     FileWriter writer(path);
-    writer.write_line(
-        "dependent_ip,dependency_ip,score,predicted_label,label,top_feature_values");
 
     for (std::size_t i = 0; i < pairs.size(); ++i) {
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(SCORE_PRECISION);
-        oss << csv_escape(pairs[i].first) << "," << csv_escape(pairs[i].second)
-            << "," << positive_scores[i] << "," << predictions[i] << ",";
+        json::object object;
+        object["dependent_ip"] = pairs[i].first;
+        object["dependency_ip"] = pairs[i].second;
+        object["score"] = positive_scores[i];
+        object["predicted_label"] = static_cast<std::uint64_t>(predictions[i]);
         if (labels.has_value()) {
-            oss << (*labels)[i];
+            object["label"] = static_cast<std::uint64_t>((*labels)[i]);
+        } else {
+            object["label"] = nullptr;
         }
-        oss << "," << csv_escape(format_feature_evidence(
-                         features, feature_names, i, top_feature_count));
-        writer.write_line(oss.str());
+
+        json::array groups;
+        groups.reserve(group_results.size());
+        for (const explainability::GroupAblationResult& result : group_results) {
+            json::object group;
+            group["group"] = result.group;
+            group["contribution"] = result.contribution[i];
+            group["score_without_group"] = result.score_without_group[i];
+            group["explanation"] = result.explanation;
+            groups.emplace_back(std::move(group));
+        }
+        object["groups"] = std::move(groups);
+
+        writer.write_line(json::serialize(object));
     }
 }
 
 PredictionWriteSummary write_positive_predictions(
-    const std::string& path,
-    const std::vector<std::pair<IPAddress, IPAddress>>& pairs,
+    const std::string& path, const std::vector<std::pair<IPAddress, IPAddress>>& pairs,
     const arma::Row<std::size_t>& predictions, const arma::rowvec& positive_scores,
     const INetworkGraphManager<BoostGraphTraits<Graph>>& graph_manager,
     const service::EdgeServiceClassifier<BoostGraphTraits<Graph>>* service_classifier) {

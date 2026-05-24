@@ -2,6 +2,7 @@
 
 #include "Types.hpp"
 #include "config/config.hpp"
+#include "explainability/LocalAblationExplainer.hpp"
 #include "graph/boost/BoostGraphTraits.hpp"
 #include "graph/network/INetworkGraphManager.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
@@ -19,8 +20,6 @@ class EdgeServiceClassifier;
 }
 
 namespace reporting {
-
-inline constexpr std::size_t DEFAULT_EXPLANATION_FEATURES = 5;
 
 /**
  * @brief Counts emitted positive predictions for one prediction artifact.
@@ -64,22 +63,17 @@ void write_pair_scores(const std::string& path,
                        const std::optional<arma::Row<std::size_t>>& labels);
 
 /**
- * @brief Writes per-pair feature evidence used for manual prediction inspection.
+ * @brief Writes per-pair local group ablation explanations as JSON Lines.
  *
- * The explanation is descriptive, not a model-attribution method: for each evaluated
- * pair it lists the largest absolute feature values from the generated feature
- * vector. The classifier decision is unchanged.
+ * The classifier decision is unchanged. Each explanation shows how replacing one
+ * feature group with its training median baseline changes the positive-class score.
  *
- * @param path Output CSV path.
- * @param pairs Evaluated directed IP pairs, ordered exactly like features and
- * predictions.
+ * @param path Output JSONL path.
+ * @param pairs Evaluated directed IP pairs, ordered exactly like predictions.
  * @param predictions Predicted binary labels.
  * @param positive_scores Positive-class scores.
- * @param features Feature matrix in mlpack/Armadillo layout: rows are features,
- * columns are evaluated pairs.
- * @param feature_names Names matching feature rows.
+ * @param group_results Local group ablation results.
  * @param labels Optional reference labels.
- * @param top_feature_count Number of feature values to report for each pair.
  * @throws std::invalid_argument if dimensions are inconsistent.
  */
 void write_prediction_explanations(
@@ -87,10 +81,8 @@ void write_prediction_explanations(
     const std::vector<std::pair<IPAddress, IPAddress>>& pairs,
     const arma::Row<std::size_t>& predictions,
     const arma::rowvec& positive_scores,
-    const arma::fmat& features,
-    const std::vector<std::string>& feature_names,
-    const std::optional<arma::Row<std::size_t>>& labels,
-    std::size_t top_feature_count = DEFAULT_EXPLANATION_FEATURES);
+    const std::vector<explainability::GroupAblationResult>& group_results,
+    const std::optional<arma::Row<std::size_t>>& labels);
 
 /**
  * @brief Writes positive predictions to the main prediction CSV.
