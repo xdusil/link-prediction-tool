@@ -9,6 +9,8 @@
 #include "constrained_collections/counters/EvictingCounter.hpp"
 #include "generators/context/SlidingWindowContextGenerator.hpp"
 #include "exceptions/exceptions.hpp"
+#include "explainability/FeatureBaseline.hpp"
+#include "explainability/LocalAblationExplainer.hpp"
 #include "generators/embedding/EmbeddingTrainingPairGenerator.hpp"
 #include "generators/feature/FeatureGenerator.hpp"
 #include "graph/boost/analytics/BoostGraphAnalytics.hpp"
@@ -207,6 +209,19 @@ void LinkPredictionApp::run_training_mode(
     if (!m_classifier)
         throw ComponentNotInitializedException("Classifier not initialized.");
 
+    // Store explainability baselines next to the model so local ablation uses
+    // the same feature order and training distribution as the classifier.
+    const std::vector<std::string> feature_names =
+        m_config.FEATURE_CONFIG.get_feature_names();
+    const explainability::FeatureBaseline feature_baseline =
+        explainability::compute_feature_baseline(arma_features, feature_names);
+    const std::string feature_baseline_output_path =
+        explainability::feature_baseline_path(classifier_path);
+    explainability::save_feature_baseline(feature_baseline_output_path,
+                                          feature_baseline);
+    std::cout << "Explainability baselines written to "
+              << feature_baseline_output_path << std::endl;
+
     // Save the trained classifier
     m_classifier->save(classifier_path);
 }
@@ -216,7 +231,8 @@ void LinkPredictionApp::run_prediction_mode(
     const std::string &data_path, const std::optional<std::string> &ground_truth_path,
     const std::optional<std::string> &blocked_ips_path,
     const std::optional<std::string> &internal_ips_path,
-    const std::optional<std::string> &scores_output_path) {
+    bool write_scores,
+    bool write_explanations) {
 
     std::cout << "Starting prediction mode..." << std::endl;
     utils::VerboseTimer timer("Prediction mode");
@@ -233,10 +249,16 @@ void LinkPredictionApp::run_prediction_mode(
         m_classifier->set_threshold(*m_config.CLASSIFIER_THRESHOLD);
     }
 
+    m_explainability_baseline.reset();
+    if (write_explanations) {
+        m_explainability_baseline = explainability::load_feature_baseline(
+            explainability::feature_baseline_path(classifier_path));
+    }
+
     // Generate predictions
     const std::size_t evaluated_pair_count =
-        generate_predictions(predictions_output_path, ground_truth_path,
-                             scores_output_path);
+        generate_predictions(predictions_output_path, ground_truth_path, write_scores,
+                             write_explanations);
     if (m_config.WRITE_RUN_MANIFESTS) {
         std::optional<ground_truth::ProjectionStats> projection_stats;
         if (ground_truth_path) {
@@ -264,7 +286,8 @@ void LinkPredictionApp::run_prediction_mode(
 std::size_t LinkPredictionApp::generate_predictions(
     const std::string &output_path,
     const std::optional<std::string> &ground_truth_path,
-    const std::optional<std::string> &scores_output_path) {
+    bool write_scores,
+    bool write_explanations) {
     std::cout << "Generating predictions..." << std::endl;
 
     if (!m_classifier)
@@ -310,10 +333,37 @@ std::size_t LinkPredictionApp::generate_predictions(
 
     const auto [predictions, probabilities] = m_classifier->predict_proba(arma_features);
     const arma::rowvec positive_scores = probabilities.row(1);
-    if (scores_output_path) {
-        reporting::write_pair_scores(*scores_output_path, evaluated_pairs, predictions,
+    if (write_scores) {
+        const std::string scores_output_path = output_path + ".scores.csv";
+        reporting::write_pair_scores(scores_output_path, evaluated_pairs, predictions,
                                      positive_scores, labels);
-        std::cout << "All pair scores written to " << *scores_output_path << std::endl;
+        std::cout << "All pair scores written to " << scores_output_path << std::endl;
+    }
+    if (write_explanations) {
+        if (!m_explainability_baseline) {
+            throw ComponentNotInitializedException(
+                "Explainability baseline not initialized.");
+        }
+
+        const std::vector<std::string> feature_names =
+            m_config.FEATURE_CONFIG.get_feature_names();
+
+        const auto score_function = [this](const arma::fmat& features) {
+            const auto [_, probabilities] = m_classifier->predict_proba(features);
+            return probabilities.row(1);
+        };
+
+        const std::vector<explainability::GroupAblationResult> group_results =
+            explainability::explain_with_group_ablation(
+                arma_features, positive_scores, feature_names, *m_explainability_baseline,
+                score_function);
+
+        const std::string explanations_output_path = output_path + ".explanations.jsonl";
+        reporting::write_prediction_explanations(
+            explanations_output_path, evaluated_pairs, predictions, positive_scores,
+            group_results, labels);
+        std::cout << "Prediction explanations written to "
+                  << explanations_output_path << std::endl;
     }
 
     std::optional<service::ServicePortConfig> service_port_config;

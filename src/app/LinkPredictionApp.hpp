@@ -5,6 +5,7 @@
 #include "config/config.hpp"
 #include "constrained_collections/counters/IEvictingCounter.hpp"
 #include "constrained_collections/reservoirs/ICapacityLimitedReservoir.hpp"
+#include "explainability/FeatureBaseline.hpp"
 #include "graph/boost/BoostGraphTraits.hpp"
 #include "graph/network/INetworkGraphManager.hpp"
 #include "graph/network/NetworkGraphDefinition.hpp"
@@ -72,7 +73,9 @@ public:
      * @param ground_truth_path Path to the ground truth file for evaluation (optional)
      * @param blocked_ips_path Path to the blocked IPs file (optional)
      * @param internal_ips_path Path to the internal IPs file (optional)
-     * @param scores_output_path Path to save all evaluated pair scores (optional)
+     * @param write_scores Write all evaluated pair scores next to predictions output.
+     * @param write_explanations Write per-pair feature explanations next to
+     * predictions output.
      */
     void run_prediction_mode(
         const std::string& classifier_path, const std::string& predictions_output_path,
@@ -80,7 +83,8 @@ public:
         const std::optional<std::string>& ground_truth_path = std::nullopt,
         const std::optional<std::string>& blocked_ips_path = std::nullopt,
         const std::optional<std::string>& internal_ips_path = std::nullopt,
-        const std::optional<std::string>& scores_output_path = std::nullopt);
+        bool write_scores = false,
+        bool write_explanations = false);
 
     /**
      * @brief Run the ground truth mode
@@ -166,14 +170,17 @@ private:
      *
      * @param output_path Path to save the predicted dependencies
      * @param ground_truth_path Path to the ground truth file for evaluation (optional)
-     * @param scores_output_path Path to save all evaluated pair scores (optional)
+     * @param write_scores Write all evaluated pair scores next to predictions output.
+     * @param write_explanations Write per-pair feature explanations next to
+     * predictions output.
      * @return Number of directed pairs evaluated by the classifier.
      */
 
     std::size_t generate_predictions(
         const std::string& output_path,
         const std::optional<std::string>& ground_truth_path,
-        const std::optional<std::string>& scores_output_path);
+        bool write_scores,
+        bool write_explanations);
 
     /**
      * @brief Calculate reference coverage for the currently retained graph.
@@ -224,6 +231,7 @@ private:
     std::unique_ptr<IBinaryRandomForestClassifier<arma::fmat, arma::Row<size_t>,
                                                   statistics::Metrics, arma::mat>>
         m_classifier;
+    std::optional<explainability::FeatureBaseline> m_explainability_baseline;
 
     // Ground Truth
     std::unique_ptr<ground_truth::IDependencyAnalyzer<ground_truth::DependencySet>>
