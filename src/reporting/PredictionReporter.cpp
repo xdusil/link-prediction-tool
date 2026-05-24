@@ -3,6 +3,7 @@
 #include "config/tag_invokes/tag_invokes.hpp"
 #include "io/FileWriter.hpp"
 #include "service/EdgeServiceClassifier.hpp"
+#include <algorithm>
 #include <boost/json.hpp>
 #include <cstdint>
 #include <iomanip>
@@ -47,8 +48,8 @@ json::value json_value_or_null(const std::optional<double>& value) {
     return value.has_value() ? json::value(*value) : json::value(nullptr);
 }
 
-json::object dependency_type_counts_json(
-    const ground_truth::DependencyTypeCounts& counts) {
+json::object
+dependency_type_counts_json(const ground_truth::DependencyTypeCounts& counts) {
     json::object values;
     for (const ground_truth::DependencyType type : ground_truth::all_dependency_types()) {
         values[ground_truth::to_string(type)] =
@@ -59,8 +60,7 @@ json::object dependency_type_counts_json(
 
 json::object projection_stats_json(const ground_truth::ProjectionStats& stats) {
     json::object values;
-    values["total_dependencies"] =
-        static_cast<std::uint64_t>(stats.total_dependencies);
+    values["total_dependencies"] = static_cast<std::uint64_t>(stats.total_dependencies);
     values["retained_dependencies"] =
         static_cast<std::uint64_t>(stats.retained_dependencies);
     values["coverage"] =
@@ -91,8 +91,7 @@ json::array ranking_at_k_json(const std::vector<statistics::RankingAtK>& ranking
 void validate_prediction_dimensions(
     const std::vector<std::pair<IPAddress, IPAddress>>& pairs,
     const arma::Row<std::size_t>& predictions, const arma::rowvec& positive_scores) {
-    if (predictions.n_elem != pairs.size() ||
-        positive_scores.n_elem != pairs.size()) {
+    if (predictions.n_elem != pairs.size() || positive_scores.n_elem != pairs.size()) {
         throw std::invalid_argument(
             "Prediction report dimensions do not match evaluated pair count.");
     }
@@ -117,12 +116,48 @@ void write_pair_scores(const std::string& path,
     for (std::size_t i = 0; i < pairs.size(); ++i) {
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(SCORE_PRECISION);
-        oss << csv_escape(pairs[i].first) << "," << csv_escape(pairs[i].second)
-            << "," << positive_scores[i] << ","
-            << predictions[i] << ",";
+        oss << csv_escape(pairs[i].first) << "," << csv_escape(pairs[i].second) << ","
+            << positive_scores[i] << "," << predictions[i] << ",";
         if (labels.has_value()) {
             oss << (*labels)[i];
         }
+        writer.write_line(oss.str());
+    }
+}
+
+void write_prediction_explanations(
+    const std::string& path, const std::vector<std::pair<IPAddress, IPAddress>>& pairs,
+    const arma::Row<std::size_t>& predictions, const arma::rowvec& positive_scores,
+    const arma::fmat& features, const std::vector<std::string>& feature_names,
+    const std::vector<std::pair<std::string, double>>& feature_importance,
+    const std::optional<arma::Row<std::size_t>>& labels, std::size_t top_feature_count) {
+    validate_prediction_dimensions(pairs, predictions, positive_scores);
+    if (labels.has_value() && labels->n_elem != pairs.size()) {
+        throw std::invalid_argument(
+            "Explanation report dimensions do not match evaluated pair count.");
+    }
+    if (features.n_cols != pairs.size()) {
+        throw std::invalid_argument(
+            "Explanation feature columns do not match evaluated pair count.");
+    }
+    if (features.n_rows != feature_names.size()) {
+        throw std::invalid_argument(
+            "Explanation feature names do not match feature rows.");
+    }
+    FileWriter writer(path);
+    writer.write_line(
+        "dependent_ip,dependency_ip,score,predicted_label,label,top_feature_values");
+
+    for (std::size_t i = 0; i < pairs.size(); ++i) {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(SCORE_PRECISION);
+        oss << csv_escape(pairs[i].first) << "," << csv_escape(pairs[i].second)
+            << "," << positive_scores[i] << "," << predictions[i] << ",";
+        if (labels.has_value()) {
+            oss << (*labels)[i];
+        }
+        oss << "," << csv_escape(format_feature_evidence(
+                         features, feature_names, i, top_feature_count));
         writer.write_line(oss.str());
     }
 }
@@ -158,8 +193,8 @@ PredictionWriteSummary write_positive_predictions(
 
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(SCORE_PRECISION);
-        oss << csv_escape(pair.first) << "," << csv_escape(pair.second)
-            << "," << positive_scores[i];
+        oss << csv_escape(pair.first) << "," << csv_escape(pair.second) << ","
+            << positive_scores[i];
 
         if (service_classifier) {
             service::ServiceClassificationResult service_result;
@@ -176,8 +211,8 @@ PredictionWriteSummary write_positive_predictions(
 
             oss << ","
                 << csv_escape(service::ServiceType::to_string(service_result.service))
-                << "," << service_result.confidence
-                << "," << csv_escape(service_result.top_k_string);
+                << "," << service_result.confidence << ","
+                << csv_escape(service_result.top_k_string);
         }
 
         writer.write_line(oss.str());
@@ -206,8 +241,7 @@ void write_run_manifest(const RunManifest& manifest) {
         static_cast<std::uint64_t>(manifest.graph_manager.get_vertex_count());
     report["retained_edges"] =
         static_cast<std::uint64_t>(manifest.graph_manager.get_edge_count());
-    report["evaluated_pairs"] =
-        static_cast<std::uint64_t>(manifest.evaluated_pair_count);
+    report["evaluated_pairs"] = static_cast<std::uint64_t>(manifest.evaluated_pair_count);
     report["feature_config"] = json::value_from(manifest.config.FEATURE_CONFIG);
     report["rf_params"] = json::value_from(manifest.config.RF_PARAMS);
 
