@@ -1,13 +1,22 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12)
 
 project(LinkPredictionApp VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_definitions(-DARMA_DONT_USE_WRAPPER)
-
 # Generate compile commands
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+    message(STATUS "CMAKE_BUILD_TYPE not set; defaulting to Release")
+endif()
+
+option(
+    LINK_PREDICTION_ENABLE_PREDICTION_THRESHOLD_DIAGNOSTICS
+    "Enable diagnostic threshold search on prediction ground truth."
+    OFF
+)
 
 # Set paths to external libraries
 set(MLPACK_INCLUDE_DIR "" CACHE PATH "Path to mlpack include directory")
@@ -52,15 +61,23 @@ find_path(CEREAL_INCLUDE_DIR_FOUND
 )
 
 # Recursively find all source files in the src directory
-file(GLOB_RECURSE SOURCES
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     "${SRC_DIR}/*.cpp"
-    "${SRC_DIR}/*.hpp"
 )
 
 # Add the executable
 add_executable(LinkPredictionApp
     ${SOURCES}
 )
+
+target_compile_definitions(LinkPredictionApp PRIVATE ARMA_DONT_USE_WRAPPER)
+
+if(LINK_PREDICTION_ENABLE_PREDICTION_THRESHOLD_DIAGNOSTICS)
+    target_compile_definitions(
+        LinkPredictionApp
+        PRIVATE LINK_PREDICTION_ENABLE_PREDICTION_THRESHOLD_DIAGNOSTICS
+    )
+endif()
 
 # Include directories
 target_include_directories(LinkPredictionApp PUBLIC
