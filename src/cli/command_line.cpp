@@ -40,7 +40,7 @@ void print_help() {
         << "  Prediction mode:\n"
         << "    -g, --ground-truth-in PATH  Path to ground truth for evaluation\n"
         << "    -s, --scores                Write <predictions-out>.scores.csv\n"
-        << "    -e, --explanations          Write <predictions-out>.explanations.csv\n"
+        << "    -e, --explanations          Write <predictions-out>.explanations.jsonl\n"
         << "    -b, --blocked-ips PATH      Path to list of IPs to ignore\n"
         << "    -i, --internal-ips PATH     Path to list of internal network IPs\n"
         << "  Ground truth mode:\n"
