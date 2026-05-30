@@ -134,8 +134,11 @@ Metrics calculate_metrics(const arma::Row<size_t> &predictions,
                           AverageType avg_type /*= AverageType::BINARY*/,
                           size_t num_classes /*= 2*/) {
     Metrics metrics{};
-    if (labels.is_empty() || predictions.n_elem != labels.n_elem) {
+    if (labels.is_empty()) {
         return metrics;
+    }
+    if (predictions.n_elem != labels.n_elem) {
+        throw std::invalid_argument("Prediction count does not match label count.");
     }
 
     // Handle simple binary case with direct calculation
@@ -232,13 +235,13 @@ Metrics calculate_metrics(const arma::Row<size_t> &predictions,
 
 std::optional<double> calculate_roc_auc(const arma::rowvec &scores,
                                         const arma::Row<size_t> &labels) {
+    if (scores.n_elem != labels.n_elem) {
+        throw std::invalid_argument("Score count does not match label count.");
+    }
+
     const std::size_t positives = arma::sum(labels == 1);
     if (scores.is_empty() || positives == 0 || positives == labels.n_elem) {
         return std::nullopt;
-    }
-
-    if (scores.n_elem != labels.n_elem) {
-        throw std::invalid_argument("Score count does not match label count.");
     }
 
     return mlpack::ROCAUCScore<>::Evaluate(labels, scores);
