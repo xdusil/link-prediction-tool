@@ -12,6 +12,7 @@ void FileReader::read_all(std::string& content) {
     m_file.seekg(0, std::ios::beg);
 
     if (size <= 0) {
+        content.clear();
         return;
     }
 
