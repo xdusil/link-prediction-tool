@@ -350,7 +350,8 @@ std::size_t LinkPredictionApp::generate_predictions(
 
         const auto score_function = [this](const arma::fmat& features) {
             const auto [_, probabilities] = m_classifier->predict_proba(features);
-            return probabilities.row(1);
+            arma::rowvec positive_scores = probabilities.row(1);
+            return positive_scores;
         };
 
         const std::vector<explainability::GroupAblationResult> group_results =
