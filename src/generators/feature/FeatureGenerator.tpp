@@ -263,6 +263,11 @@ void FeatureGenerator<GraphTraits, EmbeddingModule, GroundTruthDependencies>::
     col = write_temporal_features<T>(src, dst, accessor, row, col);
     col = write_flow_features<T>(src, dst, accessor, row, col);
     col = write_protocol_features<T>(src, dst, accessor, row, col);
+
+    if (col != static_cast<std::size_t>(accessor.size(1))) {
+        throw FeatureGeneratorException(
+            "Generated feature count does not match configured feature dimension.");
+    }
 }
 
 template <typename GraphTraits, typename EmbeddingModule,
