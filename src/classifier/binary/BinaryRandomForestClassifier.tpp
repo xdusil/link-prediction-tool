@@ -48,6 +48,11 @@ std::tuple<Labels, arma::mat>
 BinaryRandomForestClassifier<Features, Labels, Scaler>::predict_proba(
     const Features &features) const {
     auto [_, probabilities] = Base::predict_proba(features);
+    if (probabilities.n_rows != 2) {
+        throw RandomForestException(
+            "Binary classifier expected probabilities for two classes.");
+    }
+
     Labels predictions(probabilities.n_cols);
 
     // Apply binary threshold to the positive class probability (class 1)
