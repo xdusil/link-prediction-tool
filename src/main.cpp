@@ -14,6 +14,11 @@ int main(int argc, char *argv[]) {
             return EXIT_SUCCESS;
         }
 
+        if (args.version) {
+            print_version();
+            return EXIT_SUCCESS;
+        }
+
         validate_args(args);
 
         LinkPredictionApp app(args.config_path, args.verbose);

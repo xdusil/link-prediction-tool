@@ -1,0 +1,10 @@
+#pragma once
+
+namespace app_version {
+
+inline constexpr const char *name = "@PROJECT_NAME@";
+inline constexpr const char *version = "@PROJECT_VERSION@";
+inline constexpr const char *git_commit = "@LINK_PREDICTION_GIT_COMMIT@";
+inline constexpr const char *build_type = "@LINK_PREDICTION_BUILD_TYPE@";
+
+} // namespace app_version

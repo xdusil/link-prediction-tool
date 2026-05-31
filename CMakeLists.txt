@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(LinkPredictionApp VERSION 1.0 LANGUAGES CXX)
+project(LinkPredictionApp VERSION 2.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
@@ -11,6 +11,33 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
     message(STATUS "CMAKE_BUILD_TYPE not set; defaulting to Release")
 endif()
+
+set(LINK_PREDICTION_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+if(NOT LINK_PREDICTION_BUILD_TYPE)
+    set(LINK_PREDICTION_BUILD_TYPE "Unknown")
+endif()
+
+set(LINK_PREDICTION_GIT_COMMIT "unknown")
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-parse --short HEAD
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+        OUTPUT_VARIABLE LINK_PREDICTION_GIT_COMMIT
+        RESULT_VARIABLE LINK_PREDICTION_GIT_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(NOT LINK_PREDICTION_GIT_RESULT EQUAL 0 OR NOT LINK_PREDICTION_GIT_COMMIT)
+        set(LINK_PREDICTION_GIT_COMMIT "unknown")
+    endif()
+endif()
+
+configure_file(
+    "${PROJECT_SOURCE_DIR}/src/version.hpp.in"
+    "${PROJECT_BINARY_DIR}/generated/version.hpp"
+    @ONLY
+)
 
 option(
     LINK_PREDICTION_ENABLE_PREDICTION_THRESHOLD_DIAGNOSTICS
@@ -80,18 +107,21 @@ if(LINK_PREDICTION_ENABLE_PREDICTION_THRESHOLD_DIAGNOSTICS)
 endif()
 
 # Include directories
-target_include_directories(LinkPredictionApp PUBLIC
-    ${SRC_DIR}
-    SYSTEM ${Boost_INCLUDE_DIRS}
-    SYSTEM ${TORCH_INCLUDE_DIRS}
-    SYSTEM ${ARMADILLO_INCLUDE_DIRS}
-    SYSTEM ${MLPACK_INCLUDE_DIR_FOUND}
-    SYSTEM ${ENSMALLEN_INCLUDE_DIR_FOUND}
-    SYSTEM ${CEREAL_INCLUDE_DIR_FOUND}
+target_include_directories(LinkPredictionApp
+    PRIVATE
+        ${SRC_DIR}
+        "${PROJECT_BINARY_DIR}/generated"
+    SYSTEM PRIVATE
+        ${Boost_INCLUDE_DIRS}
+        ${TORCH_INCLUDE_DIRS}
+        ${ARMADILLO_INCLUDE_DIRS}
+        ${MLPACK_INCLUDE_DIR_FOUND}
+        ${ENSMALLEN_INCLUDE_DIR_FOUND}
+        ${CEREAL_INCLUDE_DIR_FOUND}
 )
 
 # Link libraries
-target_link_libraries(LinkPredictionApp PUBLIC
+target_link_libraries(LinkPredictionApp PRIVATE
     ${TORCH_LIBRARIES}
 )
 
