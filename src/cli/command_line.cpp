@@ -1,6 +1,7 @@
 #include "command_line.hpp"
 #include "exceptions/exceptions.hpp"
 #include "utils/utils.hpp"
+#include "version.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
@@ -48,7 +49,14 @@ void print_help() {
         << "\nGeneral options:\n"
         << "  -f, --config PATH           Path to configuration file\n"
         << "  -v, --verbose               Enable verbose output and timing\n"
+        << "  -V, --version               Display version information\n"
         << "  -h, --help                  Display this help message\n";
+}
+
+void print_version() {
+    std::cout << app_version::name << " " << app_version::version << '\n'
+              << "Git commit: " << app_version::git_commit << '\n'
+              << "Build type: " << app_version::build_type << '\n';
 }
 
 static struct option long_options[] = {
@@ -67,6 +75,7 @@ static struct option long_options[] = {
     {"scores", no_argument, nullptr, 's'},
     {"training", no_argument, nullptr, 't'},
     {"verbose", no_argument, nullptr, 'v'},
+    {"version", no_argument, nullptr, 'V'},
     {"feature-importance", no_argument, nullptr, 'F'},
     {0, 0, 0, 0}};
 
@@ -189,7 +198,7 @@ cmd_args parse_args(int argc, char *argv[]) {
     cmd_args args{}; // Initialize all fields
     int opt;
 
-    const char *short_opts = ":b:c:ef:d:g:G:hi:po:stxvF";
+    const char *short_opts = ":b:c:ef:d:g:G:hi:po:stxvVF";
 
     while ((opt = getopt_long(argc, argv, short_opts, long_options, nullptr)) != -1) {
         switch (opt) {
@@ -240,6 +249,9 @@ cmd_args parse_args(int argc, char *argv[]) {
             break;
         case 'v':
             args.verbose = true;
+            break;
+        case 'V':
+            args.version = true;
             break;
         case 'F':
             args.feature_importance = true;

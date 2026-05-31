@@ -22,6 +22,7 @@ struct cmd_args {
     bool write_scores;
     bool write_explanations;
     bool help;
+    bool version;
 
     // Paths
     std::optional<std::string> blocked_ips_path; // Path to blocked IPs file
@@ -58,5 +59,10 @@ void validate_args(const cmd_args &args);
  * @brief Print help message for command line arguments
  */
 void print_help();
+
+/**
+ * @brief Print application version and build metadata
+ */
+void print_version();
 
 } // namespace cli
