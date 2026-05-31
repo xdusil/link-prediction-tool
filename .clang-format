@@ -2,14 +2,19 @@ BasedOnStyle: LLVM
 UseTab: Never
 IndentWidth: 4
 TabWidth: 4
-#BreakBeforeBraces: Allman
 AllowShortIfStatementsOnASingleLine: false
 IndentCaseLabels: false
 ColumnLimit: 90
-#AccessModifierOffset: -4
-#NamespaceIndentation: All
-FixNamespaceComments: false 
+FixNamespaceComments: false
 AlwaysBreakTemplateDeclarations: Yes
 IndentAccessModifiers: false
 AccessModifierOffset: -4
 PointerAlignment: Left
+
+BinPackParameters: false
+BinPackArguments: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+AlignAfterOpenBracket: AlwaysBreak
+AlwaysBreakAfterReturnType: None
+PenaltyReturnTypeOnItsOwnLine: 1000000
