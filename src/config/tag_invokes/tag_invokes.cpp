@@ -327,17 +327,23 @@ Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
     const auto &obj = JsonHelper::parse_json_value(jv);
 
     // Integer parameters
-    set_validated<int>(obj, "COUNT_EXTERNAL", config.COUNT_EXTERNAL, is_positive{});
-    set_validated<int>(obj, "COUNT_INTERNAL", config.COUNT_INTERNAL, is_positive{});
+    set_validated<int>(obj, "MAX_EXTERNAL_ENDPOINTS", config.MAX_EXTERNAL_ENDPOINTS,
+                       is_positive{});
+    set_validated<int>(obj, "MAX_INTERNAL_ENDPOINTS", config.MAX_INTERNAL_ENDPOINTS,
+                       is_positive{});
     set_validated<int>(obj, "MAX_EDGES_PER_PAIR_TEMPORAL_BUCKET",
                        config.MAX_EDGES_PER_PAIR_TEMPORAL_BUCKET,
                        is_positive{});
     set_validated<int>(obj, "TEMPORAL_BUCKETS", config.TEMPORAL_BUCKETS,
                        is_positive{});
-    set_validated<int>(obj, "N_OCCURRENCES", config.N_OCCURRENCES, is_positive{});
-    set_validated<int>(obj, "EPSILON", config.EPSILON, is_positive{});
-    set_validated<int>(obj, "N_APPEARANCES", config.N_APPEARANCES, is_positive{});
-    set_validated<int>(obj, "EPSILON_REV", config.EPSILON_REV, is_positive{});
+    set_validated<int>(obj, "REFERENCE_MIN_OCCURRENCES",
+                       config.REFERENCE_MIN_OCCURRENCES, is_positive{});
+    set_validated<int>(obj, "TIMING_EPSILON_MS", config.TIMING_EPSILON_MS,
+                       is_positive{});
+    set_validated<int>(obj, "WALK_MIN_TARGET_APPEARANCES",
+                       config.WALK_MIN_TARGET_APPEARANCES, is_positive{});
+    set_validated<int>(obj, "TIMING_REVERSE_EPSILON_MS",
+                       config.TIMING_REVERSE_EPSILON_MS, is_positive{});
     set_validated<int>(obj, "EMBEDDING_DIM", config.EMBEDDING_DIM, is_positive{});
     set_validated<int>(obj, "WALK_LENGTH", config.WALK_LENGTH, is_positive{});
     set_validated<int>(obj, "WALKS_PER_VERTEX", config.WALKS_PER_VERTEX, is_positive{});
@@ -364,8 +370,10 @@ Config tag_invoke(json::value_to_tag<Config>, const json::value &jv) {
         });
 
     // Boolean parameters
-    set_validated<bool>(obj, "USE_WEIGHTS", config.USE_WEIGHTS, always_true{});
-    set_validated<bool>(obj, "USE_SCALING", config.USE_SCALING, always_true{});
+    set_validated<bool>(obj, "USE_CLASS_WEIGHTS", config.USE_CLASS_WEIGHTS,
+                        always_true{});
+    set_validated<bool>(obj, "USE_FEATURE_SCALING", config.USE_FEATURE_SCALING,
+                        always_true{});
     set_validated<bool>(obj, "USE_GRID_SEARCH", config.USE_GRID_SEARCH, always_true{});
     set_validated<bool>(obj, "USE_THRESHOLD_CALIBRATION",
                         config.USE_THRESHOLD_CALIBRATION, always_true{});
@@ -389,15 +397,18 @@ void tag_invoke(json::value_from_tag, json::value &jv, const Config &config) {
     json::object obj;
 
     // Add primitive values with proper conversion
-    obj["COUNT_EXTERNAL"] = json::value_from(config.COUNT_EXTERNAL);
-    obj["COUNT_INTERNAL"] = json::value_from(config.COUNT_INTERNAL);
+    obj["MAX_EXTERNAL_ENDPOINTS"] = json::value_from(config.MAX_EXTERNAL_ENDPOINTS);
+    obj["MAX_INTERNAL_ENDPOINTS"] = json::value_from(config.MAX_INTERNAL_ENDPOINTS);
     obj["MAX_EDGES_PER_PAIR_TEMPORAL_BUCKET"] =
         json::value_from(config.MAX_EDGES_PER_PAIR_TEMPORAL_BUCKET);
     obj["TEMPORAL_BUCKETS"] = json::value_from(config.TEMPORAL_BUCKETS);
-    obj["N_OCCURRENCES"] = json::value_from(config.N_OCCURRENCES);
-    obj["EPSILON"] = json::value_from(config.EPSILON);
-    obj["N_APPEARANCES"] = json::value_from(config.N_APPEARANCES);
-    obj["EPSILON_REV"] = json::value_from(config.EPSILON_REV);
+    obj["REFERENCE_MIN_OCCURRENCES"] =
+        json::value_from(config.REFERENCE_MIN_OCCURRENCES);
+    obj["TIMING_EPSILON_MS"] = json::value_from(config.TIMING_EPSILON_MS);
+    obj["WALK_MIN_TARGET_APPEARANCES"] =
+        json::value_from(config.WALK_MIN_TARGET_APPEARANCES);
+    obj["TIMING_REVERSE_EPSILON_MS"] =
+        json::value_from(config.TIMING_REVERSE_EPSILON_MS);
     obj["EMBEDDING_DIM"] = json::value_from(config.EMBEDDING_DIM);
     obj["WALK_LENGTH"] = json::value_from(config.WALK_LENGTH);
     obj["WALKS_PER_VERTEX"] = json::value_from(config.WALKS_PER_VERTEX);
@@ -408,8 +419,8 @@ void tag_invoke(json::value_from_tag, json::value &jv, const Config &config) {
     obj["SEED"] = json::value_from(config.SEED);
     obj["NUM_THREADS"] = json::value_from(config.NUM_THREADS);
     obj["LEARNING_RATE"] = json::value_from(config.LEARNING_RATE);
-    obj["USE_WEIGHTS"] = json::value_from(config.USE_WEIGHTS);
-    obj["USE_SCALING"] = json::value_from(config.USE_SCALING);
+    obj["USE_CLASS_WEIGHTS"] = json::value_from(config.USE_CLASS_WEIGHTS);
+    obj["USE_FEATURE_SCALING"] = json::value_from(config.USE_FEATURE_SCALING);
     obj["USE_GRID_SEARCH"] = json::value_from(config.USE_GRID_SEARCH);
     obj["USE_THRESHOLD_CALIBRATION"] = json::value_from(config.USE_THRESHOLD_CALIBRATION);
     obj["WRITE_RUN_MANIFESTS"] = json::value_from(config.WRITE_RUN_MANIFESTS);

@@ -14,14 +14,14 @@ namespace config {
  * @brief Configuration parameters
  */
 struct Config {
-    int COUNT_EXTERNAL = 100;
-    int COUNT_INTERNAL = 50;
+    int MAX_EXTERNAL_ENDPOINTS = 100;
+    int MAX_INTERNAL_ENDPOINTS = 50;
     int MAX_EDGES_PER_PAIR_TEMPORAL_BUCKET = 4;
     int TEMPORAL_BUCKETS = 4;
-    int N_OCCURRENCES = 10;
-    int EPSILON = 1000;
-    int N_APPEARANCES = 10;
-    int EPSILON_REV = 1000;
+    int REFERENCE_MIN_OCCURRENCES = 10;
+    int TIMING_EPSILON_MS = 1000;
+    int WALK_MIN_TARGET_APPEARANCES = 10;
+    int TIMING_REVERSE_EPSILON_MS = 1000;
     int EMBEDDING_DIM = 64;
     int WALK_LENGTH = 5;
     int WALKS_PER_VERTEX = 10;
@@ -35,8 +35,8 @@ struct Config {
     std::optional<double> CLASSIFIER_THRESHOLD;
     std::string METRIC_TO_OPTIMIZE = "f1";
 
-    bool USE_WEIGHTS = false;
-    bool USE_SCALING = true;
+    bool USE_CLASS_WEIGHTS = false;
+    bool USE_FEATURE_SCALING = true;
     bool USE_GRID_SEARCH = false;
     bool USE_THRESHOLD_CALIBRATION = false;
     bool WRITE_RUN_MANIFESTS = true;

@@ -349,12 +349,12 @@ Important configuration groups:
 
 | Group | Parameters |
 |---|---|
-| Endpoint retention | `COUNT_INTERNAL`, `COUNT_EXTERNAL` |
+| Endpoint retention | `MAX_INTERNAL_ENDPOINTS`, `MAX_EXTERNAL_ENDPOINTS` |
 | Temporal edge sampling | `MAX_EDGES_PER_PAIR_TEMPORAL_BUCKET`, `TEMPORAL_BUCKETS` |
-| Ground truth | `N_OCCURRENCES`, `EPSILON` |
-| Random walks | `N_APPEARANCES`, `EPSILON_REV`, `WALK_LENGTH`, `WALKS_PER_VERTEX` |
+| Ground truth | `REFERENCE_MIN_OCCURRENCES`, `TIMING_EPSILON_MS` |
+| Random walks | `WALK_MIN_TARGET_APPEARANCES`, `TIMING_EPSILON_MS`, `TIMING_REVERSE_EPSILON_MS`, `WALK_LENGTH`, `WALKS_PER_VERTEX` |
 | Embeddings | `EMBEDDING_DIM`, `CONTEXT_SIZE`, `NUM_NEGATIVE_SAMPLES`, `EPOCHS`, `LEARNING_RATE`, `BATCH_SIZE` |
-| Classifier | `USE_WEIGHTS`, `USE_SCALING`, `USE_GRID_SEARCH`, `USE_THRESHOLD_CALIBRATION`, `RF_PARAMS`, `GRID_PARAMS`, `METRIC_TO_OPTIMIZE` |
+| Classifier | `USE_CLASS_WEIGHTS`, `USE_FEATURE_SCALING`, `USE_GRID_SEARCH`, `USE_THRESHOLD_CALIBRATION`, `RF_PARAMS`, `GRID_PARAMS`, `METRIC_TO_OPTIMIZE` |
 | Reproducibility | `SEED`, `NUM_THREADS`, `WRITE_RUN_MANIFESTS` |
 | Features | `FEATURE_CONFIG` |
 | Service enrichment | `SERVICE_CONFIG` |
@@ -480,7 +480,7 @@ For serious experiments, preserve:
 
 - Use `Release` or `RelWithDebInfo` builds for measured runs.
 - Use `NUM_THREADS` to control thread count.
-- Increasing `COUNT_INTERNAL` or `COUNT_EXTERNAL` increases the retained graph and evaluated pair count.
+- Increasing `MAX_INTERNAL_ENDPOINTS` or `MAX_EXTERNAL_ENDPOINTS` increases the retained graph and evaluated pair count.
 - Increasing `MAX_EDGES_PER_PAIR_TEMPORAL_BUCKET` or `TEMPORAL_BUCKETS` retains more temporal evidence.
 - `--explanations` runs additional classifier passes, one per active feature group.
 - `--feature-importance` can be expensive because it performs repeated feature permutations.

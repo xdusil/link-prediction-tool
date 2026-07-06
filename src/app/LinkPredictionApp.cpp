@@ -64,9 +64,9 @@ LinkPredictionApp::LinkPredictionApp(const std::optional<std::string> &config_pa
 
     // Initialize components
     m_internal_counter =
-        std::make_unique<EvictingCounter<IPAddress>>(m_config.COUNT_INTERNAL);
+        std::make_unique<EvictingCounter<IPAddress>>(m_config.MAX_INTERNAL_ENDPOINTS);
     m_external_counter =
-        std::make_unique<EvictingCounter<IPAddress>>(m_config.COUNT_EXTERNAL);
+        std::make_unique<EvictingCounter<IPAddress>>(m_config.MAX_EXTERNAL_ENDPOINTS);
     m_reservoir = std::make_unique<CapacityLimitedReservoir<IPAddress, IPEdge>>(
         m_config.MAX_EDGES_PER_PAIR_TEMPORAL_BUCKET, m_config.SEED);
     m_graph_manager = std::make_unique<NetworkGraphManager>();
@@ -88,7 +88,8 @@ void LinkPredictionApp::common_startup(std::optional<std::string> blocked_ips_pa
     m_internal_ip_checker = std::make_unique<BoostIPHandler>(internal_ips_path);
 
     m_dependency_analyzer = std::make_unique<ground_truth::DependencyAnalyzer>(
-        m_config.N_OCCURRENCES, m_config.EPSILON, *m_allowed_ip_checker);
+        m_config.REFERENCE_MIN_OCCURRENCES, m_config.TIMING_EPSILON_MS,
+        *m_allowed_ip_checker);
 }
 
 void LinkPredictionApp::common_training_or_prediction(
@@ -523,7 +524,8 @@ void LinkPredictionApp::generate_embeddings() {
 
     // Create random walk logic
     CustomRandomWalkLogic<NetworkGraphManager::Base, std::mt19937> walk_logic(
-        m_config.N_APPEARANCES, m_config.EPSILON, m_config.EPSILON_REV);
+        m_config.WALK_MIN_TARGET_APPEARANCES, m_config.TIMING_EPSILON_MS,
+        m_config.TIMING_REVERSE_EPSILON_MS);
 
     // Create random walk manager
     RandomWalkManager<NetworkGraphManager::Base> walk_manager(
@@ -567,13 +569,13 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
         RandomForestParams best_params = perform_grid_search(features, labels);
         m_classifier =
             std::make_unique<BinaryRandomForestClassifier<arma::fmat, arma::Row<std::size_t>>>(
-                best_params, m_config.USE_SCALING);
+                best_params, m_config.USE_FEATURE_SCALING);
     } else {
         // Create classifier
         m_classifier =
             std::make_unique<
                 BinaryRandomForestClassifier<arma::fmat, arma::Row<std::size_t>>>(
-                m_config.RF_PARAMS, m_config.USE_SCALING);
+                m_config.RF_PARAMS, m_config.USE_FEATURE_SCALING);
     }
 
     if (m_config.CLASSIFIER_THRESHOLD) {
@@ -583,16 +585,16 @@ void LinkPredictionApp::train_classifier(const auto &features, const auto &label
     // Train classifier
     if (m_config.USE_THRESHOLD_CALIBRATION) {
         m_classifier->train_with_calibration(
-            features, labels, m_config.USE_WEIGHTS, m_config.METRIC_TO_OPTIMIZE);
+            features, labels, m_config.USE_CLASS_WEIGHTS,
+            m_config.METRIC_TO_OPTIMIZE);
     } else {
-        m_classifier->train(features, labels, m_config.USE_WEIGHTS);
+        m_classifier->train(features, labels, m_config.USE_CLASS_WEIGHTS);
     }
-    
 
     // Evaluate classifier
     auto metrics = m_classifier->evaluate(features, labels);
     utils::print_classifier_metrics(metrics);
-    
+
     // Calculate feature importance
     if (feature_importance) {
         const utils::OstreamFormatGuard format_guard(std::cout);
@@ -717,8 +719,8 @@ RandomForestParams LinkPredictionApp::perform_grid_search(const auto &features,
     std::tie(best_params, best_score) =
         RandomForestClassifier<decltype(features), decltype(labels)>::
             grid_search(
-                features, labels, 2, grid_params, m_config.USE_SCALING, m_config.USE_WEIGHTS,
-                m_config.METRIC_TO_OPTIMIZE);
+                features, labels, 2, grid_params, m_config.USE_FEATURE_SCALING,
+                m_config.USE_CLASS_WEIGHTS, m_config.METRIC_TO_OPTIMIZE);
 
     std::cout << "Grid search complete." << std::endl;
     std::cout << "Best parameters:" << std::endl;
