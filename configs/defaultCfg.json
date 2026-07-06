@@ -16,11 +16,13 @@
     "EPOCHS": 100,
     "LEARNING_RATE": 0.01,
     "SEED": 123,
+    "NUM_THREADS": null,
     "USE_CLASS_WEIGHTS": true,
     "USE_FEATURE_SCALING": true,
     "USE_GRID_SEARCH": false,
     "USE_THRESHOLD_CALIBRATION": true,
     "WRITE_RUN_MANIFESTS": true,
+    "CLASSIFIER_THRESHOLD": null,
     "METRIC_TO_OPTIMIZE": "f1",
     "RF_PARAMS": {
         "num_trees": 200,

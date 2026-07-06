@@ -75,6 +75,12 @@ template <typename T>
 void set_validated_opt(
     const json::object &obj, const std::string &key, std::optional<T> &place,
     std::function<std::pair<bool, std::string>(const std::optional<T> &)> validator) {
+    const auto it = obj.find(key);
+    if (it != obj.end() && it->value().is_null()) {
+        place.reset();
+        return;
+    }
+
     set_validated_common<std::optional<T>, T>(
         obj, key, place, validator,
         [](const json::object &o, const std::string &k, std::function<bool(const T &)> v,
