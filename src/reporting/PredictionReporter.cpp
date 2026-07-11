@@ -251,7 +251,8 @@ void write_run_manifest(const RunManifest& manifest) {
         static_cast<std::uint64_t>(manifest.graph_manager.get_edge_count());
     report["evaluated_pairs"] = static_cast<std::uint64_t>(manifest.evaluated_pair_count);
     report["feature_config"] = json::value_from(manifest.config.FEATURE_CONFIG);
-    report["rf_params"] = json::value_from(manifest.config.RF_PARAMS);
+    report["rf_params"] = json::value_from(manifest.rf_params);
+    report["classifier_threshold"] = manifest.classifier_threshold;
 
     writer.write_line(json::serialize(report));
 }

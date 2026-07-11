@@ -88,6 +88,11 @@ public:
     virtual void load(const std::string &path) = 0;
 
     /**
+     * @brief Return the parameters of the current trained or loaded model.
+     */
+    virtual RandomForestParams get_params() const = 0;
+
+    /**
      * @brief Calculate permutation-based feature importance
      * 
      * @param features Validation/test features

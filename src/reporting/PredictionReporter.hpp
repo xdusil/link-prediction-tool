@@ -42,6 +42,8 @@ struct RunManifest {
     std::optional<std::string> reference_path;
     std::optional<ground_truth::ProjectionStats> reference_projection_stats;
     const config::Config& config;
+    RandomForestParams rf_params;
+    double classifier_threshold = 0.5;
     const INetworkGraphManager<BoostGraphTraits<Graph>>& graph_manager;
     std::size_t evaluated_pair_count = 0;
 };

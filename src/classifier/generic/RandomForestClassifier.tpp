@@ -433,3 +433,10 @@ void RandomForestClassifier<Features, Labels, AverageType, Scaler>::serialize(
             CEREAL_NVP(m_min_gain_split), CEREAL_NVP(m_max_depth),
             CEREAL_NVP(m_use_scaling));
 }
+
+template <typename Features, typename Labels, statistics::AverageType AverageType,
+          typename Scaler>
+RandomForestParams
+RandomForestClassifier<Features, Labels, AverageType, Scaler>::get_params() const {
+    return {m_num_trees, m_min_leaf_size, m_min_gain_split, m_max_depth};
+}

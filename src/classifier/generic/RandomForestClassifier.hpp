@@ -107,6 +107,11 @@ public:
     void load(const std::string &path) override;
 
     /**
+     * @brief Return the parameters of the current trained or loaded model.
+     */
+    RandomForestParams get_params() const override;
+
+    /**
      * @brief Calculate permutation-based feature importance
      * 
      * Measures performance degradation when each feature is shuffled.

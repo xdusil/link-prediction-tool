@@ -173,26 +173,6 @@ void LinkPredictionApp::run_training_mode(
         feature_generator.generate_labeled_features(
             m_graph_manager->get_ip_to_vertex(), ground_truth_dependencies);
 
-    if (m_config.WRITE_RUN_MANIFESTS) {
-        const std::optional<std::string> reference_path =
-            ground_truth_input_path ? ground_truth_input_path : ground_truth_output_path;
-        const ground_truth::ProjectionStats projection_stats =
-            calculate_reference_projection_stats();
-        reporting::write_run_manifest({
-            .path = classifier_path + ".run_manifest.json",
-            .mode = "training",
-            .config_path = m_config_path,
-            .data_path = data_path,
-            .classifier_path = classifier_path,
-            .output_path = classifier_path,
-            .reference_path = reference_path,
-            .reference_projection_stats = projection_stats,
-            .config = m_config,
-            .graph_manager = *m_graph_manager,
-            .evaluated_pair_count = arma_labels.n_elem,
-        });
-    }
-
     // Convert to Armadillo matrix - no copy mem => ref needs to live
     auto [arma_features, ref] =
         utils::conv_2d_tensor_to_arma<float>(combined, false, true);
@@ -209,6 +189,26 @@ void LinkPredictionApp::run_training_mode(
 
     if (!m_classifier)
         throw ComponentNotInitializedException("Classifier not initialized.");
+
+    if (m_config.WRITE_RUN_MANIFESTS) {
+        const std::optional<std::string> reference_path =
+            ground_truth_input_path ? ground_truth_input_path : ground_truth_output_path;
+        reporting::write_run_manifest({
+            .path = classifier_path + ".run_manifest.json",
+            .mode = "training",
+            .config_path = m_config_path,
+            .data_path = data_path,
+            .classifier_path = classifier_path,
+            .output_path = classifier_path,
+            .reference_path = reference_path,
+            .reference_projection_stats = calculate_reference_projection_stats(),
+            .config = m_config,
+            .rf_params = m_classifier->get_params(),
+            .classifier_threshold = m_classifier->get_threshold(),
+            .graph_manager = *m_graph_manager,
+            .evaluated_pair_count = arma_labels.n_elem,
+        });
+    }
 
     // Store explainability baselines next to the model so local ablation uses
     // the same feature order and training distribution as the classifier.
@@ -276,6 +276,8 @@ void LinkPredictionApp::run_prediction_mode(
             .reference_path = ground_truth_path,
             .reference_projection_stats = projection_stats,
             .config = m_config,
+            .rf_params = m_classifier->get_params(),
+            .classifier_threshold = m_classifier->get_threshold(),
             .graph_manager = *m_graph_manager,
             .evaluated_pair_count = evaluated_pair_count,
         });
