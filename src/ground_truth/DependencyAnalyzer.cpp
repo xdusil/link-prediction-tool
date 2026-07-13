@@ -322,7 +322,7 @@ DependencyList DependencyAnalyzer::determine_direct_dependencies() {
 
     for (const auto &[src_ip, target_map] : m_ip_dict) {
         for (const auto &[target_ip, edge_properties] : target_map) {
-            if (edge_properties.size() > m_n_occurrences) {
+            if (meets_occurrence_threshold(edge_properties.size())) {
                 dependencies.emplace_back(src_ip, target_ip);
                 register_dependency(src_ip, target_ip, DependencyType::DD);
                 m_oss << src_ip << "," << target_ip << ",DD\n";
@@ -351,7 +351,7 @@ TD2DependencyMap DependencyAnalyzer::determine_TD2_dependencies(
 
             // Skip if the destination IP doesn't meet the occurrence threshold or is the
             // same as the source IP
-            if (edge_properties.size() <= m_n_occurrences || dst_ip == src_ip) {
+            if (!meets_occurrence_threshold(edge_properties.size()) || dst_ip == src_ip) {
                 continue;
             };
 
@@ -361,7 +361,7 @@ TD2DependencyMap DependencyAnalyzer::determine_TD2_dependencies(
                     edge.start_forward, edge.end_forward, edge.start_reverse,
                     edge.end_reverse, edge_properties);
 
-                if (count_appereances > m_n_occurrences) {
+                if (meets_occurrence_threshold(count_appereances)) {
                     dependencies[src_ip].push_back({dst_ip, mid_ip});
                     register_dependency(src_ip, dst_ip, DependencyType::TD2);
                     m_oss << src_ip << "," << dst_ip << ",TD2\n";
@@ -390,7 +390,7 @@ RR2DependencyMap DependencyAnalyzer::determine_RR2_dependencies(
 
             // Skip if the destination IP doesn't meet the occurrence threshold or is the
             // same as the middle IP
-            if (edge_properties.size() <= m_n_occurrences || dst_ip == mid_ip) {
+            if (!meets_occurrence_threshold(edge_properties.size()) || dst_ip == mid_ip) {
                 continue;
             }
 
@@ -405,7 +405,7 @@ RR2DependencyMap DependencyAnalyzer::determine_RR2_dependencies(
                     edge.start_forward, edge.start_reverse, edge.end_reverse,
                     edge_properties);
 
-                if (count_appearances > m_n_occurrences) {
+                if (meets_occurrence_threshold(count_appearances)) {
                     dependencies[dst_ip].push_back({mid_ip, src_ip});
                     register_dependency(dst_ip, mid_ip, DependencyType::RR2);
                     m_oss << dst_ip << "," << mid_ip << ",RR2\n";
@@ -462,7 +462,7 @@ DependencyAnalyzer::determine_TD3_dependencies(const DependencyList &direct_depe
                         edge.start_forward, edge.end_forward, edge.start_reverse,
                         edge.end_reverse, mid2_to_dst_it->second);
 
-                    if (count_appearances_inner > m_n_occurrences) {
+                    if (meets_occurrence_threshold(count_appearances_inner)) {
                         dependencies[src_ip].push_back({dst_ip, mid_ip, mid_ip2});
                         register_dependency(src_ip, dst_ip, DependencyType::TD3);
                         m_oss << src_ip << "," << dst_ip << ",TD3\n";
@@ -513,7 +513,7 @@ DependencyAnalyzer::determine_RR3_dependencies(const DependencyList &direct_depe
                         edge.start_forward, edge.start_reverse, edge.end_reverse,
                         src_to_dst_it->second);
 
-                    if (count_appearances > m_n_occurrences) {
+                    if (meets_occurrence_threshold(count_appearances)) {
                         dependencies[dst_ip].push_back({mid_ip, src_ip, mid_ip2});
                         register_dependency(dst_ip, mid_ip, DependencyType::RR3);
                         m_oss << dst_ip << "," << mid_ip << ",RR3\n";

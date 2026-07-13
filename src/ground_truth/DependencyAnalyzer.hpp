@@ -132,6 +132,10 @@ public:
         const std::unordered_set<IPAddress> &retained_ips) const override;
 
 private:
+    bool meets_occurrence_threshold(std::size_t count) const {
+        return count >= static_cast<std::size_t>(m_n_occurrences);
+    }
+
     /**
      * @brief Determine direct dependencies between IP addresses.
      *
