@@ -31,6 +31,14 @@ enum class AverageType {
 };
 
 /**
+ * @brief Calculate binary classification metrics from confusion-matrix counts.
+ */
+Metrics calculate_binary_metrics(std::size_t true_positives,
+                                  std::size_t false_positives,
+                                  std::size_t true_negatives,
+                                  std::size_t false_negatives);
+
+/**
  * @brief Calculate classification metrics.
  *
  * Metrics like accuracy, precision, recall, and F1 score are calculated.

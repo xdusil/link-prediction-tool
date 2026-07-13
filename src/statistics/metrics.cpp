@@ -128,6 +128,33 @@ void fill_score_based_metrics(Metrics &metrics, const arma::rowvec &scores,
 
 } // namespace
 
+Metrics calculate_binary_metrics(std::size_t true_positives,
+                                  std::size_t false_positives,
+                                  std::size_t true_negatives,
+                                  std::size_t false_negatives) {
+    Metrics metrics{};
+    const std::size_t total = true_positives + false_positives + true_negatives +
+                              false_negatives;
+    if (total == 0) {
+        return metrics;
+    }
+
+    metrics.accuracy = static_cast<double>(true_positives + true_negatives) / total;
+    metrics.precision = true_positives + false_positives > 0
+                            ? static_cast<double>(true_positives) /
+                                  (true_positives + false_positives)
+                            : 0.0;
+    metrics.recall = true_positives + false_negatives > 0
+                         ? static_cast<double>(true_positives) /
+                               (true_positives + false_negatives)
+                         : 0.0;
+    metrics.f1_score = metrics.precision + metrics.recall > 0.0
+                           ? 2.0 * metrics.precision * metrics.recall /
+                                 (metrics.precision + metrics.recall)
+                           : 0.0;
+    return metrics;
+}
+
 Metrics calculate_metrics(const arma::Row<size_t> &predictions,
                           const arma::Row<size_t> &labels,
                           const arma::rowvec &positive_scores /*= arma::rowvec()*/,
@@ -148,13 +175,7 @@ Metrics calculate_metrics(const arma::Row<size_t> &predictions,
         size_t tn = arma::sum((labels == 0) % (predictions == 0));
         size_t fn = arma::sum((labels == 1) % (predictions == 0));
 
-        metrics.accuracy = static_cast<double>(tp + tn) / labels.n_elem;
-        metrics.precision = (tp + fp > 0) ? static_cast<double>(tp) / (tp + fp) : 0.0;
-        metrics.recall = (tp + fn > 0) ? static_cast<double>(tp) / (tp + fn) : 0.0;
-        metrics.f1_score = (metrics.precision + metrics.recall > 0)
-                               ? 2.0 * metrics.precision * metrics.recall /
-                                     (metrics.precision + metrics.recall)
-                               : 0.0;
+        metrics = calculate_binary_metrics(tp, fp, tn, fn);
 
         fill_score_based_metrics(metrics, positive_scores, labels);
         return metrics;
