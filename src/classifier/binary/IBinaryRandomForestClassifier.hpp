@@ -26,11 +26,12 @@ public:
      * @param labels Training labels
      * @param use_weights Whether to use class weights
      * @param metric The metric to optimize ("f1", "precision", etc.)
-     * @param validation_size The size of the validation set
+     * @param num_folds Number of stratified folds used to obtain out-of-fold scores
      */
     virtual void train_with_calibration(const Features &features, const Labels &labels,
                                         bool use_weights = false,
-                                        const std::string &metric = "f1", double validation_size = 0.25) = 0;
+                                        const std::string &metric = "f1",
+                                        std::size_t num_folds = 5) = 0;
 
     /**
      * @brief Get the current decision threshold.
@@ -48,7 +49,7 @@ public:
 
     /**
      * @brief Calibrate the decision threshold on validation data.
-     * 
+     *
      * Updates the internal threshold value.
      *
      * @param val_features Validation features
@@ -58,19 +59,16 @@ public:
     virtual void calibrate_threshold(const Features &val_features,
                                      const Labels &val_labels,
                                      const std::string &metric = "f1") = 0;
-    
+
     /**
      * @brief Find optimal threshold without modifying internal state.
      *
      * @param val_features Validation features
      * @param val_labels Validation labels
      * @param metric Metric to optimize (f1, precision, recall, accuracy)
-     * @param min_threshold Minimum threshold to test
-     * @param max_threshold Maximum threshold to test
-     * @param step Step size for threshold search
      * @return Tuple of (optimal_threshold, metrics_at_threshold)
      */
     virtual std::tuple<double, Metrics> find_optimal_threshold(
-        const Features &val_features, const Labels &val_labels, const std::string &metric = "f1",
-        double min_threshold = 0.01, double max_threshold = 0.99, double step = 0.01) const = 0;
+        const Features &val_features, const Labels &val_labels,
+        const std::string &metric = "f1") const = 0;
 };

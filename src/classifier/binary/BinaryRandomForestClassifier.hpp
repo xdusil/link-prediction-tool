@@ -60,12 +60,12 @@ public:
      * @param labels Training labels
      * @param use_weights Whether to use class weights
      * @param metric The metric to optimize ("f1", "precision", etc.)
-     * @param validation_size The size of the validation set
+     * @param num_folds Number of stratified folds used to obtain out-of-fold scores
      */
     void train_with_calibration(const Features& features, const Labels& labels,
                                 bool use_weights = false,
                                 const std::string& metric = "f1",
-                                double validation_size = 0.25) override;
+                                std::size_t num_folds = 5) override;
 
     /**
      * @brief Predict using the optimal decision threshold.
@@ -145,18 +145,17 @@ public:
      * @param val_features Validation features
      * @param val_labels Validation labels
      * @param metric Metric to optimize
-     * @param min_threshold Minimum threshold value to try
-     * @param max_threshold Maximum threshold value to try
-     * @param step Step size between thresholds
      * @return A tuple containing the optimal threshold and the corresponding metrics.
      */
     std::tuple<double, statistics::Metrics>
     find_optimal_threshold(const Features& val_features, const Labels& val_labels,
-                           const std::string& metric = "f1", double min_threshold = 0.01,
-                           double max_threshold = 0.99,
-                           double step = 0.01) const override;
+                           const std::string& metric = "f1") const override;
 
 private:
+    std::tuple<double, statistics::Metrics>
+    find_optimal_threshold(const arma::rowvec& positive_scores, const Labels& labels,
+                           const std::string& metric) const;
+
     double m_binary_threshold = 0.5; // Specialized threshold for binary classification
 
     /**

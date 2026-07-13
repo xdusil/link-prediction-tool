@@ -4,6 +4,13 @@
 #include "exceptions/exceptions.hpp"
 #include "statistics/metrics.hpp"
 
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <limits>
+#include <numeric>
+#include <vector>
+
 template <typename Features, typename Labels, typename Scaler>
 BinaryRandomForestClassifier<Features, Labels, Scaler>::BinaryRandomForestClassifier(
     std::size_t num_trees /*= 10*/, std::size_t min_leaf_size /*= 1*/,
@@ -25,22 +32,86 @@ BinaryRandomForestClassifier<Features, Labels, Scaler>::BinaryRandomForestClassi
 
 template <typename Features, typename Labels, typename Scaler>
 void BinaryRandomForestClassifier<Features, Labels, Scaler>::train_with_calibration(
-    const Features &features, const Labels &labels, bool use_weights,
-    const std::string &metric /*= f1*/, double validation_size /*= 0.25*/) {
+    const Features &features,
+    const Labels &labels,
+    bool use_weights,
+    const std::string &metric /*= f1*/,
+    std::size_t num_folds /*= 5*/) {
+    if (features.n_cols != labels.n_elem) {
+        throw RandomForestException("Number of features and labels must be equal.");
+    }
+    if (num_folds < 2) {
+        throw RandomForestException("Threshold calibration requires at least two folds.");
+    }
 
-    Features train_features, test_features;
-    Labels train_labels, test_labels;
-    mlpack::data::StratifiedSplit(features, labels, train_features, test_features,
-                                  train_labels, test_labels, validation_size);
+    std::array<arma::uvec, 2> class_indices = {
+        arma::find(labels == 0),
+        arma::find(labels == 1)};
+    if (class_indices[0].n_elem + class_indices[1].n_elem != labels.n_elem) {
+        throw RandomForestException("Binary labels must be either 0 or 1.");
+    }
+    if (class_indices[0].is_empty() || class_indices[1].is_empty()) {
+        throw RandomForestException(
+            "Threshold calibration requires both binary classes.");
+    }
 
-    // First call the base class training
-    Base::train(train_features, train_labels, use_weights);
+    num_folds = std::min<std::size_t>(
+        num_folds,
+        std::min(class_indices[0].n_elem, class_indices[1].n_elem));
+    std::vector<std::vector<arma::uword>> fold_indices(num_folds);
+    for (arma::uvec &indices : class_indices) {
+        indices = arma::shuffle(indices);
+        for (arma::uword i = 0; i < indices.n_elem; ++i) {
+            fold_indices[i % num_folds].push_back(indices[i]);
+        }
+    }
 
-    std::cout << "Binary classifier: Training complete, now calibrating threshold..."
+    std::cout << "Binary classifier: Generating " << num_folds
+              << "-fold out-of-fold probabilities for threshold calibration..."
               << std::endl;
 
-    // After training, calibrate the threshold
-    calibrate_threshold(test_features, test_labels, metric);
+    arma::rowvec positive_scores(labels.n_elem);
+    arma::uvec scored(labels.n_elem, arma::fill::zeros);
+    const RandomForestParams params{
+        this->m_num_trees,
+        this->m_min_leaf_size,
+        this->m_min_gain_split,
+        this->m_max_depth};
+
+    for (std::size_t fold = 0; fold < num_folds; ++fold) {
+        arma::uvec validation_indices(fold_indices[fold]);
+        validation_indices = arma::sort(validation_indices);
+
+        arma::uvec is_validation(labels.n_elem, arma::fill::zeros);
+        is_validation.elem(validation_indices).ones();
+        const arma::uvec training_indices = arma::find(is_validation == 0);
+
+        BinaryRandomForestClassifier fold_classifier(params, this->m_use_scaling);
+        fold_classifier.train(
+            features.cols(training_indices),
+            labels.cols(training_indices),
+            use_weights);
+        const auto [_, probabilities] =
+            fold_classifier.predict_proba(features.cols(validation_indices));
+        positive_scores.elem(validation_indices) = probabilities.row(1);
+        scored.elem(validation_indices).ones();
+    }
+
+    if (arma::any(scored == 0)) {
+        throw RandomForestException(
+            "Out-of-fold threshold calibration did not score every sample.");
+    }
+
+    const auto [threshold, metrics] =
+        find_optimal_threshold(positive_scores, labels, metric);
+    m_binary_threshold = threshold;
+
+    std::cout << "Binary classifier: OOF calibration complete with threshold = "
+              << m_binary_threshold << " (Accuracy = " << metrics.accuracy
+              << ", Precision = " << metrics.precision << ", Recall = " << metrics.recall
+              << ", F1 = " << metrics.f1_score << ")\n"
+              << "Binary classifier: Training final model on all samples..." << std::endl;
+    Base::train(features, labels, use_weights);
 }
 
 template <typename Features, typename Labels, typename Scaler>
@@ -105,11 +176,10 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::calibrate_threshold
     const Features &val_features, const Labels &val_labels,
     const std::string &metric /*= f1*/) {
 
-    // Default calibration range with 0.02 steps
     auto [threshold, metrics] =
-        find_optimal_threshold(val_features, val_labels, metric, 0.01, 0.99, 0.02);
+        find_optimal_threshold(val_features, val_labels, metric);
     m_binary_threshold = threshold;
-    
+
     std::cout << "Binary classifier: Calibration complete with threshold = "
             << m_binary_threshold << " (Accuracy = " << metrics.accuracy
             << ", Precision = " << metrics.precision
@@ -118,55 +188,121 @@ void BinaryRandomForestClassifier<Features, Labels, Scaler>::calibrate_threshold
 }
 
 template <typename Features, typename Labels, typename Scaler>
-std::tuple<double, statistics::Metrics> BinaryRandomForestClassifier<Features, Labels, Scaler>::find_optimal_threshold(
-    const Features &val_features, const Labels &val_labels, const std::string &metric,
-    double min_threshold /*= 0.01 */, double max_threshold /*= 0.99 */,
-    double step /*= 0.01*/) const {
+std::tuple<double, statistics::Metrics> BinaryRandomForestClassifier<
+    Features,
+    Labels,
+    Scaler>::
+    find_optimal_threshold(
+        const arma::rowvec& positive_scores,
+        const Labels& labels,
+        const std::string& metric) const {
+    if (positive_scores.n_elem != labels.n_elem || labels.is_empty()) {
+        throw RandomForestException(
+            "Threshold calibration scores must match non-empty labels.");
+    }
 
-    // Get probabilities for each class
-    auto [_, probabilities] = Base::predict_proba(val_features);
+    if (!positive_scores.is_finite() || arma::any(positive_scores < 0.0) ||
+        arma::any(positive_scores > 1.0)) {
+        throw RandomForestException(
+            "Threshold calibration requires finite probabilities in [0, 1].");
+    }
 
-    // Binary classification threshold optimization
-    double best_value = 0.0;
+    std::vector<std::size_t> sorted_indices(labels.n_elem);
+    std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
+    std::sort(
+        sorted_indices.begin(),
+        sorted_indices.end(),
+        [&positive_scores](std::size_t lhs, std::size_t rhs) {
+            if (positive_scores[lhs] == positive_scores[rhs]) {
+                return lhs < rhs;
+            }
+            return positive_scores[lhs] < positive_scores[rhs];
+        });
+
+    double best_value = -std::numeric_limits<double>::infinity();
     double best_threshold = 0.5;
-    statistics::Metrics best{};
+    std::size_t true_positives = arma::accu(labels == 1);
+    std::size_t false_positives = labels.n_elem - true_positives;
+    std::size_t true_negatives = 0;
+    std::size_t false_negatives = 0;
+    std::size_t position = 0;
 
-    // Try different thresholds
-    for (double t = min_threshold; t <= max_threshold; t += step) {
-        Labels preds(val_labels.n_elem);
+    std::vector<double> thresholds;
+    thresholds.reserve(labels.n_elem + 2);
+    thresholds.push_back(0.0);
+    for (const std::size_t index : sorted_indices) {
+        thresholds.push_back(positive_scores[index]);
+    }
+    thresholds.push_back(1.0);
+    std::sort(thresholds.begin(), thresholds.end());
+    thresholds.erase(std::unique(thresholds.begin(), thresholds.end()), thresholds.end());
 
-        // Apply current threshold
-        for (size_t i = 0; i < val_labels.n_elem; ++i) {
-            preds[i] = (probabilities(1, i) > t) ? 1 : 0;
+    for (const double threshold : thresholds) {
+        while (position < sorted_indices.size() &&
+               positive_scores[sorted_indices[position]] <= threshold) {
+            if (labels[sorted_indices[position]] == 1) {
+                --true_positives;
+                ++false_negatives;
+            } else {
+                --false_positives;
+                ++true_negatives;
+            }
+            ++position;
         }
 
-        // Calculate metrics
-        statistics::Metrics eval = statistics::calculate_metrics(
-            preds, val_labels, arma::rowvec(), statistics::AverageType::BINARY, 2);
-
-        // Update best threshold based on chosen metric
-        double current_value = 0.0;
-
+        const statistics::Metrics metrics = statistics::calculate_binary_metrics(
+            true_positives, false_positives, true_negatives, false_negatives);
+        double value;
         if (metric == "f1") {
-            current_value = eval.f1_score;
+            value = metrics.f1_score;
         } else if (metric == "precision") {
-            current_value = eval.precision;
+            value = metrics.precision;
         } else if (metric == "recall") {
-            current_value = eval.recall;
+            value = metrics.recall;
         } else if (metric == "accuracy") {
-            current_value = eval.accuracy;
+            value = metrics.accuracy;
         } else {
-            current_value = eval.accuracy; // Default to accuracy
+            throw RandomForestException(
+                "Unknown threshold calibration metric: " + metric);
         }
 
-        if (current_value > best_value) {
-            best_value = current_value;
-            best_threshold = t;
-            best = eval;
+        // Prefer the threshold closest to 0.5 when the objective is tied.
+        if (value > best_value ||
+            (value == best_value &&
+             std::abs(threshold - 0.5) < std::abs(best_threshold - 0.5))) {
+            best_value = value;
+            best_threshold = threshold;
         }
     }
 
-    return std::make_tuple(best_threshold, best);
+    Labels predictions(labels.n_elem);
+    for (std::size_t i = 0; i < labels.n_elem; ++i) {
+        predictions[i] = positive_scores[i] > best_threshold ? 1 : 0;
+    }
+    const statistics::Metrics best = statistics::calculate_metrics(
+        predictions,
+        labels,
+        arma::rowvec(),
+        statistics::AverageType::BINARY,
+        2);
+    return {best_threshold, best};
+}
+
+template <typename Features, typename Labels, typename Scaler>
+std::tuple<double, statistics::Metrics> BinaryRandomForestClassifier<
+    Features,
+    Labels,
+    Scaler>::
+    find_optimal_threshold(
+        const Features& val_features,
+        const Labels& val_labels,
+        const std::string& metric) const {
+    const auto [_, probabilities] = Base::predict_proba(val_features);
+    if (probabilities.n_rows != 2) {
+        throw RandomForestException(
+            "Binary classifier expected probabilities for two classes.");
+    }
+    return find_optimal_threshold(probabilities.row(1), val_labels, metric);
 }
 
 template <typename Features, typename Labels, typename Scaler>
