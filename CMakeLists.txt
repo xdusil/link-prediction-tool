@@ -123,6 +123,7 @@ target_include_directories(LinkPredictionApp
 # Link libraries
 target_link_libraries(LinkPredictionApp PRIVATE
     ${TORCH_LIBRARIES}
+    ${ARMADILLO_LIBRARIES}
 )
 
 # Ensure C++20 standard
