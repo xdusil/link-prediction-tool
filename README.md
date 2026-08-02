@@ -1,9 +1,9 @@
 # LinkPrediction Tool
 
-LinkPrediction is a C++20 tool for inferring directed service dependencies from
-flow-level network telemetry. It builds a retained directed graph from network
-flows, learns directional graph embeddings, generates interpretable pairwise
-features, and predicts dependencies with a binary Random Forest classifier.
+LinkPrediction is a C++20 tool for inferring directed dependencies between IP
+endpoints from flow-level network telemetry. It builds a retained directed graph
+from network flows, learns directional graph embeddings, generates interpretable
+pairwise features, and predicts dependencies with a binary Random Forest classifier.
 
 The tool is designed for practical dependency analysis under incomplete
 observability. It is useful when experts need to understand which systems depend
@@ -82,7 +82,7 @@ problem:
 
 The intended claim is therefore practical:
 
-> Given flow-level telemetry, the tool infers, ranks, and explains likely service
+> Given flow-level telemetry, the tool infers, ranks, and explains likely endpoint
 > dependencies in a configurable retained graph universe.
 
 ## Architecture
@@ -178,8 +178,6 @@ Important CMake variables:
 | `MLPACK_INCLUDE_DIR` | Include directory that contains `mlpack/core.hpp` |
 | `ENSMALLEN_INCLUDE_DIR` | Include directory that contains `ensmallen.hpp` |
 | `CEREAL_INCLUDE_DIR` | Include directory that contains `cereal/cereal.hpp` |
-| `BLAS_LIBRARIES` | Optional explicit BLAS library path |
-| `LAPACK_LIBRARIES` | Optional explicit LAPACK library path |
 
 ### Build With Explicit Dependency Paths
 
@@ -192,9 +190,7 @@ cmake .. \
   -DCMAKE_PREFIX_PATH="/opt/boost-1.86;/opt/libtorch/share/cmake/Torch;/opt/armadillo-14.2" \
   -DMLPACK_INCLUDE_DIR="/opt/mlpack-4.5/include" \
   -DENSMALLEN_INCLUDE_DIR="/opt/ensmallen-2.22/include" \
-  -DCEREAL_INCLUDE_DIR="/opt/cereal/include" \
-  -DBLAS_LIBRARIES="/opt/openblas/lib/libopenblas.a" \
-  -DLAPACK_LIBRARIES="/opt/openblas/lib/libopenblas.a"
+  -DCEREAL_INCLUDE_DIR="/opt/cereal/include"
 
 make -j"$(nproc)"
 ```
@@ -245,10 +241,13 @@ src_ip,dst_ip,dependency_type
 Known dependency types:
 
 - `DD`: direct dependency
-- `TD2`: two-hop temporal dependency
-- `RR2`: two-hop request-response dependency
-- `TD3`: three-hop temporal dependency
-- `RR3`: three-hop request-response dependency
+- `TD2`: two-stage transitive dependency
+- `RR2`: two-stage remote-remote dependency
+- `TD3`: three-stage transitive dependency
+- `RR3`: three-stage remote-remote dependency
+
+The extracted ground truth is generated using the configured temporal and
+occurrence rules.
 
 ### Training
 
@@ -323,7 +322,7 @@ Input flow data is JSON Lines: one JSON object per line.
 | `destinationTransportPort` | Optional | Destination port |
 
 At least one forward timestamp pair is required. Reverse timestamps are used
-when available by features and by ground-truth logic that requires response
+when available by features and by ground-truth rules that require response
 timing.
 
 Example:
@@ -493,7 +492,7 @@ For serious experiments, preserve:
 | Explanations fail with missing baseline | Retrain the classifier so `<classifier>.feature_baselines.json` is created |
 | Explanations reject the baseline | Ensure prediction uses the same feature configuration and feature order as training |
 | Score-based metrics fail or are unavailable | Check that ground truth and positive-class scores are both available and have matching dimensions |
-| F1 is unexpectedly low | Check retained graph size, ground-truth constants, classifier threshold, and positive coverage |
+| F1 is unexpectedly low | Check retained graph size, ground-truth parameters, classifier threshold, and positive coverage |
 | Results differ across runs | Check `SEED`, `NUM_THREADS`, build type, config, and generated ground truth |
 
 ## Documentation
